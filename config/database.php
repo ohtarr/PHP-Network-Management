@@ -137,20 +137,41 @@ return [
             'database' => env('REDIS_DB', '0'),
         ],
 
-        'cache' => [
+        'db_redis_cache' => [
             'url' => env('REDIS_URL'),
             'host' => env('REDIS_HOST', '127.0.0.1'),
             'username' => env('REDIS_USERNAME'),
             'password' => env('REDIS_PASSWORD'),
             'port' => env('REDIS_PORT', '6379'),
-            'database' => env('REDIS_CACHE_DB', '1'),
+            'database' => 0,
+            'prefix'    =>  'c:'
         ],
-        'discovery' => [
+
+        'db_redis_discovery' => [
             'host'     => env('REDIS_HOST', '127.0.0.1'),
+            'username' => env('REDIS_USERNAME'),
             'password' => env('REDIS_PASSWORD', null),
-            'port'     => env('REDIS_PORT', 6379),
+            'port'     => env('REDIS_PORT', '6379'),
             'database' => 0,
             'prefix' => 'dis:',
+        ],
+
+        'db_redis_queue' => [
+            'host'     => env('REDIS_HOST', '127.0.0.1'),
+            'username' => env('REDIS_USERNAME'),
+            'password' => env('REDIS_PASSWORD', null),
+            'port'     => env('REDIS_PORT', '6379'),
+            'database' => 0,
+            'prefix' => 'q:',
+        ],
+
+        'db_redis_session' => [
+            'host'     => env('REDIS_HOST', '127.0.0.1'),
+            'username' => env('REDIS_USERNAME'),
+            'password' => env('REDIS_PASSWORD', null),
+            'port'     => env('REDIS_PORT', '6379'),
+            'database' => 0,
+            'prefix' => 's:',
         ],
 
     ],

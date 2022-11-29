@@ -73,9 +73,19 @@ return [
             ],
         ],
 
+        'cache_general' => [
+            'driver' => 'redis',
+            'connection' => 'db_redis_cache',
+            'lock_connection' => 'default',
+        ],
+
+        'cache_discovery' => [
+            'driver'    => 'redis',
+            'connection' => 'db_redis_discovery',
+        ],
         'redis' => [
             'driver' => 'redis',
-            'connection' => 'cache',
+            'connection' => 'db_redis_session',
             'lock_connection' => 'default',
         ],
 
@@ -90,10 +100,6 @@ return [
 
         'octane' => [
             'driver' => 'octane',
-        ],
-        'discovery' => [
-            'driver'    => 'redis',
-            'connection' => 'discovery',
         ],
 
     ],
