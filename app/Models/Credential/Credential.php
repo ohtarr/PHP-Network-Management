@@ -4,6 +4,7 @@ namespace App\Models\Credential;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Device\Device;
 
 class Credential extends Model
 {
@@ -18,4 +19,9 @@ class Credential extends Model
         'description',
         'options',
       ];
+
+      public function devices()
+      {
+          return $this->hasMany(Device::class, 'credential_id', 'id',);
+      }
 }

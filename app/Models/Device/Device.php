@@ -2,7 +2,6 @@
 
 namespace App\Models\Device;
 
-use Ohtarr\SSH;
 use phpseclib3\Net\SSH2;
 use App\Models\Credential\Credential;
 use Illuminate\Database\Eloquent\Model;
@@ -10,6 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Nanigans\SingleTableInheritance\SingleTableInheritanceTrait;
 use Illuminate\Support\Facades\Cache;
 use App\Collections\DeviceCollection as Collection;
+use Illuminate\Support\Facades\DB;
 
 class Device extends Model
 {
@@ -42,9 +42,14 @@ class Device extends Model
     protected static $singleTableType = __CLASS__;
 
     protected $fillable = [
+        'id',
         'type',
         'ip',
+        'credential_id',
         'data',
+        'deleted_at',
+        'created_at',
+        'updated_at',
       ];
 
     protected $casts = [
@@ -62,7 +67,7 @@ class Device extends Model
 
     public $scan_cmds = [];
 
-    public static $columns = [
+/*     public static $columns = [
         'id',
         'type',
         'ip',
@@ -75,7 +80,7 @@ class Device extends Model
         'created_at',
         'updated_at',
         'data',
-    ];
+    ]; */
 
     public $discover_commands = [
         'sh ver',
@@ -115,14 +120,14 @@ class Device extends Model
         return $query->addselect('data->' . $data . ' as ' . $data);
     }
 
-    public static function getColumns()
+/*     public static function getColumns()
     {
         return self::$columns;
-    }
+    } */
 
     public function credential()
     {
-        return $this->hasOne('App\Models\Credential\Credential', 'id', 'credential_id');
+        return $this->belongsTo(Credential::class, 'credential_id', 'id');
     }
 
     /*
@@ -203,9 +208,11 @@ class Device extends Model
             }
 
             if (isset($cli)) {
-                $this->credential_id = $credential->id;
-                //$this->save();
-
+                //if($this->id)
+                //{
+                    $this->credential_id = $credential->id;
+                    //$this->save();
+                //}
                 return $cli;
             }
         }
@@ -233,7 +240,7 @@ class Device extends Model
     It will attempt to use Metaclassing\SSH library to work with specific models of devices that do not support ssh 2.0 natively.
     If it successfully connects and detects prompt, it will return a CLI handle.
     */
-    public static function getSSH1($ip, $username, $password)
+/*     public static function getSSH1($ip, $username, $password)
     {
         $deviceinfo = [
             'host'      => $ip,
@@ -248,11 +255,15 @@ class Device extends Model
             $cli->exec('no paging');  //Aruba
             return $cli;
         }
-    }
+    } */
 
 	public function exec_cmds($cmds, $timeout = 20)
 	{
 		$cli = $this->getCli($timeout);
+        if(!$cli)
+        {
+			throw new \Exception('Unable to establish CLI!');
+        }
 		if(is_array($cmds))
 		{
 			foreach($cmds as $key => $cmd)
@@ -290,7 +301,7 @@ class Device extends Model
         }
     } */
 
-    public function discover()
+/*     public function discover()
     {
         //print "discover()\n";
         if(!$this->ip){
@@ -312,13 +323,12 @@ class Device extends Model
         //$device->type = 'App\Device\Device';
         //print "discover() DEVICE ID: {$device->id}\n";
         $device = $device->getType();
+        Cache::store('cache_discovery')->put($this->ip,0,15);
         if(!$device)
         {
             print "Unable to get Device Type!\n";
-            Cache::store('discovery')->put($this->ip,0,15);
             return null;
         }
-        Cache::store('discovery')->put($this->ip,1,15);
         //print "discover() DEVICE ID: {$device->id}\n";        
         $device = $device->getOutput();
         //print "discover() PRESAVE ID : {$device->id}\n";
@@ -339,7 +349,7 @@ class Device extends Model
         $device->save();
         //print "POSTSAVE ID : {$device->id}\n";
         return $device;
-    }
+    } */
 
     /*
     This method is used to determine the TYPE of device this is and recategorize it.
@@ -400,29 +410,6 @@ class Device extends Model
             }
         }
 
-        /*         $cli = $this->getCli();
-        if(!$cli)
-        {
-            print "Unable to get CLI!\n";
-            return null;
-        }
-        /*
-        Go through each COMMAND and execute it. and see if it matches each of the $regex entries we have.
-        If we find a match, +1 for that class.
-        */
-        /*
-        foreach ($this->discover_commands as $command) {
-            $output = $cli->exec_cmds($command);
-            foreach ($this->discover_regex as $class => $regs) {
-                foreach($regs as $reg)
-                {
-                    if (preg_match($reg, $output)) {
-                        $match[$class]++;
-                    }
-                }
-            }
-        }
-        $cli->disconnect(); */
         //sort the $match array so the class with the highest count is on top.
         arsort($match);
         foreach($match as $key => $value)
@@ -435,10 +422,6 @@ class Device extends Model
             }
             break;
         }
-        //just grab the class names
-        //$tmp = array_keys($match);
-        //set $newtype to the TOP class in $match.
-        //$newtype = reset($tmp);
 
         //Create a new model instance of type $newtype
         $device = $newtype::make($this->toArray());
@@ -450,6 +433,66 @@ class Device extends Model
         $device = $device->getType();
         return $device;
     }
+
+/*     public function getClass()
+    {
+        $device = new self($this->toArray());
+        //print get_class($device) . "\n";
+        $final = $device->getType();
+        return get_class($final);
+    } */
+
+    public static function discoverNew($ip)
+    {
+        $device = new self;
+        $device->ip = $ip;
+        return $device->discover();
+    }
+
+    public function discover()
+    {
+        if(!$this->ip)
+        {
+            print "No IP address found!\n";
+            return false;
+        }
+        $device = new self;
+        $device->ip = $this->ip;
+        $device = $device->getType();
+        $device = $device->getOutput();
+        $exists = $device->deviceExists();
+        if($exists)
+        {
+            print "EXISTS!\n";
+            $device->id = $exists->id;
+            $device->ip = $exists->ip;
+            $exists->forceDelete();
+        }
+
+        $device->save();
+        return $device;
+    }
+
+/*     public function test()
+    {
+        //return $this->find($this->id);
+        //return self::find($this->id);
+        print $this->id . "\n";
+        //return Device::find($this->id);
+        //return Device::where('id',$this->id)->first();
+        //$device = new Device;
+        $device = new self;
+        return $device->find($this->id);
+    } */
+
+/*     public function changeClass($type)
+    {
+        DB::table($this->table)
+            ->where('id',$this->id)
+            ->update(['type' => $type]);
+        $device = new self;
+        return $device->find($this->id);
+    } */
 
     /*
     This method is used to determine if this devices IP is already in the database.
@@ -465,24 +508,27 @@ class Device extends Model
             ->orWhere("name", $this->name)
             ->first(); */
 
-        $device1 = Device::where('ip',$this->ip)->first();
+        $device1 = Device::where('ip',$this->ip)->withTrashed()->first();
         if($device1)
         {
+            //print "IP MATCH!\n";
             return $device1;
         }
         if(isset($this->data['serial']))
         {
-            $device2 = Device::where("data->serial", $this->data['serial'])->first();
+            $device2 = Device::where("data->serial", $this->data['serial'])->withTrashed()->first();
             if($device2)
             {
+                //print "SERIAL MATCH!\n";
                 return $device2;
             }
         }
         if(isset($this->data['name']))
         {
-            $device3 = Device::where("data->name", $this->data['name'])->first();
+            $device3 = Device::where("data->name", $this->data['name'])->withTrashed()->first();
             if($device3)
             {
+                //print "NAME MATCH!\n";
                 return $device3;
             }
         }
@@ -497,17 +543,8 @@ class Device extends Model
     */
     public function getOutput()
     {
-        //print "getOutput()\n";
-        //$cli = $this->getCli();
-        //print_r($cli);
-        //$cli->setTimeout(30);
-        //Loop through each configured command and save it's output to $data.
-        //foreach ($this->scan_cmds as $key => $cmd) {
-        //    $data[$key] = $cli->exec($cmd);
-        //}
-        //$cli->disconnect();
-        //save the data back to the model.
         $data = $this->exec_cmds($this->scan_cmds);
+        $this->data = $data;
         $data['name'] = $this->getName();
         $data['serial'] = $this->getSerial();
         $data['model'] = $this->getModel();
