@@ -15,6 +15,8 @@ class ScanDeviceJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $device;
+
     /**
      * Create a new job instance.
      *
