@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Jobs;
-use App\Device\Device;
+use App\Models\Device\Device;
 use App\Jobs\DiscoverDeviceJob;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
