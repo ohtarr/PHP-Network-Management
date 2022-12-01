@@ -1,18 +1,22 @@
 {
-    "name": "laravel/laravel",
+    "name": "ohtarr/php-network-management",
     "type": "project",
-    "description": "The Laravel Framework.",
+    "description": "PHP Network Management Framework.",
     "keywords": ["framework", "laravel"],
     "license": "MIT",
     "require": {
         "php": "^8.0.2",
         "guzzlehttp/guzzle": "^7.2",
+        "iahunter/php-911enable-egw": "dev-master",
         "laravel/framework": "^9.19",
         "laravel/horizon": "^5.10",
         "laravel/sanctum": "^3.0",
         "laravel/tinker": "^2.7",
         "nanigans/single-table-inheritance": "^1.0",
-        "phpseclib/phpseclib": "^3.0"
+        "ohtarr/laravelazure": "dev-master",
+        "ohtarr/service-now-model": "dev-master",
+        "phpseclib/phpseclib": "^3.0",
+        "spatie/laravel-query-builder": "^5.1"
     },
     "require-dev": {
         "fakerphp/faker": "^1.9.1",
@@ -64,5 +68,11 @@
         }
     },
     "minimum-stability": "dev",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "repositories":[
+        {
+            "type": "vcs",
+            "url": "https://github.com/iahunter/php-911enable-egw.git"
+        }
+    ]
 }

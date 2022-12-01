@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Collections;
+namespace App\Models\Device;
 
 use Illuminate\Database\Eloquent\Collection;
 
@@ -20,5 +20,5 @@ class DeviceCollection extends Collection
             return $item->withoutData();
         });
     }
-
+    
 }

@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Nanigans\SingleTableInheritance\SingleTableInheritanceTrait;
 use Illuminate\Support\Facades\Cache;
-use App\Collections\DeviceCollection as Collection;
-use Illuminate\Support\Facades\DB;
+use App\Models\Device\DeviceCollection as Collection;
+//use Illuminate\Support\Facades\DB;
 
 class Device extends Model
 {
