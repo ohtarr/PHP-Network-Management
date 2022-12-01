@@ -61,9 +61,8 @@ class AutoDiscoverDevice extends Command
             return null;
         }
 
-        Log::info('DiscoverDeviceCommand', ['DiscoverDeviceJob' => 'starting', 'device_ip' => $this->option('ip')]);   // Log device to the log file.
-        $result = DiscoverDeviceJob::dispatch(['ip' => $this->option('ip')]);           // Create a scan job for each device in the database
-        return $result;
+        Log::info('AutoDiscoverDeviceCommand', ['DiscoverDeviceJob' => 'dispatching_job', 'device_ip' => $this->option('ip')]);   // Log device to the log file.
+        DiscoverDeviceJob::dispatch(['ip' => $this->option('ip')]);           // Create a scan job for each device in the database
     }
 
 }
