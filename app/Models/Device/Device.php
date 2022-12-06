@@ -38,7 +38,7 @@ class Device extends Model
         \App\Models\Device\Cisco\Cisco::class,
         \App\Models\Device\Opengear\Opengear::class,
         \App\Models\Device\Ubiquiti\Ubiquiti::class,
-
+        \App\Models\Device\Juniper\Juniper::class,
     ];
     protected static $singleTableType = __CLASS__;
 
@@ -86,11 +86,10 @@ class Device extends Model
     ]; */
 
     public $discover_commands = [
-        'sh ver',
+        'sh version',
         'show inventory',
         'cat /etc/version',
         'cat /etc/board.info',
-
     ];
 
     public $discover_regex = [
@@ -105,6 +104,10 @@ class Device extends Model
         ],
         'App\Models\Device\Ubiquiti\Ubiquiti'   => [
             '/NBE-5AC/i',
+        ],
+        'App\Models\Device\Juniper\Juniper'   => [
+            '/JUNOS/i',
+            '/Junos/i',
         ],
 
     ];
