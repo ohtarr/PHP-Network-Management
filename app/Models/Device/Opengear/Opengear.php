@@ -11,6 +11,12 @@ class Opengear extends \App\Models\Device\Device
 
     protected static $singleTableType = __CLASS__;
 
+    public static $cli_timeout = 120;
+
+    public $promptreg = '/\S*[\$|#]\s*\z/';
+
+    public $precli = [];
+
     //List of commands to run during a scan of this device.
     public $scan_cmds = [
 

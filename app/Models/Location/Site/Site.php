@@ -11,9 +11,12 @@ use App\Models\Location\Building\Building;
 use App\Dhcp;
 use App\Models\Location\Site\SiteCollection;
 use App\Models\Device\Device;
+use App\Models\Observium\Device as obsDevice;
+use Silber\Bouncer\Database\HasRolesAndAbilities;
 
 class Site extends Model
 {
+    use HasRolesAndAbilities;
 
     protected $connection = 'mysql-whereuat';
 
@@ -251,6 +254,19 @@ class Site extends Model
     {
         $devices = Device::where('data->name', 'like', $this->name . '%')->get();
         return $devices;
+    }
+
+    public function isNetworkActive()
+    {
+        $loc = $this->getServiceNowLocation();
+        if($loc)
+        {
+            if($loc['u_network_mob_date'] && !$loc['u_network_demob_date'])
+            {
+                return true;
+            }
+        }
+        return false;
     }
 
 }

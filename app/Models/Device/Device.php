@@ -9,13 +9,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Nanigans\SingleTableInheritance\SingleTableInheritanceTrait;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Device\DeviceCollection as Collection;
+use Silber\Bouncer\Database\HasRolesAndAbilities;
+
 //use Illuminate\Support\Facades\DB;
 
 class Device extends Model
 {
     //use Searchable;	// Add for Scout to search */
-    use SoftDeletes;
-    use SingleTableInheritanceTrait;
+    use SoftDeletes, SingleTableInheritanceTrait, HasRolesAndAbilities;
 
     // Scout Searchable
     /*
@@ -55,6 +56,8 @@ class Device extends Model
     protected $casts = [
         'data' => 'array',
     ];
+
+    public static $cli_timeout = 20;
 
     public $promptreg = '/\S*[\$|#|>]\s*\z/';
 

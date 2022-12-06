@@ -14,6 +14,20 @@ class SiteResourceCollection extends ResourceCollection
      */
     public function toArray($request)
     {
+        if($request->has('servicenowlocation'))
+        {
+            $this->collection->withServiceNowLocations();
+        }
+
+        if($request->has('rooms'))
+        {
+            $this->collection->withAllRooms();
+        }
+
+        if($request->has('address'))
+        {
+            $this->collection->withAddress();
+        }
 
         return [
             'data'  =>  $this->collection,

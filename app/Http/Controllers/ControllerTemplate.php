@@ -9,7 +9,19 @@ use Illuminate\Http\Request;
 
 class ControllerTemplate extends Controller
 {
+/*     public static $model = Model::class;    
     public static $query = Query::class;
+    public static $resource = Resource::class; */
+
+    public static $model;
+    public static $query;
+    public static $resource;
+
+    public function __construct()
+    {
+	    $this->middleware('auth:api');
+    }
+
     /**
      * Display a listing of the resource.
      *
@@ -18,6 +30,10 @@ class ControllerTemplate extends Controller
      */
     public function index(Request $request)
     {
+        $user = auth()->user();
+		if ($user->cant('read', static::$model)) {
+			abort(401, 'You are not authorized');
+        }
         //Apply proper queries and retrieve a ResourceCollection object.
         $resourceCollection = static::$query::apply($request);
         return $resourceCollection;
@@ -31,7 +47,11 @@ class ControllerTemplate extends Controller
      */
     public function store(Request $request)
     {
-        $object = Model::create($request->all());
+        $user = auth()->user();
+		if ($user->cant('create', static::$model)) {
+			abort(401, 'You are not authorized');
+        }
+        $object = static::$model::create($request->all());
         return $object;
     }
 
@@ -44,8 +64,12 @@ class ControllerTemplate extends Controller
      */
     public function show(Request $request, $id)
     {
+        $user = auth()->user();
+		if ($user->cant('read', static::$model)) {
+			abort(401, 'You are not authorized');
+        }
         $resourceCollection = static::$query::apply($request,$id);
-        return new Resource($resourceCollection->collection->first());
+        return new static::$resource($resourceCollection->collection->first());
     }
 
     /**
@@ -57,9 +81,13 @@ class ControllerTemplate extends Controller
      */
     public function update(Request $request, $id)
     {
-        $object = Model::findOrFail($id);
+        $user = auth()->user();
+		if ($user->cant('update', static::$model)) {
+			abort(401, 'You are not authorized');
+        }
+        $object = static::$model::findOrFail($id);
 		$object->update($request->all());
-		return new Resource($object);
+		return new static::$resource($object);
     }
 
     /**
@@ -70,8 +98,12 @@ class ControllerTemplate extends Controller
      */
     public function destroy($id)
     {
-        $object = Model::findOrFail($id);
+        $user = auth()->user();
+		if ($user->cant('delete', static::$model)) {
+			abort(401, 'You are not authorized');
+        }
+        $object = static::$model::findOrFail($id);
 		$object->delete();
-		return new Resource($object);
+		return new static::$resource($object);
     }
 }

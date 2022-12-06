@@ -17,12 +17,27 @@ class SiteQuery extends BaseQuery
     {
         return [
             'filters'       =>  [
+                'name',
+                AllowedFilter::exact('street_number'),
             ],
             'includes'      =>  [
+                'buildings',
+                'buildings.rooms',
+                'defaultbuilding',
             ],
             'fields'        =>  [
+                'id',
+                'name',
+                'default_building_id',
+                'loc_sys_id',
+                "created_at",
+				"updated_at",
             ],
             'sorts'         =>  [
+                'id',
+                'name',
+                'default_building_id',
+                'loc_sys_id',
             ],
             'defaultSort'   =>  'id',
         ];

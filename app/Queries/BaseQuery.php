@@ -31,10 +31,10 @@ class BaseQuery
             ->allowedSorts(static::parameters()['sorts'])
             ->defaultSort(static::parameters()['defaultSort']);
 
-            if($id)
-            {
-                $query->where('id',$id);
-            }
+        if($id)
+        {
+            $query->where('id',$id);
+        }
         //EXECUTE query and paginate
         $paginator = $query->paginate($request->paginate ?: env('DEFAULT_PAGINATION'))->appends(request()->query());
         //Grab copy of results collection to maintain collection TYPE
