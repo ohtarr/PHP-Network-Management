@@ -2,6 +2,8 @@
 
 namespace App\Models\Device\Cisco;
 
+use App\Models\Device\Cisco\CiscoCollection as Collection;
+
 class Cisco extends \App\Models\Device\Device
 {
     protected static $singleTableSubclasses = [
@@ -52,6 +54,11 @@ class Cisco extends \App\Models\Device\Device
         'mac'           => 'sh mac address-table',
         'arp'           => 'sh ip arp',
     ];
+
+    public function newCollection(array $models = []) 
+    { 
+       return new Collection($models);
+    }
 
     /*
     This method is used to establish a CLI session with a device.

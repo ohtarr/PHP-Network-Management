@@ -9,10 +9,6 @@ use Illuminate\Http\Request;
 
 class ControllerTemplate extends Controller
 {
-/*     public static $model = Model::class;    
-    public static $query = Query::class;
-    public static $resource = Resource::class; */
-
     public static $model;
     public static $query;
     public static $resource;

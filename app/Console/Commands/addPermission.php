@@ -68,6 +68,11 @@ class addPermission extends Command
         
         $objects = [
             \App\Models\Device\Device::class,
+            \App\Models\Device\Aruba\Aruba::class,
+            \App\Models\Device\Cisco\Cisco::class,
+            \App\Models\Device\Juniper\Juniper::class,
+            \App\Models\Device\Opengear\Opengear::class,
+            \App\Models\Device\Ubiquiti\Ubiquiti::class,
             \App\Models\Location\Site\Site::class,
             \App\Models\Location\Address\Address::class,
             \App\Models\Location\Building\Building::class,

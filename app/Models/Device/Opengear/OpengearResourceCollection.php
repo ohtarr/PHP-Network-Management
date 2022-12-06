@@ -1,14 +1,15 @@
 <?php
 
-namespace App\Models\Device;
+namespace App\Models\Device\Opengear;
 
 use Illuminate\Http\Resources\Json\ResourceCollection;
-use App\Models\Device\DeviceResource as Resource;
+use App\Models\Device\Opengear\OpengearResource as Resource;
 
-class DeviceResourceCollection extends ResourceCollection
+class OpengearResourceCollection extends ResourceCollection
 {
+
     public $collects = Resource::class;
-    
+
     /**
      * Transform the resource collection into an array.
      *
