@@ -50,13 +50,13 @@ class AutoDiscoverDevice extends Command
         //get ip entry from cache to determine if we have attempted to discover this device recently.
         $status = Cache::store('cache_discovery')->get($this->option('ip'));
         print "status: " . $status . "\n";
-        //Add this IP to the cache and update the timeout.
-        Cache::store('cache_discovery')->put($this->option('ip'),0,env('DISCOVERY_CACHE_TIMEOUT'));
         //If the IP is already in the cache, skip discovery attempt.
         if($status === "0" || $status === "1")
         {
             return null;
         }
+        //Add this IP to the cache and update the timeout.
+        Cache::store('cache_discovery')->put($this->option('ip'),0,env('DISCOVERY_CACHE_TIMEOUT'));
         //If ip is not in cache already, let's try to discover it!
         $device = new Device(['ip' => $this->option('ip')]);
         if($device->deviceExists())
