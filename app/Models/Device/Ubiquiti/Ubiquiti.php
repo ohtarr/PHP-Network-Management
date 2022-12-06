@@ -19,6 +19,12 @@ class Ubiquiti extends \App\Models\Device\Device
         'wstalist'          => 'wstalist',
     ];
 
+    //Use SSH2 for connection
+    public function exec_cmds($cmds, $timeout = null)
+    {
+        return $this->exec_cmds_2($cmds, $timeout);
+    }
+
     /*
     This method is used to establish a CLI session with a device.
     It will attempt to use phpseclib\Net\SSH2 library to connect.

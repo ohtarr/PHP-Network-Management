@@ -194,8 +194,12 @@ class Device extends Model
         }
     } */
 
-    public function getCli($timeout = 20)
+    public function getCli($timeout = null)
     {
+        if(!$timeout)
+        {
+            $timeout = $this->cli_timeout;
+        }
         //Get our collection of credentials to attempt and foreach them.
         $credentials = $this->getCredentials();
         if(!$credentials)
@@ -260,8 +264,17 @@ class Device extends Model
         }
     } */
 
-	public function exec_cmds($cmds, $timeout = 20)
+	public function exec_cmds($cmds, $timeout = null)
+    {
+        return $this->exec_cmds_1($cmds, $timeout);
+    }
+
+	public function exec_cmds_1($cmds, $timeout = null)
 	{
+        if(!$timeout)
+        {
+            $timeout = $this->cli_timeout;
+        }
 		$cli = $this->getCli($timeout);
         if(!$cli)
         {
@@ -285,6 +298,35 @@ class Device extends Model
 				}
 				$cli->write($LINE . "\n");
 				$output .= $cli->read($this->promptreg , SSH2::READ_REGEX);
+			}
+		}
+		$cli->disconnect();
+		return $output;		
+	}
+
+	public function exec_cmds_2($cmds, $timeout = null)
+	{
+		$cli = $this->getCli();
+        if(!$cli)
+        {
+			throw new \Exception('Unable to establish CLI!');
+        }
+        if(is_array($cmds))
+		{
+			foreach($cmds as $key => $cmd)
+			{
+				$output[$key] = $cli->exec($cmd);
+			}
+		} elseif (is_string($cmds)) {
+			$LINES = explode("\n", $cmds);
+			$output = "";
+			foreach($LINES as $LINE)
+			{
+				if(!$LINE)
+				{
+					continue;
+				}
+				$output .= $cli->exec($LINE);
 			}
 		}
 		$cli->disconnect();

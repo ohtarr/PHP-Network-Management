@@ -21,6 +21,12 @@ class Aruba extends \App\Models\Device\Device
         'lldp'          => 'sh lldp neighbor',
     ];
 
+    //Use SSH2 for connection
+    public function exec_cmds($cmds, $timeout = null)
+    {
+        return $this->exec_cmds_2($cmds, $timeout);
+    }
+
     /*
     This method is used to establish a CLI session with a device.
     It will attempt to use Metaclassing\SSH library to work with specific models of devices that do not support ssh2.0 natively.

@@ -13,19 +13,25 @@ class Opengear extends \App\Models\Device\Device
 
     public static $cli_timeout = 120;
 
-    public $promptreg = '/\S*[\$|#]\s*\z/';
+    //public $promptreg = '/\S*[\$|#]\s*\z/';
+    public $promptreg = '/^\s*[\$|#]\s*$/';
 
     public $precli = [];
 
     //List of commands to run during a scan of this device.
     public $scan_cmds = [
-
         ''                  => 'sudo /etc/scripts/support_report.sh',
         'run'               => 'config -g config',
         'version'           => 'cat /etc/version',
-        'support_report'    => 'cat /etc/config/support_report',
         'serial'            => 'showserial',
+        'support_report'    => 'cat /etc/config/support_report',
     ];
+
+    //Use SSH2 for connection
+    public function exec_cmds($cmds, $timeout = null)
+    {
+        return $this->exec_cmds_2($cmds, $timeout);
+    }
 
     /*
     This method is used to establish a CLI session with a device.
