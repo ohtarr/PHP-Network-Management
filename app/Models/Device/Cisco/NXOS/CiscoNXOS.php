@@ -1,8 +1,10 @@
 <?php
 
-namespace App\Models\Device\Cisco;
+namespace App\Models\Device\Cisco\NXOS;
 
-class IOSXR extends \App\Models\Device\Cisco\Cisco
+use App\Models\Device\Cisco\Cisco;
+
+class CiscoNXOS extends Cisco
 {
     protected static $singleTableSubclasses = [
     ];
@@ -10,9 +12,9 @@ class IOSXR extends \App\Models\Device\Cisco\Cisco
     protected static $singleTableType = __CLASS__;
 
     /*
-    Find the serial of this device from DATA.
-    Returns string (device serial).
-    */
+     Find the serial of this device from DATA.
+     Returns string (device serial).
+     */
     public function getSerial()
     {
         //Reg to grab the serial from the show inventory.
@@ -28,9 +30,9 @@ class IOSXR extends \App\Models\Device\Cisco\Cisco
     */
     public function getModel()
     {
-        //Reg to grab the model from the show version.
-        $reg = "/(\S+)\s+Chassis/";
-        if (preg_match($reg, $this->data['version'], $hits)) {
+        //Reg to grab the model from the show inventory.
+        $reg = "/PID:\s+(\S+)/";
+        if (preg_match($reg, $this->data['inventory'], $hits)) {
             return $hits[1];
         }
     }

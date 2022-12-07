@@ -11,7 +11,11 @@ use Illuminate\Support\Facades\Cache;
 use App\Models\Device\DeviceCollection as Collection;
 use Silber\Bouncer\Database\HasRolesAndAbilities;
 
-//use Illuminate\Support\Facades\DB;
+use App\Models\Device\Aruba\Aruba;
+use App\Models\Device\Cisco\Cisco;
+use App\Models\Device\Opengear\Opengear;
+use App\Models\Device\Ubiquiti\Ubiquiti;
+use App\Models\Device\Juniper\Juniper;
 
 class Device extends Model
 {
@@ -34,11 +38,11 @@ class Device extends Model
     protected $table = 'devices';
     protected static $singleTableTypeField = 'type';
     protected static $singleTableSubclasses = [
-        \App\Models\Device\Aruba\Aruba::class,
-        \App\Models\Device\Cisco\Cisco::class,
-        \App\Models\Device\Opengear\Opengear::class,
-        \App\Models\Device\Ubiquiti\Ubiquiti::class,
-        \App\Models\Device\Juniper\Juniper::class,
+        Aruba::class,
+        Cisco::class,
+        Opengear::class,
+        Ubiquiti::class,
+        Juniper::class,
     ];
     protected static $singleTableType = __CLASS__;
 
@@ -93,19 +97,19 @@ class Device extends Model
     ];
 
     public $discover_regex = [
-        'App\Models\Device\Aruba\Aruba'   => [
+        Aruba::class   => [
             '/Aruba/i',
         ],
-        'App\Models\Device\Cisco\Cisco'     => [
+        Cisco::class     => [
             '/Cisco/i',
         ],
-        'App\Models\Device\Opengear\Opengear'   => [
+        Opengear::class   => [
             '/Opengear/i',
         ],
-        'App\Models\Device\Ubiquiti\Ubiquiti'   => [
+        Ubiquiti::class   => [
             '/NBE-5AC/i',
         ],
-        'App\Models\Device\Juniper\Juniper'   => [
+        Juniper::class   => [
             '/JUNOS/i',
             '/Junos/i',
         ],
@@ -444,6 +448,7 @@ class Device extends Model
         }
 
         $outputs = $this->exec_cmds($this->discover_commands);
+
         foreach($outputs as $output)
         {
             foreach ($this->discover_regex as $class => $regs)
@@ -548,7 +553,7 @@ class Device extends Model
     */
     public function deviceExists()
     {
-        //print "deviceExists()\n";
+        print "deviceExists()\n";
         //print_r($this);
         //$this->getOutput();
 /*         $device = Device::where('ip',$this->ip)
@@ -556,7 +561,7 @@ class Device extends Model
             ->orWhere("name", $this->name)
             ->first(); */
 
-        $device1 = Device::where('ip',$this->ip)->withTrashed()->first();
+        $device1 = self::where('ip',$this->ip)->withTrashed()->first();
         if($device1)
         {
             //print "IP MATCH!\n";
@@ -564,7 +569,7 @@ class Device extends Model
         }
         if(isset($this->data['serial']))
         {
-            $device2 = Device::where("data->serial", $this->data['serial'])->withTrashed()->first();
+            $device2 = self::where("data->serial", $this->data['serial'])->withTrashed()->first();
             if($device2)
             {
                 //print "SERIAL MATCH!\n";
@@ -573,7 +578,7 @@ class Device extends Model
         }
         if(isset($this->data['name']))
         {
-            $device3 = Device::where("data->name", $this->data['name'])->withTrashed()->first();
+            $device3 = self::where("data->name", $this->data['name'])->withTrashed()->first();
             if($device3)
             {
                 //print "NAME MATCH!\n";
@@ -592,7 +597,7 @@ class Device extends Model
     public function getOutput()
     {
         $data = $this->exec_cmds($this->scan_cmds);
-        $this->data = $data;
+        //$this->data = $data;
         $data['name'] = $this->getName();
         $data['serial'] = $this->getSerial();
         $data['model'] = $this->getModel();

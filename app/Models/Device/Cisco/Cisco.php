@@ -2,15 +2,20 @@
 
 namespace App\Models\Device\Cisco;
 
+use App\Models\Device\Device;
 use App\Models\Device\Cisco\CiscoCollection as Collection;
+use App\Models\Device\Cisco\IOS\CiscoIOS;
+use App\Models\Device\Cisco\IOSXE\CiscoIOSXE;
+use App\Models\Device\Cisco\IOSXR\CiscoIOSXR;
+use App\Models\Device\Cisco\NXOS\CiscoNXOS;
 
-class Cisco extends \App\Models\Device\Device
+class Cisco extends Device
 {
     protected static $singleTableSubclasses = [
-        \App\Models\Device\Cisco\IOS::class,
-        \App\Models\Device\Cisco\IOSXE::class,
-        \App\Models\Device\Cisco\IOSXR::class,
-        \App\Models\Device\Cisco\NXOS::class,
+        CiscoIOS::class,
+        CiscoIOSXE::class,
+        CiscoIOSXR::class,
+        CiscoNXOS::class,
     ];
     protected static $singleTableType = __CLASS__;
 
@@ -20,24 +25,26 @@ class Cisco extends \App\Models\Device\Device
         'term length 0',
     ];
 
+    public static $cli_timeout = 20;
+
     public $discover_commands = [
         'sh version',
         'sh version running',
     ];
 
     public $discover_regex = [
-        'App\Models\Device\Cisco\IOS'     => [
+        CiscoIOS::class     => [
             '/cisco ios software/i',
         ],
-        'App\Models\Device\Cisco\IOSXE'   => [
+        CiscoIOSXE::class   => [
             '/ios-xe/i',
             '/package:/i',
         ],
-        'App\Models\Device\Cisco\IOSXR'   => [
+        CiscoIOSXR::class   => [
             '/ios xr/i',
             '/iosxr/i',
         ],
-        'App\Models\Device\Cisco\NXOS'    => [
+        CiscoNXOS::class    => [
             '/Cisco Nexus/i',
             '/nx-os/i',
         ],       

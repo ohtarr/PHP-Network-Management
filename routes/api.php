@@ -23,6 +23,10 @@ Route::apiResource('/building', App\Models\Location\Building\BuildingController:
 Route::apiResource('/room', App\Models\Location\Room\RoomController::class);
 Route::apiResource('/site', App\Models\Location\Site\SiteController::class);
 Route::apiResource('/device/aruba', App\Models\Device\Aruba\ArubaController::class);
+Route::apiResource('/device/cisco/ios', App\Models\Device\Cisco\IOS\CiscoIOSController::class);
+Route::apiResource('/device/cisco/iosxe', App\Models\Device\Cisco\IOSXE\CiscoIOSXEController::class);
+Route::apiResource('/device/cisco/iosxr', App\Models\Device\Cisco\IOSXR\CiscoIOSXRController::class);
+Route::apiResource('/device/cisco/nxos', App\Models\Device\Cisco\NXOS\CiscoNXOSController::class);
 Route::apiResource('/device/cisco', App\Models\Device\Cisco\CiscoController::class);
 Route::apiResource('/device/juniper', App\Models\Device\Juniper\JuniperController::class);
 Route::apiResource('/device/opengear', App\Models\Device\Opengear\OpengearController::class);

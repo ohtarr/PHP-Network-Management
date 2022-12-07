@@ -2,29 +2,14 @@
 
 namespace App\Models\Device\Opengear;
 
-use App\Queries\BaseQuery;
+use App\Models\Device\DeviceQuery;
 use Spatie\QueryBuilder\AllowedFilter;
 use App\Models\Device\Opengear\Opengear as Model;
 use App\Models\Device\Opengear\OpengearResourceCollection as ResourceCollection;
 
-class OpengearQuery extends BaseQuery
+class OpengearQuery extends DeviceQuery
 {
-
     public static $model = Model::class;
     public static $resourceCollection = ResourceCollection::class;
 
-    public static function parameters()
-    {
-        return [
-            'filters'       =>  [
-            ],
-            'includes'      =>  [
-            ],
-            'fields'        =>  [
-            ],
-            'sorts'         =>  [
-            ],
-            'defaultSort'   =>  'id',
-        ];
-    }
 }

@@ -1,8 +1,10 @@
 <?php
 
-namespace App\Models\Device\Cisco;
+namespace App\Models\Device\Cisco\IOSXE;
 
-class IOSXE extends \App\Models\Device\Cisco\Cisco
+use App\Models\Device\Cisco\Cisco;
+
+class CiscoIOSXE extends Cisco
 {
     protected static $singleTableSubclasses = [
     ];

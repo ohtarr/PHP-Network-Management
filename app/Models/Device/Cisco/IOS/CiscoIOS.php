@@ -1,8 +1,10 @@
 <?php
 
-namespace App\Models\Device\Cisco;
+namespace App\Models\Device\Cisco\IOS;
 
-class IOS extends \App\Models\Device\Cisco\Cisco
+use App\Models\Device\Cisco\Cisco;
+
+class CiscoIOS extends Cisco
 {
     protected static $singleTableSubclasses = [
     ];

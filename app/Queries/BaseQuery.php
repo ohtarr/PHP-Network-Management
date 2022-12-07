@@ -10,13 +10,13 @@ class BaseQuery
 {
 
     public static function parameters(){
-/*         return [
+        return [
             'filters'       =>  [],
             'includes'      =>  [],
             'fields'        =>  [],
             'sorts'         =>  [],
             'defaultSort'   =>  'id',
-        ]; */
+        ];
     }
     public static $model;
     public static $resourceCollection;
@@ -24,7 +24,6 @@ class BaseQuery
     public static function apply(Request $request, $id = null)
     {
         $query = QueryBuilder::for(static::$model)
-        //$query = QueryBuilder::for(Model::class)
             ->allowedFilters(static::parameters()['filters'])
             ->allowedFields(static::parameters()['fields'])
             ->allowedIncludes(static::parameters()['includes'])
