@@ -4,7 +4,6 @@ namespace App\Queries;
 
 use Illuminate\Http\Request;
 use Spatie\QueryBuilder\QueryBuilder;
-//use Illuminate\Database\Eloquent\Model as Model;
 
 class BaseQuery
 {
@@ -29,11 +28,12 @@ class BaseQuery
             ->allowedIncludes(static::parameters()['includes'])
             ->allowedSorts(static::parameters()['sorts'])
             ->defaultSort(static::parameters()['defaultSort']);
-
+        
         if($id)
         {
             $query->where('id',$id);
         }
+
         //EXECUTE query and paginate
         $paginator = $query->paginate($request->paginate ?: env('DEFAULT_PAGINATION'))->appends(request()->query());
         //Grab copy of results collection to maintain collection TYPE

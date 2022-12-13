@@ -74,21 +74,6 @@ class Device extends Model
 
     public $scan_cmds = [];
 
-/*     public static $columns = [
-        'id',
-        'type',
-        'ip',
-        'name',
-        'credential_id',
-        'vendor',
-        'model',
-        'serial',
-        'deleted_at',
-        'created_at',
-        'updated_at',
-        'data',
-    ]; */
-
     public $discover_commands = [
         'sh version',
         'show inventory',
@@ -120,7 +105,7 @@ class Device extends Model
     
     public $parsed = null;
 
-    public function newCollection(array $models = []) 
+    public function newCollection(array $models = [])
     { 
        return new Collection($models);
     }
