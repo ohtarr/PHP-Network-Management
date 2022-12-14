@@ -28,7 +28,16 @@ class DeviceQuery extends BaseQuery
                 'data->inventory',
                 'data->interfaces',
                 'data->lldp',
-                AllowedFilter::callback('name', function($query, $value){
+                'name',
+                'model',
+                'serial',
+                'run',
+                'inventory',
+                'version',
+                'interfaces',
+                'mac',
+                'arp'
+/*                 AllowedFilter::callback('name', function($query, $value){
                     $query->where('data->name', 'LIKE', '%' . $value . '%');
                 }),
                 AllowedFilter::callback('model', function($query, $value){
@@ -45,7 +54,7 @@ class DeviceQuery extends BaseQuery
                 }),
                 AllowedFilter::callback('inventory', function($query, $value){
                     $query->where('data->inventory', 'LIKE', '%' . $value . '%');
-                }),
+                }), */
             ],
             'includes'      =>  [
             ],
