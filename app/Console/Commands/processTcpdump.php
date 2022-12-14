@@ -43,7 +43,9 @@ class processTcpdump extends Command
         while ( !feof(STDIN) )                  // Loop while there is a STDIN stream
         {
             $LINE = fgets(STDIN, 8192);     // Get a line of input to process
-            $REGEX = "/^\S+\s+IP\s+(\d+\.\d+\.\d+\.\d+)\.\d+\s>\s\d+\.\d+\.\d+\.\d+\.\d+:\s.+$/";
+            //Example line for : tcpdump -l -i any -n udp port 162 or udp port 514 -s 40
+            //23:24:35.283165 ens192 In  IP 10.251.48.13 > 10.123.123.11:  [|udp]
+            $REGEX = "/^\S+\s+\S+\s+\S+\s+IP\s+(\d+\.\d+\.\d+\.\d+)/";
             if ( preg_match($REGEX,$LINE,$MATCH) )
             {
                 // process the output:
