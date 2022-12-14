@@ -67,6 +67,16 @@ class DeviceQuery extends BaseQuery
                 'data->model',
                 'data->serial',
                 'data->run',
+                'data->version',
+                'name',
+                'model',
+                'serial',
+                'run',
+                'inventory',
+                'version',
+                'interfaces',
+                'mac',
+                'arp'
             ],
             'sorts'         =>  [
                 'id',
@@ -74,6 +84,9 @@ class DeviceQuery extends BaseQuery
                 'data->name',
                 'data->model',
                 'data->serial',
+                'name',
+                'model',
+                'serial',
             ],
             'defaultSort'   =>  'id',
         ];
