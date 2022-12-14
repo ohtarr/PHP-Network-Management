@@ -14,9 +14,9 @@ return new class extends Migration
     public function up()
     {
         Schema::table('devices', function (Blueprint $table) {
-            $table->string('name')->virtualAs('JSON_UNQUOTE(data->"$.name")')->nullable()->after('data')->index();
-            $table->string('model')->virtualAs('JSON_UNQUOTE(data->"$.model")')->nullable()->after('name')->index();
-            $table->string('serial')->virtualAs('JSON_UNQUOTE(data->"$.serial")')->nullable()->after('model')->index();
+            $table->string('name', 255)->virtualAs('JSON_UNQUOTE(data->"$.name")')->nullable()->after('data')->index();
+            $table->string('model', 255)->virtualAs('JSON_UNQUOTE(data->"$.model")')->nullable()->after('name')->index();
+            $table->string('serial', 255)->virtualAs('JSON_UNQUOTE(data->"$.serial")')->nullable()->after('model')->index();
             $table->longText('version')->virtualAs('JSON_UNQUOTE(data->"$.version")')->nullable()->after('serial');
             $table->longText('run')->virtualAs('JSON_UNQUOTE(data->"$.run")')->nullable()->after('version');
             $table->longText('inventory')->virtualAs('JSON_UNQUOTE(data->"$.inventory")')->nullable()->after('run');

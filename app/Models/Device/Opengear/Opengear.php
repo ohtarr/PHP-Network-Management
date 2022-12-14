@@ -75,7 +75,10 @@ class Opengear extends \App\Models\Device\Device
     */
     public function getSerial()
     {
-        return $this->data['serial'];
+        $reg = "/(\S+)/";
+        if (preg_match($reg, $this->data['serial'], $hits)) {
+            return $hits[1];
+        }
     }
 
     /*

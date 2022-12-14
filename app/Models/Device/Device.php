@@ -582,7 +582,7 @@ class Device extends Model
     public function getOutput()
     {
         $data = $this->exec_cmds($this->scan_cmds);
-        //$this->data = $data;
+        $this->data = $data;
         $data['name'] = $this->getName();
         $data['serial'] = $this->getSerial();
         $data['model'] = $this->getModel();
@@ -592,11 +592,9 @@ class Device extends Model
 
     public function scan()
     {
-        //print "scan()\n";
-        $this->getOutput();
-        //print "save()\n";
-        $this->save();
-        return $this;
+        $device = $this->getOutput();
+        $device->save();
+        return $device;
     }
 
     public function getName()
