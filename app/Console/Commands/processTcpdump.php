@@ -37,7 +37,7 @@ class processTcpdump extends Command
      */
     public function handle()
     {
-        $INCREMENT = 300;
+        $INCREMENT = env('DISCOVERY_BUFFER_TIME');
         $TIME = time(); // Get our start time, we rotate the IPS array every 60 secondsish.
 
         while ( !feof(STDIN) )                  // Loop while there is a STDIN stream
