@@ -5,9 +5,8 @@
 namespace App\Models\ServiceNow;
 
 use ohtarr\ServiceNowModel;
-use GuzzleHttp\Client as GuzzleHttpClient;
 
-class ServiceNowUser extends ServiceNowModel
+class User extends ServiceNowModel
 {
 	protected $guarded = [];
 

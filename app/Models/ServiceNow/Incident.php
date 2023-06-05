@@ -5,15 +5,14 @@
 namespace App\Models\ServiceNow;
 
 use ohtarr\ServiceNowModel;
-use GuzzleHttp\Client as GuzzleHttpClient;
-use App\Models\Location\Address;
-use App\Models\Location\Site;
-use App\Models\Location\Contact;
+use App\Models\Location\Address\Address;
+use App\Models\Location\Site\Site;
+use App\Models\Location\Contact\Contact;
 use App\Models\ServiceNow\ServiceNowUser;
-use App\Models\Location\Building;
-use App\Models\Location\Room;
+use App\Models\Location\Buidling\Building;
+use App\Models\Location\Room\Room;
 
-class ServiceNowLocation extends ServiceNowModel
+class Incident extends ServiceNowModel
 {
 	protected $guarded = [];
 

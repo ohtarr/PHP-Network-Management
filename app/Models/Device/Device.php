@@ -506,7 +506,7 @@ class Device extends Model
             $device->ip = $exists->ip;
             $exists->forceDelete();
         }
-
+        print $device->data['name'] . "\n";
         $device->save();
         return $device;
     }

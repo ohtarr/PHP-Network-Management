@@ -33,7 +33,8 @@ class Juniper extends \App\Models\Device\Device
     */
     public function getName()
     {
-
+        $array = json_decode($this->data['run'], true);
+        return $array['configuration']['system']['host-name'];
     }
 
     /*
@@ -42,7 +43,8 @@ class Juniper extends \App\Models\Device\Device
     */
     public function getSerial()
     {
-
+        $array = json_decode($this->data['inventory'], true);
+        return $array["chassis-inventory"][0]["chassis"][0]["serial-number"][0]['data'];
     }
 
     /*
@@ -51,6 +53,7 @@ class Juniper extends \App\Models\Device\Device
     */
     public function getModel()
     {
-
+        $array = json_decode($this->data['version'], true);
+        return $array['software-information'][0]['product-model'][0]['data'];
     }
 }
