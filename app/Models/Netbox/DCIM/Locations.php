@@ -123,8 +123,7 @@ class Locations extends BaseModel
 
     public function devices()
     {
-        $devices = new Devices($this->query);
-        return $devices->where('location_id', $this->id)->get();
+        return Devices::where('location_id', $this->id)->get();
     }
 
     public function polling()

@@ -2,7 +2,6 @@
 
 namespace App\Models\Netbox;
 
-//use Ohtarr\Netbox\QueryBuilder;
 use App\Models\Netbox\QueryBuilder;
 use App\Models\Netbox\DCIM\Sites;
 use App\Models\Netbox\DCIM\Locations;
@@ -13,129 +12,92 @@ class BaseModel
     protected $model;
     protected $query;
 
-    public function getQuery()
+    public function getApp()
     {
-        if($this->query)
-        {
-            return $this->query;
-        }
+        return $this->app;
+    }
+
+    public function getModel()
+    {
+        return $this->model;
+    }
+
+    public static function getQuery()
+    {
         $qb = new QueryBuilder;
-        $this->query = $qb;
+        $qb->model = new static;
         return $qb;
     }
 
-    public function buildUrl()
+    public static function get()
     {
-        return env('NETBOX_BASE_URL') . "/api/" . $this->app . "/" . $this->model . "/";
-        //return "/api/" . $this->app . "/" . $this->model . "/";
-    }
-
-    public function hydrate($response)
-    {
-        $object = new static();
-        foreach($response as $key => $value)
-        {
-            $object->$key = $value;
-        }
-/*         if(!$object->app)
-        {
-            $object->app = $this->app;
-        }
-        if(!$object->model)
-        {
-            $object->model = $this->model;
-        } */
-
-        return $object;
-    }
-
-    public function get()
-    {
-        $objects = [];
-        $url = $this->buildUrl();
-        $response = $this->getQuery()->get($url);
-        foreach($response->results as $result)
-        {
-            $object = $this->hydrate($result);
-            $objects[] = $object;
-        }
-        return collect($objects);
+        $query = static::getQuery();
+        return $query->get();
     }
 
     public static function all()
     {
-        $model = new static;
-        $model->where('limit',1000000);
-        $objects = [];
-        $url = $model->buildUrl();
-        $response = $model->get($url);
-        return $response;
-        /*         do {
-            if(isset($response->next))
-            {
-                if($response->next)
-                {
-                    $url = $response->next;
-                }
-            }
-            $response = $this->query->get($url);
-            foreach($response->results as $result)
-            {
-                $object = $this->hydrate($result);
-                $objects[] = $object;
-            }
-
-        } while ($response->next); */
-        return $objects;
+        $query = static::getQuery();
+        return $query->get();
     }
 
-    public function first()
+    public static function first()
     {
-        $this->where('limit',1);
-        $objects = $this->get();
-        if(isset($objects[0]))
-        {
-            return $objects[0];
-        }
+        $query = static::getQuery();
+        return $query->first();
     }
 
     public static function find($id)
     {
+        $query = static::getQuery();
+        return $query->find($id);
+    }
+
+    public static function where($column, $value)
+    {
+        return static::getQuery()->where($column, $value);
+    }
+
+    public static function limit($limit)
+    {
+        return static::getQuery()->limit($limit);
+    }
+
+    public static function offset($offset)
+    {
+        return static::getQuery()->offset($offset);
+    }
+
+    public function save()
+    {
+        if(isset($this->id))
+        {
+            return static::getQuery()->put($this->id, $this);
+        } else {
+            return static::getQuery()->post($this);
+        }
+    }
+
+    public static function create($params)
+    {
         $model = new static;
-        $object = $model->getQuery()->get($model->buildUrl() . $id . "/");
-        //$url = $this->buildUrl() . $id . "/";
-        //$object = $this->getQuery()->get($url);
-        return $model->hydrate($object);
+        foreach($params as $key=>$value)
+        {
+            $model->$key = $value;
+        }
+        return $model->save();
     }
 
-    public function where($column, $value)
+    public function update($params)
     {
-        $this->getQuery()->where($column, $value);
-        return $this;
+        return static::getQuery()->patch($this->id, $params);
     }
 
-    public function limit($limit)
+    public function delete()
     {
-        return $this->where('limit', $limit);
+        return static::getQuery()->delete($this->id);
     }
-
-    public function offset($offset)
-    {
-        return $this->where('offset', $offset);
-    }
-
-    public function paginate($paginate, $offset = 0)
-    {
-        //return $this->where('limit', $paginate)->where('offset', $offset)->get();
-        return $this->limit($paginate)->offset($offset)->get();
-    }
-
-    public function noPaginate()
-    {
-        $this->query->noPaginate();
-    }
-
-    public static function post($body)
+/*     public static function post($body)
     {
         $model = new static;
         $response = $model->getQuery()->post($model->buildUrl(), $body);
@@ -167,14 +129,15 @@ class BaseModel
         $response = $this->getQuery()->delete($url, $this->id);
         $object = $this->hydrate($response);
         return $object;
-    }
+    } */
 
     public function site()
     {
         if(isset($this->site->id))
         {
-            $sites = new Sites($this->getQuery());
-            $site = $sites->find($this->site->id);
+            $site = Sites::find($this->site->id);
+            //$sites = new Sites($this->getQuery());
+            //$site = $sites->find($this->site->id);
             if(isset($site->id))
             {
                 return $site;
@@ -186,8 +149,7 @@ class BaseModel
     {
         if(isset($this->location->id))
         {
-            $locs = new Locations($this->getQuery());
-            $loc = $locs->find($this->location->id);
+            $loc = Locations::find($this->location->id);
             if(isset($loc->id))
             {
                 return $loc;

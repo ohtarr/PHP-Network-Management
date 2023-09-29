@@ -7,22 +7,49 @@ use App\Models\Azure\Azure;
 
 class QueryBuilder
 {
-    public $authheaders;
+    public $headers;
     public $search;
+    public $model;
 
     public function __construct()
     {
         $azuretoken = Azure::getToken('api://' . env('NETBOX_CLIENT_ID') . '/.default');
-        $this->authheaders['Authorization'] = 'Bearer ' . $azuretoken;
-        $this->authheaders['apiauthorization'] = 'Token ' . env('NETBOX_API_TOKEN');
+        $this->headers['Authorization'] = 'Bearer ' . $azuretoken;
+        $this->headers['apiauthorization'] = 'Token ' . env('NETBOX_API_TOKEN');
     }
 
-    public function get($url)
+    public function buildUrl()
     {
-        $headers = $this->authheaders;
+        return env('NETBOX_BASE_URL') . "/api/" . $this->model->getApp() . "/" . $this->model->getModel() . "/";
+    }
+
+    public function hydrateOne($data)
+    {
+        $object = new $this->model;
+        foreach($data as $key => $value)
+        {
+            $object->$key = $value;
+        }
+        return $object;
+    }
+
+    public function hydrateMany($response)
+    {
+        $objects = [];
+        foreach($response as $item)
+        {
+            $object = $this->hydrateOne($item);
+            $objects[] = $object;
+        }
+        return collect($objects);
+    }
+
+    public function get()
+    {
+        $headers = $this->headers;
         $guzzleparams = [
             'verb'      =>  'get',
-            'url'       =>  $url,
+            'url'       =>  $this->buildUrl(),
             'params'    =>  [
                 'headers'   =>  $headers,
                 'query' =>  $this->search,
@@ -33,18 +60,36 @@ class QueryBuilder
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
-        $this->search = null;
-        return $object;
+        return $this->hydrateMany($object->results);
     }
 
-    public function first($url)
+    public function first()
     {
         $this->search['limit'] = 1;
-        $response = $this->get($url);
+        $response = $this->get();
+        return $response->first();
         if(isset($response->results))
         {
-            return $response->results[0];
+            return hydrateOne($response->results[0]);
         }
+    }
+
+    public function find($id)
+    {
+        $headers = $this->headers;
+        $guzzleparams = [
+            'verb'      =>  'get',
+            'url'       =>  $this->buildUrl() . $id,
+            'params'    =>  [
+                'headers'   =>  $headers,
+            ],
+            'options'   =>  [],
+        ];
+        $client = new GuzzleClient($guzzleparams['options']);
+        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
+        $body = $response->getBody()->getContents();
+        $object = json_decode($body);
+        return $this->hydrateOne($object);
     }
 
     public function where($column, $value)
@@ -53,20 +98,25 @@ class QueryBuilder
         return $this;
     }
 
-    public function noPaginate()
+    public function limit($limit)
     {
-        unset($this->search['limit']);
-        unset($this->search['offset']);
+        $this->search['limit'] = $limit;
         return $this;
     }
 
-    public function post($url, $body)
+    public function offset($offset)
     {
-        $headers = $this->authheaders;
+        $this->search['offset'] = $offset;
+        return $this;
+    }
+
+    public function post($body)
+    {
+        $headers = $this->headers;
         $headers['Content-Type'] = 'application/json';
         $guzzleparams = [
-            'verb'      =>  'post',
-            'url'       =>  $url,
+            'verb'      =>  'POST',
+            'url'       =>  $this->buildUrl(),
             'params'    =>  [
                 'headers'   =>  $headers,
                 'body' => json_encode($body),
@@ -77,16 +127,16 @@ class QueryBuilder
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
-        return $object;
+        return $this->hydrateOne($object);
     }
 
-    public function put($url, $body)
+    public function put($id, $body)
     {
-        $headers = $this->authheaders;
+        $headers = $this->headers;
         $headers['Content-Type'] = 'application/json';
         $guzzleparams = [
-            'verb'      =>  'put',
-            'url'       =>  $url,
+            'verb'      =>  'PUT',
+            'url'       =>  $this->buildUrl() . $id . "/",
             'params'    =>  [
                 'headers'   =>  $headers,
                 'body' => json_encode($body),
@@ -97,16 +147,16 @@ class QueryBuilder
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
-        return $object;
+        return $this->hydrateOne($object);
     }
 
-    public function patch($url, $body)
+    public function patch($id, $body)
     {
-        $headers = $this->authheaders;
+        $headers = $this->headers;
         $headers['Content-Type'] = 'application/json';
         $guzzleparams = [
-            'verb'      =>  'patch',
-            'url'       =>  $url,
+            'verb'      =>  'PATCH',
+            'url'       =>  $this->buildUrl() . $id . "/",
             'params'    =>  [
                 'headers'   =>  $headers,
                 'body' => json_encode($body),
@@ -117,16 +167,15 @@ class QueryBuilder
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
-        return $object;
+        return $this->hydrateOne($object);
     }
 
-    public function delete($url)
+    public function delete($id)
     {
-        $headers = $this->authheaders;
-        $headers['Content-Type'] = 'application/json';
+        $headers = $this->headers;
         $guzzleparams = [
-            'verb'      =>  'delete',
-            'url'       =>  $url,
+            'verb'      =>  "DELETE",
+            'url'       =>  $this->buildUrl() . $id . "/",
             'params'    =>  [
                 'headers'   =>  $headers,
             ],
@@ -134,8 +183,12 @@ class QueryBuilder
         ];
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
-        $body = $response->getBody()->getContents();
-        $object = json_decode($body);
-        return $object;
+        $responsecode = $response->getStatusCode();
+        if($responsecode == 204)
+        {
+            return true;
+        } else {
+            return false;
+        }
     }
 }

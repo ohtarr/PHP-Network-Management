@@ -12,16 +12,14 @@ class Interfaces extends BaseModel
 
     public function device()
     {
-        $device = new Devices($this->query);
-        return $device->find($this->device->id);
+        return Devices::find($this->device->id);
     }
 
     public function parent()
     {
         if(isset($this->parent->id))
         {
-            $interface = new static($this->query);
-            return $interface->find($this->parent->id);
+            return static::find($this->parent->id);
         }
     }
 

@@ -3,38 +3,39 @@
 namespace App\Models\Netbox\DCIM;
 
 use App\Models\Netbox\BaseModel;
-/* use Ohtarr\Netbox\DCIM\Locations;
-use Ohtarr\Netbox\DCIM\Interfaces; */
+use App\Models\Netbox\DCIM\Locations;
+use App\Models\Netbox\DCIM\Interfaces;
+//use Ohtarr\Netbox\DCIM\Locations;
+//use Ohtarr\Netbox\DCIM\Interfaces;
 
 class Devices extends BaseModel
 {
     protected $app = "dcim";
     protected $model = "devices";
 
-/*     public function location()
+   public function location()
     {
-        $locations = new Locations($this->query);
-        return $locations->find($this->data->location->id);
-    } */
+        return Locations::find($this->location->id);
+    }
 
-/*     public function address()
+    public function address()
     {
         return $this->location()->address();
-    } */
+    }
 
-/*     public function coordinates()
+    public function coordinates()
     {
         return $this->location()->coordinates();
-    } */
+    }
 
-/*     public function polling()
+    public function polling()
     {
         if($this->custom_fields->POLLING === true)
         {
             return $this->location()->polling();
         }
         return false;
-    } */
+    }
 
     public function alerting()
     {
@@ -47,8 +48,7 @@ class Devices extends BaseModel
 
     public function interfaces()
     {
-        $interfaces = new Interfaces($this->query);
-        return $interfaces->where('device_id', $this->id)->all();
+        return Interfaces::where('device_id', $this->id)->get();
     }
 
 }

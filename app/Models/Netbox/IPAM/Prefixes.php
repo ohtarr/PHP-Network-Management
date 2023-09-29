@@ -30,6 +30,6 @@ class Prefixes extends BaseModel
     {
         $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
         preg_match($reg, $this->prefix, $hits);
-        return ['subnet' => $hits[1], 'bitmask' => $hits[2]];
+        return ['network' => $hits[1], 'bitmask' => $hits[2]];
     }
 }
