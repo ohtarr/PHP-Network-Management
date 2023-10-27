@@ -33,3 +33,17 @@ Route::apiResource('/devices/opengear', App\Models\Device\Opengear\OpengearContr
 Route::apiResource('/devices/ubiquiti', App\Models\Device\Ubiquiti\UbiquitiController::class);
 Route::apiResource('/devices', App\Models\Device\DeviceController::class);
 Route::apiResource('/servicenow/incidents', App\Models\ServiceNow\IncidentController::class);
+
+//Route::get('/mist/device', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
+//Route::get('/mist/device/{deviceid}/', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
+//Route::get('/mist/device/{deviceid}/sitedevice', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
+//Route::get('/mist/device/{deviceid}/stats', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
+//Route::get('/mist/device/{deviceid}/portdetails', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
+//Route::get('/mist/site/{siteid}/device/{deviceid}', [App\Models\Mist\MistController::class, 'getDeviceInventoryById']);
+//Route::get('/mist/site/{siteid}/device/{deviceid}/stats', [App\Models\Mist\MistController::class, 'SiteDeviceSummaryBySiteName']);
+//Route::get('/mist/site/{siteid}/device/{deviceid}/portdetails', [App\Models\Mist\MistController::class, 'SiteDeviceSummaryBySiteName']);
+
+Route::get('/mist/site', [App\Models\Mist\MistController::class, 'Sites']);
+Route::get('/mist/site/summary', [App\Models\Mist\MistController::class, 'SitesSummary']);
+Route::get('/mist/site/{siteid}/devicesummary', [App\Models\Mist\MistController::class, 'SiteDeviceSummary']);
+Route::get('/mist/site/{siteid}/device/{deviceid}/details', [App\Models\Mist\MistController::class, 'SiteDeviceSummaryDetails']);

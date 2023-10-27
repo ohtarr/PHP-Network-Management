@@ -4,10 +4,13 @@ namespace App\Models\Mist;
 
 use App\Models\Mist\BaseModel;
 use App\Models\Mist\Site;
+use Silber\Bouncer\Database\HasRolesAndAbilities;
 
 class Device extends BaseModel
 {
-    public static function all()
+    use HasRolesAndAbilities;
+
+    public static function all($columns = [])
     {
         $url = "orgs/" . static::getOrgId() . "/inventory";
         return static::hydrateMany(static::getQuery()->get($url));
@@ -148,15 +151,19 @@ class Device extends BaseModel
 
     public function getPortDetails()
     {
+        if(!isset($this->mac))
+        {
+            throw new \Exception('Object is missing {mac}');
+        }
         $url = "sites/" . $this->site_id . "/stats/ports/search?mac=" . $this->mac;
         $response =  static::getQuery()->get($url);
         return $response['results'];
     }
 
-    public function update($params)
+    public function update(array $attributes = [], array $options = [])
     {
         $path = "sites/" . $this->site_id . "/devices/" . $this->id;
-        return $this->put($path, $params);
+        return $this->put($path, $attributes);
     }
 
     public static function getModelDefinitions()

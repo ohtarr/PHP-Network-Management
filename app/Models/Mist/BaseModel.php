@@ -2,10 +2,12 @@
 
 namespace App\Models\Mist;
 
+use Illuminate\Database\Eloquent\Model;
 use App\Models\Mist\QueryBuilder;
 
-class BaseModel
+class BaseModel extends Model
 {
+    protected $primaryKey = 'id2';
     protected $query;
     protected $search = [];
 

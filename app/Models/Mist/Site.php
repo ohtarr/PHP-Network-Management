@@ -12,7 +12,7 @@ use App\Models\Mist\SiteGroup;
 
 class Site extends BaseModel
 {
-    public static function all()
+    public static function all($columns = [])
     {
         $path = "orgs/" . static::getOrgId() . "/sites";
         return static::getMany($path);
@@ -62,6 +62,20 @@ class Site extends BaseModel
         return Device::getMany($path);
     }
 
+    public static function getSummary()
+    {
+        $sites = static::all();
+        foreach($sites as $site)
+        {
+            unset($tmp);
+            $tmp = new \stdClass();
+            $tmp->id = $site->id;
+            $tmp->name = $site->name;
+            $array[] = $tmp;
+        }
+        return $array;
+    }
+
     public function getDeviceSummary()
     {
         $devices = $this->getDeviceStats();
@@ -93,11 +107,11 @@ class Site extends BaseModel
         return static::post($path, $params);
     }
 
-    public function update(array $params)
+    public function update(array $attributes = [], array $options = [])
     {
         $qb = static::getQuery();
         $path = "sites/" . $this->id;
-        return $qb->put($path, $params);
+        return $qb->put($path, $attributes);
     }
 
     public function updateSettings(array $params)
