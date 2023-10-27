@@ -286,24 +286,33 @@ class Device extends BaseModel
 
     public function getSummaryDetails()
     {
-        if(!$this->module_stat)
+        if(!isset($this->module_stat))
         {
             $this->getSiteDeviceStats();
         }
         $vclinkreg = "/\S+\-(\d+)\/(\d+)\/(\d+)/";
+        $keys = [
+            'id',
+            'name',
+            'hostname',
+            'serial',
+            'mac',
+            'model',
+            'org_id',
+            'site_id',
+            'uptime',
+            'type',
+            'version',
+            'status',            
+        ];
         $device = new \stdClass();
-        $device->id = $this->id;
-        $device->name = $this->name;
-        $device->hostname = $this->hostname;
-        $device->serial = $this->serial;
-        $device->mac = $this->mac;
-        $device->model = $this->model;
-        $device->org_id = $this->org_id;
-        $device->site_id = $this->site_id;
-        $device->uptime = $this->uptime;
-        $device->type = $this->type;
-        $device->version = $this->version;
-        $device->status = $this->status;
+        foreach($keys as $key)
+        {
+            if(isset($this->$key))
+            {
+                $device->$key = $this->$key;
+            }
+        }
         if(isset($this->ip_config))
         {
             $device->mgmtint = $this->ip_config;
@@ -315,14 +324,23 @@ class Device extends BaseModel
         {
             unset($tmp);
             unset($template);
+            $modulekeys = [
+                'model',
+                'serial',
+                'mac',
+                'version',
+                'uptime',
+                'vc_state',
+                'vc_role',                
+            ];
             $tmp = new \stdClass();
-            $tmp->model = $vcmember['model'];
-            $tmp->serial = $vcmember['serial'];
-            $tmp->mac = $vcmember['mac'];
-            $tmp->version = $vcmember['version'];
-            $tmp->uptime = $vcmember['uptime'];
-            $tmp->vc_state = $vcmember['vc_state'];
-            $tmp->vc_role = $vcmember['vc_role'];
+            foreach($modulekeys as $key)
+            {
+                if(isset($this->$key))
+                {
+                    $tmp->$key = $this->$key;
+                }
+            }
             $tmp->id = $vcmember['fpc_idx'];
             $template = static::findModelTemplate($vcmember['model']);
             $pics = [];
