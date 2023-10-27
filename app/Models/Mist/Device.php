@@ -286,7 +286,10 @@ class Device extends BaseModel
         {
             $device->mgmtint = $this->ip_config;
         }
-        $device->vc_member_count = count($this->module_stat);
+        if(isset($this->module_stat))
+        {
+            $device->vc_member_count = count($this->module_stat);
+        }
 
         return $device;
     }

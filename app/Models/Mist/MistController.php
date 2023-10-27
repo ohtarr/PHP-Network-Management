@@ -38,7 +38,7 @@ class MistController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    public function getDeviceInventory()
+    public function Inventory()
     {
         $user = auth()->user();
 		if ($user->cant('read', Device::class)) {
