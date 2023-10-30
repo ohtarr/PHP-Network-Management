@@ -76,9 +76,9 @@ class Site extends BaseModel
         return $array;
     }
 
-    public function getDeviceSummary()
+    public function getDeviceSummary($type = "all")
     {
-        $devices = $this->getDeviceStats();
+        $devices = $this->getDeviceStats($type);
         $results = [];
         foreach($devices as $device)
         {

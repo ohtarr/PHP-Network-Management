@@ -47,14 +47,18 @@ class MistController extends Controller
         return Device::all();
     }
 
-    public function SiteDeviceSummary(string $siteid)
+    public function SiteDeviceSummary(Request $request, string $siteid, string $type = "all")
     {
         $user = auth()->user();
 		if ($user->cant('read', Device::class) || $user->cant('read', Site::class)) {
 			abort(401, 'You are not authorized');
         }
+        if($request->get('type'))
+        {
+            $type = $request->get('type');
+        }
         $site = Site::find($siteid);
-        return $site->getDeviceSummary();
+        return $site->getDeviceSummary($type);
     }
 
     public function SiteDevice($siteid, $deviceid)

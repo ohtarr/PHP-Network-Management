@@ -341,14 +341,14 @@ class Device extends BaseModel
                 'version',
                 'uptime',
                 'vc_state',
-                'vc_role',                
+                'vc_role',         
             ];
             $tmp = new \stdClass();
             foreach($modulekeys as $key)
             {
-                if(isset($this->$key))
+                if(isset($vcmember[$key]))
                 {
-                    $tmp->$key = $this->$key;
+                    $tmp->$key = $vcmember[$key];
                 }
             }
             $tmp->id = $vcmember['fpc_idx'];
