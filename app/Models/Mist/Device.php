@@ -236,6 +236,15 @@ class Device extends BaseModel
                     0   =>  56,
                 ],
             ],
+            'EX4600-40F'    =>  [
+                'model'     =>  'EX4600-40F',
+                'mistmodel' =>  'EX4600-40F',
+                'pics'      =>  [
+                    0   =>  28,
+                    1   =>  8,
+                    2   =>  8,
+                ],
+            ],
         ];
     }
 
@@ -266,13 +275,15 @@ class Device extends BaseModel
             'hostname',
             'serial',
             'mac',
+            'ip',
             'model',
             'org_id',
             'site_id',
             'uptime',
             'type',
             'version',
-            'status',            
+            'status',
+            'num_clients',
         ];
         $device = new \stdClass();
         foreach($keys as $key)
@@ -285,6 +296,10 @@ class Device extends BaseModel
         if(isset($this->ip_config))
         {
             $device->mgmtint = $this->ip_config;
+        }
+        if(isset($this->lldp_stat))
+        {
+            $device->lldp_stat = $this->lldp_stat;
         }
         if(isset($this->module_stat))
         {
@@ -405,6 +420,7 @@ class Device extends BaseModel
             }
             //get stack ports
             $device->vc_members[] = $tmp;
+            $device->custom->vc_members[] = $tmp;
         }
         return $device;
     }
