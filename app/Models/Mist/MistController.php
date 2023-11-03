@@ -29,7 +29,7 @@ class MistController extends Controller
 		if ($user->cant('read', Site::class)) {
 			abort(401, 'You are not authorized');
         }
-        return Site::getSummary();
+        return Site::getAllSummarized();
     }
 
         /**

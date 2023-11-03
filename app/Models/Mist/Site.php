@@ -144,7 +144,6 @@ class Site extends BaseModel
                 return false;
             }
         }
-        print_r($groupids);
         $groupids[] = $groupid;
         $params = [
             'sitegroup_ids' =>  $groupids,
