@@ -7,7 +7,7 @@ use App\Models\Mist\Site;
 
 class RfTemplate extends BaseModel
 {
-    public static function all()
+    public static function all($columns = [])
     {
         $path = "orgs/" . static::getOrgId() . "/rftemplates";
         return static::getMany($path);

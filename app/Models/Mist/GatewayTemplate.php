@@ -7,7 +7,7 @@ use App\Models\Mist\Site;
 
 class GatewayTemplate extends BaseModel
 {
-    public static function all()
+    public static function all($columns = [])
     {
         $path = "orgs/" . static::getOrgId() . "/gatewaytemplates";
         return static::getMany($path);

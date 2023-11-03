@@ -62,7 +62,7 @@ class Site extends BaseModel
         return Device::getMany($path);
     }
 
-    public static function getSummary()
+    public static function getAllSummarized()
     {
         $sites = static::all();
         foreach($sites as $site)

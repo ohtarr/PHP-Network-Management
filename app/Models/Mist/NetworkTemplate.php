@@ -7,7 +7,7 @@ use App\Models\Mist\Site;
 
 class NetworkTemplate extends BaseModel
 {
-    public static function all()
+    public static function all($columns = [])
     {
         $path = "orgs/" . static::getOrgId() . "/networktemplates";
         return static::getMany($path);

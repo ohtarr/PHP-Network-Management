@@ -7,7 +7,7 @@ use App\Models\Mist\WlanTemplate;
 
 class SiteGroup extends BaseModel
 {
-    public static function all()
+    public static function all($columns = [])
     {
         $path = "orgs/" . static::getOrgId() . "/sitegroups";
         return static::getMany($path);
@@ -49,7 +49,7 @@ class SiteGroup extends BaseModel
                 }
             }
         }
-        return $results;
+        return collect($results);
     }
 
     public static function create($name)
@@ -74,18 +74,19 @@ class SiteGroup extends BaseModel
 
     public function getWlanTemplates()
     {
+        $tmps = [];
         $templates = WlanTemplate::all();
         foreach($templates as $template)
         {
-            if(isset($template['applies']['sitegroup_ids']))
+            if(isset($template->applies->sitegroup_ids))
             {
-                if(is_array($template['applies']['sitegroup_ids']))
+                if(is_array($template->applies->sitegroup_ids))
                 {
-                    foreach($template['applies']['sitegroup_ids'] as $groupip)
+                    foreach($template->applies->sitegroup_ids as $groupid)
                     {
                         if($groupid == $this->id)
                         {
-                            $tmps[] = $template['id'];
+                            $tmps[] = $template->id;
                         }
                     }
                 }
