@@ -379,7 +379,23 @@ class Device extends BaseModel
         foreach($this->module_stat as $vcmember)
         {
             unset($template);
+            $modulekeys = [
+                'model',
+                'serial',
+                'mac',
+                'version',
+                'uptime',
+                'vc_state',
+                'vc_role',         
+            ];
             $tmp = new \stdClass();
+            foreach($modulekeys as $key)
+            {
+                if(isset($vcmember->$key))
+                {
+                    $tmp->$key = $vcmember->$key;
+                }
+            }
             $tmp->id = $vcmember->fpc_idx;
             $template = static::findModelTemplate($vcmember->model);
             $pics = [];
