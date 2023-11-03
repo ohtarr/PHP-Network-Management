@@ -14,4 +14,5 @@ class Ap extends Device
     {
         return Device::where('type','ap');
     }
+
 }

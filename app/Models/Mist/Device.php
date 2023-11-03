@@ -302,12 +302,15 @@ class Device extends BaseModel
 
     public function getSummary()
     {
-        if(!isset($this->module_stat))
+        if(!isset($this->ip_stat))
         {
             $this->getSiteDeviceStats();
         }
         $this->custom = new \stdClass();
-        $this->custom->vc_member_count = count($this->module_stat);
+        if(isset($this->module_stat))
+        {
+            $this->custom->vc_member_count = count($this->module_stat);
+        }
         return $this;
     }
 
