@@ -4,11 +4,49 @@ namespace App\Models\Mist;
 
 use App\Models\Mist\BaseModel;
 use App\Models\Mist\Site;
+use App\Models\Mist\Ap;
+use App\Models\Mist\DeviceSwitch;
+use App\Models\Mist\Gateway;
 use Silber\Bouncer\Database\HasRolesAndAbilities;
 
 class Device extends BaseModel
 {
     use HasRolesAndAbilities;
+
+    public static function hydrateOne($data)
+    {
+        $types = [
+            'switch'    =>  DeviceSwitch::class,
+            'gateway'   =>  Gateway::class,
+            'ap'        =>  Ap::class,
+        ];
+        if(isset($data->type))
+        {
+            foreach($types as $type => $class)
+            {
+                if($data->type == $type)
+                {
+                    $object = new $class;
+                }
+            }
+        }
+        foreach($data as $key => $value)
+        {
+            $object->$key = $value;
+        }
+        return $object;
+    }
+
+    public static function hydrateMany($response)
+    {
+        $objects = [];
+        foreach($response as $item)
+        {
+            $object = static::hydrateOne($item);
+            $objects[] = $object;
+        }
+        return collect($objects);
+    }
 
     public static function all($columns = [])
     {
@@ -40,12 +78,12 @@ class Device extends BaseModel
         }
     }
 
-    public static function findSerial($serial)
+    public static function findBySerial($serial)
     {
         return static::where("serial",$serial)->first();
     }
 
-    public static function findMac($mac)
+    public static function findByMac($mac)
     {
         return static::where("mac",$mac)->first();
     }
@@ -65,17 +103,16 @@ class Device extends BaseModel
 
     public function assignToSite($siteid)
     {
-        if(!isset($this->mac))
+        if(isset($this->mac))
         {
-            return null;
+            $path = "orgs/" . static::getOrgId() . "/inventory";
+            $params = [
+                'op'        =>  'assign',
+                'site_id'   =>  $siteid,
+                'macs'      =>  [$this->mac],
+            ];
+            return static::put($path, $params);
         }
-        $path = "orgs/" . static::getOrgId() . "/inventory";
-        $params = [
-            'op'        =>  'assign',
-            'site_id'   =>  $siteid,
-            'macs'      =>  [$this->mac],
-        ];
-        return static::put($path, $params);
     }
 
     public function unassign()
@@ -157,7 +194,7 @@ class Device extends BaseModel
         }
         $url = "sites/" . $this->site_id . "/stats/ports/search?mac=" . $this->mac;
         $response =  static::getQuery()->get($url);
-        return $response['results'];
+        return $response->results;
     }
 
     public function update(array $attributes = [], array $options = [])
@@ -269,6 +306,17 @@ class Device extends BaseModel
         {
             $this->getSiteDeviceStats();
         }
+        $this->custom = new \stdClass();
+        $this->custom->vc_member_count = count($this->module_stat);
+        return $this;
+    }
+
+/*     public function getSummary2()
+    {
+        if(!isset($this->module_stat))
+        {
+            $this->getSiteDeviceStats();
+        }
         $keys = [
             'id',
             'name',
@@ -307,9 +355,91 @@ class Device extends BaseModel
         }
 
         return $device;
+    } */
+
+    public function mapInterfaces()
+    {
+
     }
 
     public function getSummaryDetails()
+    {
+        if(!isset($this->module_stat))
+        {
+            $this->getSiteDeviceStats();
+        }
+        $vclinkreg = "/\S+\-(\d+)\/(\d+)\/(\d+)/";
+        $this->custom = new \stdClass();
+        $this->custom->vc_member_count = count($this->module_stat);
+        $this->custom->vc_members = [];
+        $portdetails = $this->getPortDetails();
+        foreach($this->module_stat as $vcmember)
+        {
+            unset($template);
+            $tmp = new \stdClass();
+            $tmp->id = $vcmember->fpc_idx;
+            $template = static::findModelTemplate($vcmember->model);
+            $pics = [];
+            foreach($template['pics'] as $picnum => $portstotal)
+            {
+                unset($ports);
+                $pic = new \stdClass();
+                $pic->id = $picnum;
+                for ($currentport = 0; $currentport < $portstotal; $currentport++)
+                {
+                    unset($match);
+                    $currentname = $vcmember->fpc_idx . "/" . $picnum . "/" . $currentport;
+                    $reg = "#" . $currentname . "$#";
+                    foreach($portdetails as $portdetail)
+                    {
+                        if(preg_match($reg, $portdetail->port_id))
+                        {
+                            $match = $portdetail;
+                            break;
+                        }
+                        if(isset($vcmember->vc_links))
+                        {
+                            foreach($vcmember->vc_links as $vclink)
+                            {
+                                if(preg_match($vclinkreg, $vclink->port_id, $hits))
+                                {
+                                    if($hits[1] == $vcmember->fpc_idx)
+                                    {
+                                        if($hits[2] == $picnum)
+                                        {
+                                            if($hits[3] == $currentport)
+                                            {
+                                                $match = $vclink;
+                                                $match->up = true; 
+                                            }
+                                        }
+                                    }
+                                }   
+                            }
+                        }
+                    }
+                    if(!isset($match))
+                    {
+                        $match = new \stdClass();
+                    }
+                    if(!isset($match->up))
+                    {
+                        $match->up = false;
+                    }
+                    $match->id = $currentport;
+                    $ports[] = (object)$match;
+                }
+                $pic->ports = $ports;
+                $tmp->pics[] = $pic;
+            }
+            //get stack ports
+            //$device->vc_members[] = $tmp;
+            $this->custom->vc_members[] = $tmp;
+        }
+        return $this;
+    }
+
+    public function getSummaryDetails2()
     {
         if(!isset($this->module_stat))
         {
@@ -328,9 +458,10 @@ class Device extends BaseModel
             'uptime',
             'type',
             'version',
-            'status',            
+            'status',
         ];
         $device = new \stdClass();
+        $device->custom = new \stdClass();
         foreach($keys as $key)
         {
             if(isset($this->$key))

@@ -34,8 +34,8 @@ class QueryBuilder
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
-        $array = json_decode($body, true);
-        return $array;
+        $object = json_decode($body);
+        return $object;
     }
 
     public function first($path)
@@ -54,8 +54,8 @@ class QueryBuilder
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
-        $array = json_decode($body, true);
-        return $array;
+        $object = json_decode($body);
+        return $object;
     }
 
     public function find($path)
@@ -74,8 +74,8 @@ class QueryBuilder
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
-        $array = json_decode($body, true);
-        return $array;
+        $object = json_decode($body);
+        return $object;
     }
 
     public function post($path, $body)
@@ -96,8 +96,8 @@ class QueryBuilder
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
-        $array = json_decode($body, true);
-        return $array;
+        $object = json_decode($body);
+        return $object;
     }
 
     public function put($path, $body)
@@ -118,8 +118,8 @@ class QueryBuilder
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
-        $array = json_decode($body, true);
-        return $array;
+        $object = json_decode($body);
+        return $object;
     }
 
     public function patch($path, $body)
@@ -140,8 +140,8 @@ class QueryBuilder
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
         $body = $response->getBody()->getContents();
-        $array = json_decode($body, true);
-        return $array;
+        $object = json_decode($body);
+        return $object;
     }
 
     public function delete($path)
