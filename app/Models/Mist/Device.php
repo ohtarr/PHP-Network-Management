@@ -282,6 +282,15 @@ class Device extends BaseModel
                     2   =>  8,
                 ],
             ],
+            'EX4300-48P'    =>  [
+                'model'     =>  'EX4300-48P',
+                'mistmodel' =>  'EX4300-48P',
+                'pics'      =>  [
+                    0   =>  48,
+                    1   =>  4,
+                    2   =>  4,
+                ],
+            ],
         ];
     }
 
