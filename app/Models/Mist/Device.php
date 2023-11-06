@@ -242,6 +242,15 @@ class Device extends BaseModel
                     2   =>  4,
                 ],
             ],
+            'EX4100-F-12P'    =>  [
+                'model'     =>  'EX4100-F-12P',
+                'mistmodel' =>  'EX4100-F-12P',
+                'pics'      =>  [
+                    0   =>  12,
+                    1   =>  4,
+                    2   =>  2,
+                ],
+            ],
             'EX2300-48P'    =>  [
                 'model'     =>  'EX2300-48P',
                 'mistmodel' =>  'EX2300-48P',
