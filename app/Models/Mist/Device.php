@@ -233,11 +233,29 @@ class Device extends BaseModel
                     2   =>  4,
                 ],
             ],
+            'EX4100-24MP'    =>  [
+                'model'     =>  'EX4100-24MP',
+                'mistmodel' =>  'EX4100-24MP-CHAS',
+                'pics'      =>  [
+                    0   =>  24,
+                    1   =>  4,
+                    2   =>  4,
+                ],
+            ],
             'EX4100-48P'    =>  [
                 'model'     =>  'EX4100-48P',
                 'mistmodel' =>  'EX4100-48P-CHAS',
                 'pics'      =>  [
                     0   =>  48,
+                    1   =>  4,
+                    2   =>  4,
+                ],
+            ],
+            'EX4100-24P'    =>  [
+                'model'     =>  'EX4100-24P',
+                'mistmodel' =>  'EX4100-24P-CHAS',
+                'pics'      =>  [
+                    0   =>  24,
                     1   =>  4,
                     2   =>  4,
                 ],
