@@ -75,8 +75,14 @@ class Opengear extends \App\Models\Device\Device
     */
     public function getSerial()
     {
-        $reg = "/(\S+)/";
-        if (preg_match($reg, $this->data['serial'], $hits)) {
+        if(isset($this->data['serial']))
+        {
+            return $this->data['serial'];
+        }
+
+        $reg = "/Serial number\|\s+(\d+)/";
+        if(preg_match($reg, $this->data['support_report'], $hits))
+        {
             return $hits[1];
         }
     }
@@ -91,6 +97,101 @@ class Opengear extends \App\Models\Device\Device
         if (preg_match($reg, $this->data['support_report'], $hits)) {
             return $hits[1];
         }
+        $reg = "/Model\|\s+(\S+)/";
+        if (preg_match($reg, $this->data['support_report'], $hits)) {
+            return $hits[1];
+        }
     }
 
+    public function getIccid()
+    {
+        $reg = "/sim-iccid\s+(\d+)/";
+        if (preg_match($reg, $this->data['support_report'], $hits)) {
+            return $hits[1];
+        }
+    }
+
+    public function getImei()
+    {
+        $reg = "/imei\s+(\d+)/";
+        if (preg_match($reg, $this->data['support_report'], $hits)) {
+            return $hits[1];
+        }
+    }
+
+    public function getVersion()
+    {
+        $reg = "/OpenGear\/\S+\s+Version (\S+)/";
+        if (preg_match($reg, $this->data['support_report'], $hits)) {
+            return $hits[1];
+        }
+    }
+
+    public function getInterfaces()
+    {
+        $reg = "/(eth0|eth1|wwan0).*?txqueuelen/s";
+        $macreg = "/HWaddr\s+(\S+)/";
+        $ipreg = "/inet addr:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/";
+        $maskreg = "/Mask:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/";
+        preg_match_all($reg, $this->data['support_report'], $hits, PREG_SET_ORDER);
+        $interfaces = [];
+        foreach($hits as $interface)
+        {
+            $tmp = [];
+            $tmp['name']  = $interface[1];
+            if(preg_match($macreg, $interface[0], $machits))
+            {
+                $tmp['mac'] = $machits[1];
+            }
+            if(preg_match($ipreg, $interface[0], $iphits))
+            {
+                $tmp['ip'] = $iphits[1];
+            }
+            if(preg_match($maskreg, $interface[0], $maskhits))
+            {
+                $tmp['mask'] = $maskhits[1];
+            }
+            $interfaces[$interface[1]] = $tmp;
+        }
+        return $interfaces;
+    }
+
+    //Parse out the wired IP of eth0 from the support_report.  Returns a string.
+    public function getWiredIp()
+    {
+        $intname = 'eth0';
+        $interfaces = $this->getInterfaces();
+        if(isset($interfaces[$intname]['ip']))
+        {
+            return $interfaces[$intname]['ip'];
+        }
+    }
+
+    //Parse out the wireless IP of wwan0 from the support_report.  Returns a string.
+    public function getWirelessIp()
+    {
+        $intname = 'wwan0';
+        $interfaces = $this->getInterfaces();
+        if(isset($interfaces[$intname]['ip']))
+        {
+            return $interfaces[$intname]['ip'];
+        }
+    }
+
+    //Ping the wired IP and returns either FALSE or a float value of the latency.
+    public function pingWiredIp()
+    {
+        return static::pingIp($this->getWiredIp());
+    }
+
+    //Ping the wireless IP and returns either FALSE or a float value of the latency.
+    public function pingWirelessIp()
+    {
+        return static::pingIp($this->getWirelessIp());
+    }
+
+    public function getMgmtIp()
+    {
+        return $this->getWiredIp();
+    }
 }
