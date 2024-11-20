@@ -16,7 +16,7 @@ class Incident extends ServiceNowModel
 {
 	protected $guarded = [];
 
-    public $table = "cmn_location";
+    public $table = "incident";
 
     public $cache;
 

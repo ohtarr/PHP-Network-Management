@@ -4,6 +4,7 @@ namespace App\Models\Netbox\DCIM;
 
 use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\DCIM\Devices;
+use App\Models\Netbox\DCIM\Racks;
 
 class Locations extends BaseModel
 {
@@ -126,6 +127,11 @@ class Locations extends BaseModel
         return Devices::where('location_id', $this->id)->get();
     }
 
+    public function racks()
+    {
+        return Racks::where('location_id',$this->id)->get();        
+    }
+
     public function polling()
     {
         if($this->custom_fields->POLLING === true)
@@ -154,4 +160,18 @@ class Locations extends BaseModel
         return false;
     }
 
+    public function generateCableLabels()
+    {
+        //code here
+    }
+
+    public function generateDeviceLabels()
+    {
+        //code here
+    }
+
+    public function generateRackLabels()
+    {
+        //code here
+    }
 }

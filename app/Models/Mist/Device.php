@@ -300,6 +300,13 @@ class Device extends BaseModel
                     0   =>  56,
                 ],
             ],
+            'QFX5120-32C'    =>  [
+                'model'     =>  'QFX5120-32C',
+                'mistmodel' =>  'QFX5120-32C',
+                'pics'      =>  [
+                    0   =>  32,
+                ],
+            ],
             'EX4600-40F'    =>  [
                 'model'     =>  'EX4600-40F',
                 'mistmodel' =>  'EX4600-40F',
@@ -307,6 +314,15 @@ class Device extends BaseModel
                     0   =>  28,
                     1   =>  8,
                     2   =>  8,
+                ],
+            ],
+            'EX4300-48P'    =>  [
+                'model'     =>  'EX4300-48P',
+                'mistmodel' =>  'EX4300-48P',
+                'pics'      =>  [
+                    0   =>  48,
+                    1   =>  4,
+                    2   =>  4,
                 ],
             ],
             'EX4300-48P'    =>  [

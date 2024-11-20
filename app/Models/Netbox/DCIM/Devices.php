@@ -5,8 +5,10 @@ namespace App\Models\Netbox\DCIM;
 use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\DCIM\Locations;
 use App\Models\Netbox\DCIM\Interfaces;
-//use Ohtarr\Netbox\DCIM\Locations;
-//use Ohtarr\Netbox\DCIM\Interfaces;
+use App\Models\Netbox\DCIM\FrontPorts;
+use App\Models\Netbox\DCIM\RearPorts;
+use App\Models\Netbox\DCIM\Racks;
+use App\Models\Netbox\DCIM\ModuleBays;
 
 class Devices extends BaseModel
 {
@@ -26,6 +28,14 @@ class Devices extends BaseModel
     public function coordinates()
     {
         return $this->location()->coordinates();
+    }
+
+    public function rack()
+    {
+        if(isset($this->rack->id))
+        {
+            return Racks::find($this->rack->id);
+        }
     }
 
     public function polling()
@@ -48,7 +58,51 @@ class Devices extends BaseModel
 
     public function interfaces()
     {
-        return Interfaces::where('device_id', $this->id)->get();
+        return Interfaces::where('device_id', $this->id)->limit(99999999)->get();
     }
 
+    public function frontPorts()
+    {
+        return FrontPorts::where('device_id', $this->id)->limit(99999999)->get();
+    }
+
+    public function rearPorts()
+    {
+        return RearPorts::where('device_id', $this->id)->limit(99999999)->get();
+    }
+
+    public function moduleBays()
+    {
+        return ModuleBays::where('device_id', $this->id)->limit(99999999)->get();
+    }
+
+    public function addModuleBay($name, $label, $position)
+    {
+        $params = [
+            "device" => $this->id,
+            "name"  => $name,
+            "label" => $label,
+            "position"  => $position,
+        ];
+        try{
+            $new = ModuleBays::create($params);
+        } catch (\Exception $e) {
+            return "Failed to create Module Bay!";
+        }
+        return $new;
+    }
+
+    public function generateNameLabel()
+    {
+        if(isset($this->name))
+        {
+            //Add code to handle STACK member ID
+            return $this->name;
+        }
+    }
+
+    public function generateCableLabels()
+    {
+        //Add code here to generate CABLE LABELS for this device.
+    }
 }

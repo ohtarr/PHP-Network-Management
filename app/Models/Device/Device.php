@@ -10,12 +10,16 @@ use Nanigans\SingleTableInheritance\SingleTableInheritanceTrait;
 use Illuminate\Support\Facades\Cache;
 use App\Models\Device\DeviceCollection as Collection;
 use Silber\Bouncer\Database\HasRolesAndAbilities;
+use JJG\Ping;
 
 use App\Models\Device\Aruba\Aruba;
 use App\Models\Device\Cisco\Cisco;
 use App\Models\Device\Opengear\Opengear;
 use App\Models\Device\Ubiquiti\Ubiquiti;
 use App\Models\Device\Juniper\Juniper;
+
+use App\Models\ServiceNow\Location;
+use App\Models\Netbox\DCIM\Devices as NetboxDevice;
 
 class Device extends Model
 {
@@ -587,6 +591,7 @@ class Device extends Model
         $data['serial'] = $this->getSerial();
         $data['model'] = $this->getModel();
         $this->data = $data;
+        $this->ip = $this->getMgmtIp();
         return $this;
     }
 
@@ -609,6 +614,37 @@ class Device extends Model
     {
     }
 
+    public function getMgmtIp()
+    {
+        return $this->ip;
+    }
+
+    public function ping($timeout = 5)
+	{
+		$PING = new Ping($this->ip);
+        $PING->setTimeout($timeout);
+		$LATENCY = $PING->ping();
+		if (!$LATENCY)
+		{
+			return false;
+		}else{
+			return $LATENCY;
+		}
+	}
+
+    public static function pingIp($ip, $timeout = 5)
+    {
+		$PING = new Ping($ip);
+        $PING->setTimeout($timeout);
+		$LATENCY = $PING->ping();
+		if (!$LATENCY)
+		{
+			return false;
+		}else{
+			return $LATENCY;
+		}
+    }
+
     public function parse(){
         $cp = new $this->parser("");
         foreach($this->data as $key=>$value){
@@ -623,5 +659,24 @@ class Device extends Model
         unset($this->data);
         return $this;
     }
+
+    //SERVICE-NOW RELATIONSHIPS
+    public function getSiteCode()
+    {
+        return substr($this->data['name'],0,8);
+    }
+
+    public function getServiceNowLocation()
+    {
+        return Location::where('name', $this->getSiteCode())->first();
+    }
+
+    //NETBOX RELATIONSHIPS
+    public function getNetboxDevice()
+    {
+        $nb = new NetboxDevice;
+        return $nb->where('name',$this->data['name'])->first();
+    }
+
 
 }

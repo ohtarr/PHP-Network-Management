@@ -12,9 +12,9 @@ use \EmergencyGateway\EGW;
 class E911 extends Model
 {
     //primary_Key of model.
-    //public static $username;
-    //public static $password;
-    //public static $snmp_community;
+    public static $username;
+    public static $password;
+    public static $snmp_community;
     //public static $soap_url;
     //public static $soap_wsdl;
     //url suffix to access ALL endpoint
