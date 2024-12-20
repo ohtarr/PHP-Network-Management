@@ -14,8 +14,9 @@ class QueryBuilder
     public function __construct()
     {
         $azuretoken = Azure::getToken('api://' . env('NETBOX_CLIENT_ID') . '/.default');
-        $this->headers['Authorization'] = 'Bearer ' . $azuretoken;
-        $this->headers['apiauthorization'] = 'Token ' . env('NETBOX_API_TOKEN');
+        //$this->headers['Authorization'] = 'Bearer ' . $azuretoken;
+        //$this->headers['apiauthorization'] = 'Token ' . env('NETBOX_API_TOKEN');
+        $this->headers['Authorization'] = 'Token ' . env('NETBOX_API_TOKEN');
     }
 
     public function buildUrl()

@@ -12,6 +12,7 @@ use App\Models\Device\DeviceCollection as Collection;
 use Silber\Bouncer\Database\HasRolesAndAbilities;
 use JJG\Ping;
 
+use App\Models\Device\Output;
 use App\Models\Device\Aruba\Aruba;
 use App\Models\Device\Cisco\Cisco;
 use App\Models\Device\Opengear\Opengear;
@@ -25,7 +26,7 @@ class Device extends Model
 {
     //use Searchable;	// Add for Scout to search */
     use SoftDeletes, SingleTableInheritanceTrait, HasRolesAndAbilities;
-
+    //use SingleTableInheritanceTrait, HasRolesAndAbilities;
     // Scout Searchable
     /*
     public function toSearchableArray()
@@ -64,6 +65,38 @@ class Device extends Model
     protected $casts = [
         'data' => 'array',
     ];
+
+    public function output()
+    {
+        return $this->hasMany(Output::class,'device_id');
+    }
+
+    public function getAllOutputs($type = null)
+    {
+        if($type)
+        {
+            return $this->output()->where('type',$type)->get();
+        } else {
+            return $this->output;
+        }
+    }
+
+    public function getLatestOutputs($type = null)
+    {
+        if($type)
+        {
+            return $this->output()->where('type',$type)->orderBy('id', 'DESC')->first();
+        } else {
+            $return = [];
+            $outputs = $this->output()->orderBy('id', 'DESC')->get();
+            $grouped = $outputs->groupBy('type');
+            foreach($grouped as $key => $value)
+            {
+                $return[$key] = $value->first();
+            }
+            return collect($return);
+        }
+    }
 
     public static $cli_timeout = 20;
 
@@ -205,7 +238,7 @@ class Device extends Model
         foreach ($credentials as $credential) {
             //Attemp to connect using phpseclib\Net\SSH2 library.
             try {
-                $cli = $this->getSSH2($this->ip, $credential->username, $credential->passkey, $timeout);
+                $cli = $this->getSSH2($this->getIpAddress(), $credential->username, $credential->passkey, $timeout);
             } catch (\Exception $e) {
                 echo $e->getMessage()."\n";
             }
@@ -406,7 +439,7 @@ class Device extends Model
         Check if a device with this IP already exists.  If it does, grab it from the database and perform a discovery on it
         */
 
-        if(!$this->ip)
+        if(!$this->getIpAddress())
         {
             print "No IP address found!\n";
             return false;
@@ -493,21 +526,22 @@ class Device extends Model
 
     public function discover()
     {
-        if(!$this->ip)
+        if(!$this->getIpAddress())
         {
             print "No IP address found!\n";
             return false;
         }
         $device = new self;
-        $device->ip = $this->ip;
+        //$device->ip = $this->ip;
         $device = $device->getType();
-        $device = $device->getOutput();
+        $device->scan();
+        //$device = $device->getOutput();
         $exists = $device->deviceExists();
         if($exists)
         {
             print "EXISTS!\n";
             $device->id = $exists->id;
-            $device->ip = $exists->ip;
+            //$device->ip = $exists->ip;
             $exists->forceDelete();
         }
         print $device->data['name'] . "\n";
@@ -578,24 +612,46 @@ class Device extends Model
         //return $device;
     }
 
+    public function getScanCmdOutputs()
+    {
+        return $this->exec_cmds($this->scan_cmds);
+    }
+
     /*
     This method is used to SCAN the device to obtain all of the command line outputs that we care about.
     This also configures database indexes for NAME, SERIAL, and MODEL.
     returns null
     */
-    public function getOutput()
+    public function scan()
     {
-        $data = $this->exec_cmds($this->scan_cmds);
-        $this->data = $data;
-        $data['name'] = $this->getName();
-        $data['serial'] = $this->getSerial();
-        $data['model'] = $this->getModel();
-        $this->data = $data;
-        $this->ip = $this->getMgmtIp();
+        if(!$this->id)
+        {
+            return null;
+        }
+        $data = $this->getScanCmdOutputs();
+        
+        foreach($data as $key => $output)
+        {
+            unset($existing);
+            if(!$output)
+            {
+                continue;
+            }
+            $existing = $this->getAllOutputs($key);
+            foreach($existing as $exists)
+            {
+                $exists->delete();
+            }
+            $new = new Output;
+            $new->device_id = $this->id;
+            $new->type = $key;
+            $new->data = $output;
+            $new->save();
+        }
         return $this;
     }
 
-    public function scan()
+    public function scanold()
     {
         $device = $this->getOutput();
         $device->save();
@@ -621,7 +677,7 @@ class Device extends Model
 
     public function ping($timeout = 5)
 	{
-		$PING = new Ping($this->ip);
+		$PING = new Ping($this->getIpAddress());
         $PING->setTimeout($timeout);
 		$LATENCY = $PING->ping();
 		if (!$LATENCY)
@@ -675,8 +731,21 @@ class Device extends Model
     public function getNetboxDevice()
     {
         $nb = new NetboxDevice;
-        return $nb->where('name',$this->data['name'])->first();
+        return $nb->where('id',$this->netbox_id)->first();
     }
 
+    public function getNetboxDeviceByName()
+    {
+        $nb = new NetboxDevice;
+        return $nb->where('name',$this->getName())->first();
+    }
+
+    public function getIpAddress()
+    {
+        $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
+        $ip = $this->getNetboxDevice()->primary_ip->address;
+        preg_match($reg, $ip, $hits);
+        return $hits[1];
+    }
 
 }
