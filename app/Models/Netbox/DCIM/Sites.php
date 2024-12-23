@@ -6,7 +6,9 @@ use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\DCIM\Locations;
 use App\Models\ServiceNow\Location\ServiceNowLocation;
+use IPv4\SubnetCalculator;
 
+#[\AllowDynamicProperties]
 class Sites extends BaseModel
 {
     protected $app = "dcim";
@@ -160,6 +162,121 @@ class Sites extends BaseModel
         return $prefixes->where('site_id', $this->id)->get();
     }
 
+    public function getSupernets()
+    {
+        $prefixes = new Prefixes($this->query);
+        return $prefixes->where('site_id', $this->id)->where('role_id',6)->get();
+    }
+
+    public function getProvisioningSupernet()
+    {
+        $prefixes = new Prefixes($this->query);
+        return $prefixes->where('site_id', $this->id)->where('role_id',6)->where('mask_length',20)->first();
+    }
+
+    public function GenerateDhcpScopes()
+    {
+        $supernet = $this->getProvisioningSupernet();
+        if(!$supernet)
+        {
+            return null;
+        }
+        if($supernet->vrf->name = "V101:DATACENTER")
+        {
+            $dns = [
+				'10.252.13.134',
+				'10.252.13.133',
+				'10.252.13.135'
+			];
+        }
+        if($supernet->vrf->name = "V102:OFFICE")
+        {
+            $dns = [
+				'10.251.12.189',
+				'10.251.12.190',
+			];
+        }
+        if(!$dns)
+        {
+            return null;
+        }
+        $IPV4LONG = ip2long($supernet->cidr()['network']);
+        $SCOPES = [];
+
+        $calc = new SubnetCalculator(long2ip($IPV4LONG),22);
+        $SCOPES[long2ip($IPV4LONG)] = [
+			"name"			=> $this->name . " VLAN 1 - WIRED",
+			"description"	=> $this->name . " VLAN 1 - WIRED",
+			"network"		=> long2ip($IPV4LONG +    0),
+			"gateway"		=> long2ip($IPV4LONG +    1),
+			"netmask"		=> $calc->getSubnetMask(),
+			"firstip"		=> long2ip($IPV4LONG +   50),
+			"lastip"		=> long2ip($IPV4LONG + 1010),
+			"options"		=> [
+				"003"	=>	[long2ip($IPV4LONG +    1)],
+				"006"	=>	$dns,
+				//"051"	=>	["691200"],
+				"015"	=>	["kiewitplaza.com"],
+			],
+		];
+
+        $IPV4LONG += 1024;
+        $calc = new SubnetCalculator(long2ip($IPV4LONG),22);
+		$SCOPES[long2ip($IPV4LONG)] = [
+			"name"			=> $this->name . " VLAN 5 - WIRELESS",
+			"description"	=> $this->name . " VLAN 5 - WIRELESS",
+			"network"		=> long2ip($IPV4LONG +    0),
+			"gateway"		=> long2ip($IPV4LONG +    1),
+			"netmask"		=> $calc->getSubnetMask(),
+			"firstip"		=> long2ip($IPV4LONG +   10),
+			"lastip" 		=> long2ip($IPV4LONG + 1010),
+			"options"		=>	[
+				"003" =>	[long2ip($IPV4LONG +    1)],
+				"006"	=>	$dns,
+				//"051"	=>	["36000"],
+				"015"	=>	["kiewitplaza.com"],
+			],
+		];
+
+        $IPV4LONG += 1024;
+        $calc = new SubnetCalculator(long2ip($IPV4LONG),22);
+		$SCOPES[long2ip($IPV4LONG)] = [
+			"name"			=> $this->name . " VLAN 9 - VOICE",
+			"description"	=> $this->name . " VLAN 9 - VOICE",
+			"network"		=> long2ip($IPV4LONG +    0),
+			"gateway"		=> long2ip($IPV4LONG +    1),
+			"netmask"		=> $calc->getSubnetMask(),
+			"firstip"		=> long2ip($IPV4LONG +   10),
+			"lastip"		=> long2ip($IPV4LONG + 1010),
+			"options"		=>	[ // 150 is TFTP server list, comma separated
+				"003"	=>	[long2ip($IPV4LONG +    1)],
+				"006"	=>	$dns,
+				"150"	=>	["10.252.11.14","10.252.22.14"],
+				//"051"	=>	["691200"],
+				"015"	=>	["kiewitplaza.com"],
+			],
+		];
+
+        $IPV4LONG += 1024;
+        $calc = new SubnetCalculator(long2ip($IPV4LONG),23);
+		$SCOPES[long2ip($IPV4LONG)] = [
+			"name"			=> $this->name . " VLAN 13 - GUEST_PARTNER_JV",
+			"description"	=> $this->name . " VLAN 13 - GUEST_PARTNER_JV",
+			"network" => long2ip($IPV4LONG +    0),
+			"gateway" => long2ip($IPV4LONG +    1),
+			"netmask" => $calc->getSubnetMask(),
+			"firstip" => long2ip($IPV4LONG +   10),
+			"lastip"  => long2ip($IPV4LONG +  500),
+			"options"   =>	[ // 006 is dns servers
+				"003"	=>	[long2ip($IPV4LONG +    1)],
+				"006"	=>	["10.251.12.189","10.251.12.190"],
+				//"051"	=>	["691200"],
+				"015"	=>	["kiewitplaza.com"],
+			]
+		]; //$IPV4LONG += 512; // Dont need this because no more subnets added
+		return $SCOPES;
+    }
+
     public function locations()
     {
         $locations = new Locations($this->query);
@@ -196,5 +313,5 @@ class Sites extends BaseModel
         }
         return $snowloc;
     }
-    
+
 }

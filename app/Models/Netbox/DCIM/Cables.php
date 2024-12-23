@@ -8,6 +8,7 @@ use App\Models\Netbox\DCIM\Interfaces;
 use App\Models\Netbox\DCIM\FrontPorts;
 use App\Models\Netbox\DCIM\RearPorts;
 
+#[\AllowDynamicProperties]
 class Cables extends BaseModel
 {
     protected $app = "dcim";

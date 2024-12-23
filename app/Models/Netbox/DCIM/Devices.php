@@ -10,6 +10,7 @@ use App\Models\Netbox\DCIM\RearPorts;
 use App\Models\Netbox\DCIM\Racks;
 use App\Models\Netbox\DCIM\ModuleBays;
 
+#[\AllowDynamicProperties]
 class Devices extends BaseModel
 {
     protected $app = "dcim";
@@ -105,4 +106,16 @@ class Devices extends BaseModel
     {
         //Add code here to generate CABLE LABELS for this device.
     }
+
+    public function getIpAddress()
+    {
+        $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
+        if(isset($this->primary_ip->address))
+        {
+            $ip = $this->primary_ip->address;
+            preg_match($reg, $ip, $hits);
+            return $hits[1];
+        }
+    }
+    
 }

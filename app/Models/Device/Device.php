@@ -2,23 +2,23 @@
 
 namespace App\Models\Device;
 
-use phpseclib3\Net\SSH2;
-use App\Models\Credential\Credential;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+
+use phpseclib3\Net\SSH2;
+use App\Models\Credential\Credential;
 use Nanigans\SingleTableInheritance\SingleTableInheritanceTrait;
-use Illuminate\Support\Facades\Cache;
 use App\Models\Device\DeviceCollection as Collection;
 use Silber\Bouncer\Database\HasRolesAndAbilities;
 use JJG\Ping;
-
 use App\Models\Device\Output;
 use App\Models\Device\Aruba\Aruba;
 use App\Models\Device\Cisco\Cisco;
 use App\Models\Device\Opengear\Opengear;
 use App\Models\Device\Ubiquiti\Ubiquiti;
 use App\Models\Device\Juniper\Juniper;
-
 use App\Models\ServiceNow\Location;
 use App\Models\Netbox\DCIM\Devices as NetboxDevice;
 
@@ -27,18 +27,7 @@ class Device extends Model
     //use Searchable;	// Add for Scout to search */
     use SoftDeletes, SingleTableInheritanceTrait, HasRolesAndAbilities;
     //use SingleTableInheritanceTrait, HasRolesAndAbilities;
-    // Scout Searchable
-    /*
-    public function toSearchableArray()
-    {
-        $array = $this->toArray();
-        print_r($array);
-        if(isset($array['data']))
-        {
-            $array['data'] = json_encode($array['data'], true); // Change data to json encoded for Scout tnt driver to search. Cannot do nested array search.
-        }
-        return $array;
-    }*/
+
 
     protected $table = 'devices';
     protected static $singleTableTypeField = 'type';
@@ -187,42 +176,6 @@ class Device extends Model
     If it fails to establish a working SSH session with Metaclassing\SSH, it will then attempt using phpseclib\Net\SSH2.
     Returns a Metaclassing\SSH object OR a phpseclib\Net\SSH2 object.
     */
-/*     public function getCli()
-    {
-        $cli = null;
-        //Get our collection of credentials to attempt and foreach them.
-        $credentials = $this->getCredentials();
-        if(!$credentials)
-        {
-            print "No Credentials found!\n";
-            throw("No Credentials found!");
-        }
-        foreach ($credentials as $credential) {
-            // Attempt to connect using Metaclassing\SSH library.
-            try {
-                $cli = $this->getSSH1($this->ip, $credential->username, $credential->passkey);
-            } catch (\Exception $e) {
-                echo $e->getMessage()."\n";
-            }
-
-            if (! $cli) {
-                //Attemp to connect using phpseclib\Net\SSH2 library.
-                try {
-                    $cli = $this->getSSH2($this->ip, $credential->username, $credential->passkey);
-                } catch (\Exception $e) {
-                    echo $e->getMessage()."\n";
-                }
-            }
-
-            if ($cli) {
-                $this->credential_id = $credential->id;
-                //$this->save();
-
-                return $cli;
-            }
-        }
-    } */
-
     public function getCli($timeout = null)
     {
         if(!$timeout)
@@ -359,7 +312,7 @@ class Device extends Model
 			}
 		}
 		$cli->disconnect();
-		return $output;		
+		return $output;
 	}
 
     /*
@@ -375,62 +328,12 @@ class Device extends Model
         }
     } */
 
-/*     public function discover()
-    {
-        //print "discover()\n";
-        if(!$this->ip){
-            print "No IP address found!\n";
-            return null;
-        }
-        if($exists = $this->deviceExists())
-        {
-            //print "discover() EXISTS ID : {$exists->id}\n";
-            $device = Device::make($exists->toArray());
-            $device->id = $exists->id;
-            //print_r($device);
-        } else {
-            //print "No existing device found yet....\n";
-            $device = Device::make($this->toArray());
-            $device->id = $this->id;
-        }
-        //print_r($device);
-        //$device->type = 'App\Device\Device';
-        //print "discover() DEVICE ID: {$device->id}\n";
-        $device = $device->getType();
-        Cache::store('cache_discovery')->put($this->ip,0,15);
-        if(!$device)
-        {
-            print "Unable to get Device Type!\n";
-            return null;
-        }
-        //print "discover() DEVICE ID: {$device->id}\n";        
-        $device = $device->getOutput();
-        //print "discover() PRESAVE ID : {$device->id}\n";
-        $exists2 = $device->deviceExists();
-        if(!$device->id && $exists2)
-        {
-            print "DEVICE ALREADY EXISTS WITH IP: {$exists2->ip}, NAME: {$exists2->data['name']}, SERIAL: {$exists2->data['serial']}!\n";
-            $device = Device::make($exists2->toArray());
-            $device->id = $exists2->id;
-            return $device->discover();
-        }
-        if($device->id)
-        {
-            $device->exists = 1;
-        }
-
-        //print "save()\n";
-        $device->save();
-        //print "POSTSAVE ID : {$device->id}\n";
-        return $device;
-    } */
-
     /*
     This method is used to determine the TYPE of device this is and recategorize it.
     Once recategorized, it will perform discover() again.
     Returns null;
     */
-    public function getType()
+    public function getTypeObject()
     {
         //print "getType()\n";
         //print "GETTYPE THIS ID: {$this->id}\n";
@@ -438,8 +341,8 @@ class Device extends Model
         If an ip doesn't exist on this object you are trying to discover, fail
         Check if a device with this IP already exists.  If it does, grab it from the database and perform a discovery on it
         */
-
-        if(!$this->getIpAddress())
+        $ip = $this->getIpAddress();
+        if(!$ip)
         {
             print "No IP address found!\n";
             return false;
@@ -504,18 +407,20 @@ class Device extends Model
         {
             $device->id = $this->id;
         }
+        if($this->netbox_id)
+        {
+            $device->netbox_id = $this->netbox_id;
+        }
         //run discover again.
-        $device = $device->getType();
+        $device = $device->getTypeObject();
         return $device;
     }
 
-/*     public function getClass()
+    public function getType()
     {
-        $device = new self($this->toArray());
-        //print get_class($device) . "\n";
-        $final = $device->getType();
-        return get_class($final);
-    } */
+        $device = $this->getTypeObject();
+        return $device::class;
+    }
 
     public static function discoverNew($ip)
     {
@@ -526,63 +431,45 @@ class Device extends Model
 
     public function discover()
     {
-        if(!$this->getIpAddress())
-        {
-            print "No IP address found!\n";
-            return false;
-        }
         $device = new self;
-        //$device->ip = $this->ip;
-        $device = $device->getType();
-        $device->scan();
-        //$device = $device->getOutput();
-        $exists = $device->deviceExists();
-        if($exists)
+        if($this->netbox_id)
         {
-            print "EXISTS!\n";
-            $device->id = $exists->id;
-            //$device->ip = $exists->ip;
-            $exists->forceDelete();
+            $device->netbox_id = $this->netbox_id;
         }
-        print $device->data['name'] . "\n";
-        $device->save();
-        return $device;
+        $type = $device->getType();
+        if($type)
+        {
+            if($this->id)
+            {
+                DB::table('devices')->where('id',$this->id)->update(['type' =>  $type]);
+                return self::find($this->id);
+            } else {
+                $this->save();
+                return self::find($this->id);
+            }
+        }
     }
-
-/*     public function test()
-    {
-        //return $this->find($this->id);
-        //return self::find($this->id);
-        print $this->id . "\n";
-        //return Device::find($this->id);
-        //return Device::where('id',$this->id)->first();
-        //$device = new Device;
-        $device = new self;
-        return $device->find($this->id);
-    } */
-
-/*     public function changeClass($type)
-    {
-        DB::table($this->table)
-            ->where('id',$this->id)
-            ->update(['type' => $type]);
-        $device = new self;
-        return $device->find($this->id);
-    } */
 
     /*
     This method is used to determine if this devices IP is already in the database.
     Returns null;
     */
-    public function deviceExists()
+/*     public function deviceExists()
     {
         print "deviceExists()\n";
+        $exists = $this->where('netbox_id',$this->netbox_id)->whereNot('id',$this->id)->get();
+        if($exists->isNotEmpty())
+        {
+            return $exists;
+        } else {
+            return null;
+        }
         //print_r($this);
         //$this->getOutput();
-/*         $device = Device::where('ip',$this->ip)
+         $device = Device::where('ip',$this->ip)
             ->orWhere("serial", $this->serial)
             ->orWhere("name", $this->name)
-            ->first(); */
+            ->first();
 
         $device1 = self::where('ip',$this->ip)->withTrashed()->first();
         if($device1)
@@ -610,11 +497,14 @@ class Device extends Model
         }
         //print_r($device);
         //return $device;
-    }
+    } */
 
     public function getScanCmdOutputs()
     {
-        return $this->exec_cmds($this->scan_cmds);
+        if($this->scan_cmds)
+        {
+            return $this->exec_cmds($this->scan_cmds);
+        }
     }
 
     /*
@@ -672,7 +562,7 @@ class Device extends Model
 
     public function getMgmtIp()
     {
-        return $this->ip;
+
     }
 
     public function ping($timeout = 5)
@@ -717,9 +607,9 @@ class Device extends Model
     }
 
     //SERVICE-NOW RELATIONSHIPS
-    public function getSiteCode()
+    public function getSitecode()
     {
-        return substr($this->data['name'],0,8);
+        return substr($this->getName(),0,8);
     }
 
     public function getServiceNowLocation()
@@ -728,24 +618,35 @@ class Device extends Model
     }
 
     //NETBOX RELATIONSHIPS
-    public function getNetboxDevice()
+    public function getNetboxDeviceById()
     {
         $nb = new NetboxDevice;
-        return $nb->where('id',$this->netbox_id)->first();
+        if($this->netbox_id)
+        {
+            return $nb->where('id',$this->netbox_id)->first();
+        }
     }
 
     public function getNetboxDeviceByName()
     {
         $nb = new NetboxDevice;
-        return $nb->where('name',$this->getName())->first();
+        return $nb->where('name__ic',$this->getName())->first();
+    }
+
+    public function getNetboxDevice()
+    {
+        $nbdevice = $this->getNetboxDeviceById();
+        if(!$nbdevice)
+        {
+            $nbdevice = $this->getNetboxDeviceByName();
+        }
+        return $nbdevice;
     }
 
     public function getIpAddress()
     {
-        $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
-        $ip = $this->getNetboxDevice()->primary_ip->address;
-        preg_match($reg, $ip, $hits);
-        return $hits[1];
+        $nbdevice = $this->getNetboxDevice();
+        return $nbdevice->getIpAddress();
     }
 
 }

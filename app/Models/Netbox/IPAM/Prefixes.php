@@ -4,6 +4,7 @@ namespace App\Models\Netbox\IPAM;
 
 use App\Models\Netbox\BaseModel;
 
+#[\AllowDynamicProperties]
 class Prefixes extends BaseModel
 {
     protected $app = "ipam";

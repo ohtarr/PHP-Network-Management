@@ -6,6 +6,7 @@ use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\Modules;
 
+#[\AllowDynamicProperties]
 class ModuleBays extends BaseModel
 {
     protected $app = "dcim";

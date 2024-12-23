@@ -5,6 +5,7 @@ namespace App\Models\Netbox\DCIM;
 use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\DCIM\Locations;
 
+#[\AllowDynamicProperties]
 class Racks extends BaseModel
 {
     protected $app = "dcim";

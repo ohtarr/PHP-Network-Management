@@ -13,9 +13,6 @@ class QueryBuilder
 
     public function __construct()
     {
-        $azuretoken = Azure::getToken('api://' . env('NETBOX_CLIENT_ID') . '/.default');
-        //$this->headers['Authorization'] = 'Bearer ' . $azuretoken;
-        //$this->headers['apiauthorization'] = 'Token ' . env('NETBOX_API_TOKEN');
         $this->headers['Authorization'] = 'Token ' . env('NETBOX_API_TOKEN');
     }
 
@@ -47,32 +44,51 @@ class QueryBuilder
 
     public function get()
     {
-        $headers = $this->headers;
+        $results = [];
         $guzzleparams = [
-            'verb'      =>  'get',
-            'url'       =>  $this->buildUrl(),
-            'params'    =>  [
-                'headers'   =>  $headers,
-                'query' =>  $this->search,
-            ],
-            'options'   =>  [],
+            'headers'   =>  $this->headers,
+            'query' =>  $this->search,
         ];
-        $client = new GuzzleClient($guzzleparams['options']);
-        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
+        $client = new GuzzleClient();
+        $url = $this->buildUrl();
+
+        $response = $client->request('GET', $url, $guzzleparams);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
-        return $this->hydrateMany($object->results);
+        //If limit of 1 is set (by using 'first' method) fetch the first record and return it without proceeding to loop
+        if(isset($this->search['limit']))
+        {
+            if($this->search['limit'] == 1)
+            {
+                if(isset($object->results[0]))
+                {
+                    return $this->hydrateOne($object->results[0]);
+                }
+            }
+        }
+        $results = array_merge($results, $object->results);
+        if($object->next)
+        {
+            $url = $object->next;
+            $guzzleparams = [
+                'headers'   =>  $this->headers,
+            ];
+            while ($url)
+            {
+                $response = $client->request('GET', $url, $guzzleparams);
+                $body = $response->getBody()->getContents();
+                $object = json_decode($body);
+                $url = $object->next;
+                $results = array_merge($results, $object->results);
+            }
+        }
+        return $this->hydrateMany($results);
     }
 
     public function first()
     {
         $this->search['limit'] = 1;
-        $response = $this->get();
-        return $response->first();
-        if(isset($response->results))
-        {
-            return hydrateOne($response->results[0]);
-        }
+        return $this->get();
     }
 
     public function find($id)
