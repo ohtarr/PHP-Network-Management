@@ -1,7 +1,7 @@
 <?php
 
 /*
-small library for accessing "Gizmo" API in a Laravel-esque fashion.
+Library for accessing E911 Gateway
 /**/
 
 namespace App\Models\E911;
@@ -12,13 +12,13 @@ use \EmergencyGateway\EGW;
 class E911 extends Model
 {
     //primary_Key of model.
-    public static $username;
-    public static $password;
-    public static $snmp_community;
-    //public static $soap_url;
-    //public static $soap_wsdl;
+    public $username;
+    public $password;
+    public $snmp_community;
+    public $soap_url;
+    public $soap_wsdl;
     //url suffix to access ALL endpoint
-    public static $all_url = "";
+    public $all_url = "";
 
     protected $connection = 'mysql-E911';
 
@@ -26,21 +26,28 @@ class E911 extends Model
 
     public $where = [];
 
-    public static function init()
+/*     public static function init()
     {
         static::$username = env('E911_SOAP_USER');
         static::$password = env('E911_SOAP_PASS');
         static::$snmp_community = env('E911_SNMP_RW');
+    } */
+
+    public function __construct()
+    {
+        $this->username = env('E911_SOAP_USER');
+        $this->password = env('E911_SOAP_PASS');
+        $this->snmp_community = env('E911_SNMP_RW');
     }
 
-    public static function getEgw()
+    public function getEgw()
     {
         return new EGW(
-            static::$soap_url,
-            static::$soap_wsdl,
-            static::$username,
-            static::$password,
-            static::$snmp_community
+            $this->soap_url,
+            $this->soap_wsdl,
+            $this->username,
+            $this->password,
+            $this->snmp_community,
         );
     }
 

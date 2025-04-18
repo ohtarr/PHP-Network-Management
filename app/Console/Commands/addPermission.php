@@ -81,7 +81,7 @@ class addPermission extends Command
             \App\Models\Location\Address\Address::class,
             \App\Models\Location\Building\Building::class,
             \App\Models\Location\Room\Room::class,
-//            \App\Models\ServiceNow\Incident\ServiceNowIncident::class,
+            \App\Models\ServiceNow\Incident::class,
             \App\Models\Mist\Device::class,
             \App\Models\Mist\Site::class,
             //END-OF-PERMISSION-TYPES

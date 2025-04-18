@@ -18,10 +18,10 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
-Route::apiResource('/addresses', App\Models\Location\Address\AddressController::class);
-Route::apiResource('/buildings', App\Models\Location\Building\BuildingController::class);
-Route::apiResource('/rooms', App\Models\Location\Room\RoomController::class);
-Route::apiResource('/sites', App\Models\Location\Site\SiteController::class);
+//Route::apiResource('/addresses', App\Models\Location\Address\AddressController::class);
+//Route::apiResource('/buildings', App\Models\Location\Building\BuildingController::class);
+//Route::apiResource('/rooms', App\Models\Location\Room\RoomController::class);
+//Route::apiResource('/sites', App\Models\Location\Site\SiteController::class);
 Route::apiResource('/devices/aruba', App\Models\Device\Aruba\ArubaController::class);
 Route::apiResource('/devices/cisco/ios', App\Models\Device\Cisco\IOS\CiscoIOSController::class);
 Route::apiResource('/devices/cisco/iosxe', App\Models\Device\Cisco\IOSXE\CiscoIOSXEController::class);
@@ -33,6 +33,8 @@ Route::apiResource('/devices/opengear', App\Models\Device\Opengear\OpengearContr
 Route::apiResource('/devices/ubiquiti', App\Models\Device\Ubiquiti\UbiquitiController::class);
 Route::apiResource('/devices', App\Models\Device\DeviceController::class);
 Route::apiResource('/servicenow/incidents', App\Models\ServiceNow\IncidentController::class);
+//Route::apiResource('/netbox/devices', App\Models\Netbox\NetboxController::class);
+
 
 //Route::get('/mist/device', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
 //Route::get('/mist/device/{deviceid}/', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
@@ -47,3 +49,8 @@ Route::get('/mist/site', [App\Models\Mist\MistController::class, 'Sites']);
 Route::get('/mist/site/summary', [App\Models\Mist\MistController::class, 'SitesSummary']);
 Route::get('/mist/site/{siteid}/devicesummary', [App\Models\Mist\MistController::class, 'SiteDeviceSummary']);
 Route::get('/mist/site/{siteid}/device/{deviceid}/details', [App\Models\Mist\MistController::class, 'SiteDeviceSummaryDetails']);
+
+Route::get('provisioning/snowlocations', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocations']);
+Route::get('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getNetboxSite']);
+Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopes']);
+

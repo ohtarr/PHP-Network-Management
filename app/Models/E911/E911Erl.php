@@ -1,7 +1,7 @@
 <?php
 
 /*
-small library for accessing "Gizmo" API in a Laravel-esque fashion.
+Library for accessing E911 GATEWAY ERLs
 /**/
 
 namespace App\Models\E911;
@@ -19,16 +19,15 @@ class E911Erl extends E911
 
     protected $guarded = [];
 
-    //Initialize the model with the BASE_URL from env.
-    /* public static function init()
+    public function __construct()
     {
-        parent::init();
-        static::$all_url = env('E911_ERL_URL');
-        static::$soap_url = env('E911_ERL_SOAP_URL');
-        static::$soap_wsdl = env('E911_ERL_SOAP_WSDL');
-    } */
+        parent::__construct();
+        $this->all_url = env('E911_ERL_URL');
+        $this->soap_url = env('E911_ERL_SOAP_URL');
+        $this->soap_wsdl = env('E911_ERL_SOAP_WSDL');
+    }
 
-    public static function add($name, array $address, $elin = null)
+    public function add($name, array $address, $elin = null)
     {
 
         /* $address format
@@ -42,7 +41,7 @@ class E911Erl extends E911
                 "PC" => "68137",
             ]
         */
-        $EGW = static::getEgw();
+        $EGW = $this->getEgw();
 
 /*         if($address['country'] == "CAN")
         {
@@ -65,10 +64,10 @@ class E911Erl extends E911
         return $RESULT;
     }
 
-    public static function remove($name)
+    public function remove($name)
     {
 
-        $EGW = static::getEgw();
+        $EGW = $this->getEgw();
 
         try{
             $RESULT = $EGW->deleteERL($name);
@@ -107,4 +106,3 @@ class E911Erl extends E911
     } */
 
 }
-E911Erl::init();

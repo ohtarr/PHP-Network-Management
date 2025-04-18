@@ -1,13 +1,13 @@
 <?php
 
 /*
-small library for accessing "Gizmo" API in a Laravel-esque fashion.
+Library for accessing E911 Gateway SWITCHES
 /**/
 
 namespace App\Models\E911;
 
 use App\Models\E911\E911;
-use \EmergencyGateway\EGW;
+//use \EmergencyGateway\EGW;
 
 class E911Switch extends E911
 {
@@ -19,18 +19,26 @@ class E911Switch extends E911
     protected $guarded = [];
 
     //Initialize the model with the BASE_URL from env.
-    public static function init()
+    //public static function init()
+    //{
+    //    parent::init();
+    //    static::$all_url = env('E911_SWITCH_URL');
+    //    static::$soap_url = env('E911_SWITCH_SOAP_URL');
+    //    static::$soap_wsdl = env('E911_SWITCH_SOAP_WSDL');
+    //}
+
+    public function __construct()
     {
-        parent::init();
-        static::$all_url = env('E911_SWITCH_URL');
-        static::$soap_url = env('E911_SWITCH_SOAP_URL');
-        static::$soap_wsdl = env('E911_SWITCH_SOAP_WSDL');
+        parent::__construct();
+        $this->all_url = env('E911_ERL_URL');
+        $this->soap_url = env('E911_SWITCH_SOAP_URL');
+        $this->soap_wsdl = env('E911_SWITCH_SOAP_WSDL');
     }
 
-    public static function add($ip, $vendor, $erl, $name)
+    public function add($ip, $vendor, $erl, $name)
     {
 
-        $EGW = static::getEgw();
+        $EGW = $this->getEgw();
 
         $params = [
             'switch_ip'             =>  $ip,
@@ -47,10 +55,10 @@ class E911Switch extends E911
         return $RESULT;
     }
 
-    public static function modify($ip, $vendor, $erl, $name)
+    public function modify($ip, $vendor, $erl, $name)
     {
 
-        $EGW = static::getEgw();
+        $EGW = $this->getEgw();
 
         $params = [
             'switch_ip'             =>  $ip,
@@ -67,10 +75,10 @@ class E911Switch extends E911
         return $RESULT;
     }
 
-    public static function remove($ip)
+    public function remove($ip)
     {
 
-        $EGW = static::getEgw();
+        $EGW = $this->getEgw();
 
         try{
             $RESULT = $EGW->delete_switch($ip);
@@ -81,4 +89,4 @@ class E911Switch extends E911
     }
 
 }
-E911Switch::init();
+//E911Switch::init();
