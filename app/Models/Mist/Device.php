@@ -24,10 +24,18 @@ class Device extends BaseModel
         {
             foreach($types as $type => $class)
             {
+                $match = 0;
                 if($data->type == $type)
                 {
+                    $match = 1;
                     $object = new $class;
+                    break;
                 }
+            }
+            if($match == 0)
+            {
+                //print "Failed to determine TYPE for device {$data->serial} : *" . $data->type . "*" . PHP_EOL;
+                return null;
             }
         }
         foreach($data as $key => $value)
@@ -43,7 +51,10 @@ class Device extends BaseModel
         foreach($response as $item)
         {
             $object = static::hydrateOne($item);
-            $objects[] = $object;
+            if($object)
+            {
+                $objects[] = $object;
+            }
         }
         return collect($objects);
     }
@@ -54,7 +65,7 @@ class Device extends BaseModel
         return static::hydrateMany(static::getQuery()->get($url));
     }
 
-    public static function find($id)
+    public static function findById($id)
     {
         $devices = static::all();
         foreach($devices as $device)
@@ -90,7 +101,7 @@ class Device extends BaseModel
 
     public static function where($key, $value)
     {
-        $url = "orgs/" . static::getOrgId() . "/inventory" . "?" . $key . "=" . $value;
+        $url = "orgs/" . static::getOrgId() . "/inventory?vc=true&" . $key . "=" . $value;
         return static::hydrateMany(static::getQuery()->get($url));
     }
 

@@ -109,12 +109,18 @@ class Devices extends BaseModel
 
     public function getIpAddress()
     {
+        /*
         $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
         if(isset($this->primary_ip->address))
         {
             $ip = $this->primary_ip->address;
             preg_match($reg, $ip, $hits);
             return $hits[1];
+        }
+        /**/
+        if(isset($this->custom_fields->mgmt_ip))
+        {
+            return $this->custom_fields->mgmt_ip;
         }
     }
     
