@@ -174,6 +174,21 @@ class Sites extends BaseModel
         return $prefixes->where('site_id', $this->id)->where('role_id',6)->where('mask_length',20)->first();
     }
 
+    public function getAsns()
+    {
+        return $this->asns;
+    }
+
+    public function getPrimaryAsn()
+    {
+        return $this->asns[0];
+    }
+
+    public function assignNextAvailableAsn()
+    {
+        
+    }
+
     public function GenerateDhcpScopes()
     {
         $supernet = $this->getProvisioningSupernet();
@@ -314,4 +329,4 @@ class Sites extends BaseModel
         return $snowloc;
     }
 
-}
+ }

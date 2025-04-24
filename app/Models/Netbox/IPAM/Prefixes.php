@@ -33,4 +33,9 @@ class Prefixes extends BaseModel
         preg_match($reg, $this->prefix, $hits);
         return ['network' => $hits[1], 'bitmask' => $hits[2]];
     }
+
+    public static function getNextAvailable()
+    {
+        return self::where('status','available')->where('site','null')->first();
+    }
 }

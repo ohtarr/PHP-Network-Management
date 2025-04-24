@@ -42,7 +42,7 @@ class QueryBuilder
         return collect($objects);
     }
 
-    public function get()
+    public function get($customurl=null)
     {
         $results = [];
         $guzzleparams = [
@@ -50,7 +50,12 @@ class QueryBuilder
             'query' =>  $this->search,
         ];
         $client = new GuzzleClient();
-        $url = $this->buildUrl();
+        if($customurl)
+        {
+            $url = $customurl;
+        } else {
+            $url = $this->buildUrl();
+        }
 
         $response = $client->request('GET', $url, $guzzleparams);
         $body = $response->getBody()->getContents();
@@ -83,6 +88,25 @@ class QueryBuilder
             }
         }
         return $this->hydrateMany($results);
+    }
+
+    public function customGet($url)
+    {
+        $guzzleparams = [
+            'headers'   =>  $this->headers,
+            'query' =>  $this->search,
+        ];
+        $client = new GuzzleClient();
+
+        $response = $client->request('GET', $url, $guzzleparams);
+        $body = $response->getBody()->getContents();
+        $results = json_decode($body);
+        if(is_array($results))
+        {
+            return collect($results);
+        } else {
+            return $results;
+        }
     }
 
     public function first()

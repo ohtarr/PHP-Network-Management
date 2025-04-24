@@ -29,10 +29,10 @@ class BaseModel
         return $qb;
     }
 
-    public static function get()
+    public static function get($url=null)
     {
         $query = static::getQuery();
-        return $query->get();
+        return $query->get($url);
     }
 
     public static function all()

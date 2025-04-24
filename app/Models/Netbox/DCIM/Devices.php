@@ -118,10 +118,15 @@ class Devices extends BaseModel
             return $hits[1];
         }
         /**/
-        if(isset($this->custom_fields->mgmt_ip))
-        {
-            return $this->custom_fields->mgmt_ip;
-        }
+
+        if(isset($this->custom_fields->ip)) {
+            return $this->custom_fields->ip;
+        } elseif(isset($this->virtual_chassis->master->id)) {
+            $master = self::find($this->virtual_chassis->master->id);
+            if(isset($master->custom_fields->ip))
+            {
+                return $master->custom_fields->ip;
+            }
+        }     
     }
-    
 }
