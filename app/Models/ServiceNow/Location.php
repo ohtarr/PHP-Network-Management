@@ -91,6 +91,7 @@ class Location extends ServiceNowModel
 
     public function getNetboxSiteGroup()
 	{
+        $sitegroupname = "JOBSITE";
         foreach($this->netbox_sitegroup_map as $snowkey => $netboxkey)
         {
             if($this->u_site_type == $snowkey)

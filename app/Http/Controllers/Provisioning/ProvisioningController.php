@@ -71,7 +71,7 @@ class ProvisioningController extends Controller
     public function deployNetboxSite(Request $request, $sitecode)
     {
         //Attempt to get existing snow location.
-        $snowloc = Location::where('name', $sitecode)->first();
+        $snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
         if(!$snowloc)
         {
             $return['status'] = 0;
