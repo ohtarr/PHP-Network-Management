@@ -16,20 +16,33 @@ use App\Models\Gizmo\Dhcp;
 
 class ProvisioningController extends Controller
 {
+    public $logs = [];
 
     public function __construct()
     {
 	    $this->middleware('auth:api');
     }
 
+    public function addLog($status, $msg)
+    {
+        $this->logs[] = [
+            'status'    =>  $status,
+            'msg'       =>  $msg,
+        ];
+    }
+
     public function getSnowLocations()
     {
+        $totalstatus = 1;
         $locs = Location::where('companyISNOTEMPTY')->where('u_network_mob_dateISEMPTY')->where('u_network_demob_dateISEMPTY')->get();
         if(!$locs)
         {
-            $return['status'] = 0;
-            $return['msg'] = "SNOW LOCATIONS were unable to be retreived.";
-            return json_encode($return);           
+            $this->addLog(0, "Unable to find valid SNOW location.");
+            $totalstatus = 0;
+
+            $return['status'] = $totalstatus;
+            $return['log'] = $this->logs;
+            return json_encode($return);
         }
         foreach($locs as $loc)
         {
@@ -39,9 +52,9 @@ class ProvisioningController extends Controller
             }
         }
         sort($sitecodes);
-        $return['status'] = 1;
-        $return['msg'] = "SNOW LOCATIONS successfully retreived.";
-        //$return['count'] = count($sitecodes);
+        $this->addLog(1, "SNOW LOCATIONS successfully retreived.");
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
         $return['data'] = $sitecodes;
         return json_encode($return);
     }
@@ -51,13 +64,15 @@ class ProvisioningController extends Controller
         $loc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->get();
         if($loc)
         {
+            $this->addLog(1, "SNOW LOCATION successfully retreived.");
             $return['status'] = 1;
-            $return['msg'][] = "SNOW LOCATION successfully retreived.";
+            $return['log'] = $this->logs;
             $return['data'] = $loc;
             return json_encode($return);
         } else {
+            $this->addLog(0, "SNOW LOCATION was not found.");
             $return['status'] = 0;
-            $return['msg'][] = "SNOW LOCATION was not found.";
+            $return['log'] = $this->logs;
             return json_encode($return);
         }
     }
@@ -70,30 +85,35 @@ class ProvisioningController extends Controller
 
     public function deployNetboxSite(Request $request, $sitecode)
     {
+        $totalstatus = 1;
         //Attempt to get existing snow location.
         $snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
         if(!$snowloc)
         {
-            $return['status'] = 0;
-            $return['msg'][] = "Unable to find valid SNOW location."; 
+            $totalstatus = 0;
+            $return['status'] = $totalstatus;
+            $this->addLog(0, "Unable to find valid SNOW location.");
+            $return['log'] = $this->logs;
             return json_encode($return);
         } else {
-            $return['msg'][] = "Found SNOW location ID {$snowloc->sys_id}."; 
+            $this->addLog(1, "Found SNOW location ID {$snowloc->sys_id}.");
         }
 
         //Attempt to get existing netbox site.
         $netboxsite = Sites::where('name__ie', $sitecode)->first();
         if(isset($netboxsite->id))
         {
-            $return['msg'][] = "Netbox SITE ID {$netboxsite->id} already exists.";
+            $this->addLog(1, "Netbox SITE ID {$netboxsite->id} already exists.");
         } else {
             $netboxsite = $snowloc->createNetboxSite();
             if(isset($netboxsite->id))
             {
-                $return['msg'][] = "Created Netbox SITE ID {$netboxsite->id}.";
+                $this->addLog(1, "Created Netbox SITE ID {$netboxsite->id}.");
             } else {
-                $return['msg'][] = "Failed to create new Netbox SITE.";
-                $return['status'] = 0;
+                $totalstatus = 0;
+                $this->addLog(0, "Failed to create new Netbox SITE.");
+                $return['status'] = $totalstatus;
+                $return['log'] = $this->logs;
                 return json_encode($return);
             }
         }
@@ -102,13 +122,13 @@ class ProvisioningController extends Controller
         $asn = $netboxsite->getAsns();
         if($asn)
         {
-            $return['msg'][] = "ASN already exists..";
+            $this->addLog(1, "ASN already exists..");
         } else {
             //create ASN
             $newasn = AsnRanges::where('name','AUTO-PROVISIONING')->first()->getNextAvailableAsn();
             if(isset($newasn->asn))
             {
-                $return['msg'][] = "Available ASN {$newasn->asn} has been found.";
+                $this->addLog(1, "Available ASN {$newasn->asn} has been found.");
                 $asn = Asns::where('asn',$newasn->asn)->first();
                 if(!isset($asn->id))
                 {
@@ -119,29 +139,34 @@ class ProvisioningController extends Controller
                     $asn = Asns::create($params);
                     if(isset($asn->id))
                     {
-                        $return['msg'][] = "Created new ASN ID {$asn->id}.";
-
+                        $this->addLog(1, "Created new ASN ID {$asn->id}.");
                         $params = [
                             'asns'  =>  [$asn->id],
                         ];
                         $netboxsite = $netboxsite->update($params);
                         if(isset($netboxsite->id))
                         {
-                            $return['msg'][] = "Assigned ASN ID {$asn->id} to site.";
+                            $this->addLog(1, "Assigned ASN ID {$asn->id} to site.");
                         } else {
-                            $return['msg'][] = "Failed to assign ASN ID {$asn->id} to site.";
-                            $return['status'] = 0;
+                            $totalstatus = 0;
+                            $this->addLog(0, "Failed to assign ASN ID {$asn->id} to site.");
+                            $return['status'] = $totalstatus;
+                            $return['log'] = $this->logs;
                             return $return;                            
                         }
                     } else {
-                        $return['msg'][] = "Failed to find a new ASN.";
-                        $return['status'] = 0;
+                        $totalstatus = 0;
+                        $this->addLog(0, "Failed to find a new ASN.");
+                        $return['status'] = $totalstatus;
+                        $return['log'] = $this->logs;
                         return $return;
                     }
                 }
             } else {
-                $return['msg'][] = "Failed to find a new ASN.";
-                $return['status'] = 0;
+                $totalstatus = 0;
+                $this->addLog(0, "Failed to find a new ASN.");
+                $return['status'] = $totalstatus;
+                $return['log'] = $this->logs;
                 return $return;
             }
         }
@@ -149,13 +174,13 @@ class ProvisioningController extends Controller
         $supernets = $netboxsite->getSupernets();
         if($supernets->isNotEmpty())
         {
-            $return['msg'][] = "SUPERNET {$supernets->first()->prefix} already exists..";
+            $this->addLog(1, "SUPERNET {$supernets->first()->prefix} already exists..");
         } else {
             //create SUPERNET
             $supernet = Prefixes::getNextAvailable();
             if(isset($supernet->id))
             {
-                $return['msg'][] = "Found next available SUPERNET {$supernet->prefix}.";
+                $this->addLog(1, "Found next available SUPERNET {$supernet->prefix}.");
                 $params = [
                     'site'      =>  $netboxsite->id,
                     'status'    =>  'container',
@@ -164,10 +189,12 @@ class ProvisioningController extends Controller
                 $updatedsn = $supernet->update($params);
                 if($updatedsn->id)
                 {
-                    $return['msg'][] = "Assigned PREFIX {$updatedsn->prefix} to site.";
+                    $this->addLog(1, "Assigned PREFIX {$updatedsn->prefix} to site.");
                 } else {
-                    $return['msg'][] = "Failed to assign PREFIX {$supernet->prefix} to site.";
-                    $return['status'] = 0;
+                    $totalstatus = 0;
+                    $this->addLog(0, "Failed to assign PREFIX {$supernet->prefix} to site.");
+                    $return['status'] = $totalstatus;
+                    $return['log'] = $this->logs;
                     return $return;
                 }
             }
@@ -176,7 +203,7 @@ class ProvisioningController extends Controller
         $location = Locations::where('site_id',$netboxsite->id)->where('name','MAIN_MDF')->first();
         if(isset($location->id))
         {
-            $return['msg'][] = "Location ID {$location->id} already exists.";
+            $this->addLog(1, "Location ID {$location->id} already exists.");
         } else {
             $params = [
                 'name'  =>  'MAIN_MDF',
@@ -187,17 +214,20 @@ class ProvisioningController extends Controller
     
             if(isset($location->id))
             {
-                $return['msg'][] = "Created Location ID {$location->id} and added to site.";
+                $this->addLog(1, "Created Location ID {$location->id} and added to site.");
             } else {
-                $return['msg'][] = "Failed to create Location.";
-                $return['status'] = 0;
+                $totalstatus = 0;
+                $this->addLog(0, "Failed to create Location.");
+                $return['status'] = $totalstatus;
+                $return['log'] = $this->logs;
                 return $return;
             }
         }
 
         //return fresh copy of Netbox Site
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
         $return['data'] = Sites::find($netboxsite->id);
-        $return['status'] = 1;
         return $return;
     }
 
