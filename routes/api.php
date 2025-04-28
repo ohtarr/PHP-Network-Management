@@ -56,4 +56,4 @@ Route::get('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provision
 Route::post('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxSite']);
 Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopes']);
 
-
+Route::get('validation/netboxsite/{sitecode}', [App\Http\Controllers\Validation\ValidationController::class, 'validateNetboxSite']);
