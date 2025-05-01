@@ -12,7 +12,6 @@ use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Roles;
 use App\Models\ServiceNow\Location;
-use App\Models\Gizmo\Dhcp;
 
 class ProvisioningController extends Controller
 {
@@ -119,21 +118,21 @@ class ProvisioningController extends Controller
         }
 
         //Attempt to get existing ASN, if none create new.
-        $asn = $netboxsite->getAsns();
-        if($asn)
+        $asns = $netboxsite->getAsns();
+        if(isset($asns->first()->asn))
         {
-            $this->addLog(1, "ASN already exists..");
+            $this->addLog(1, "ASN {$asns->first()->asn} already exists..");
         } else {
             //create ASN
-            $newasn = AsnRanges::where('name','AUTO-PROVISIONING')->first()->getNextAvailableAsn();
-            if(isset($newasn->asn))
+            $newasn = Asns::getNextAvailable();
+            if(isset($newasn))
             {
-                $this->addLog(1, "Available ASN {$newasn->asn} has been found.");
-                $asn = Asns::where('asn',$newasn->asn)->first();
+                $this->addLog(1, "Available ASN {$newasn} has been found.");
+                $asn = Asns::where('asn',$newasn)->first();
                 if(!isset($asn->id))
                 {
                     $params = [
-                        'asn'   =>  $newasn->asn,
+                        'asn'   =>  $newasn,
                         'rir'   =>  1,
                     ];
                     $asn = Asns::create($params);
@@ -171,10 +170,10 @@ class ProvisioningController extends Controller
             }
         }
 
-        $supernets = $netboxsite->getSupernets();
-        if($supernets->isNotEmpty())
+        $siteprovsupernet = $netboxsite->getProvisioningSupernet();
+        if(isset($siteprovsupernet->id))
         {
-            $this->addLog(1, "SUPERNET {$supernets->first()->prefix} already exists..");
+            $this->addLog(1, "SUPERNET {$siteprovsupernet->prefix} already exists..");
         } else {
             //create SUPERNET
             $supernet = Prefixes::getNextAvailable();
@@ -185,11 +184,12 @@ class ProvisioningController extends Controller
                     'site'      =>  $netboxsite->id,
                     'status'    =>  'container',
                     'role'      =>  6,
+                    'vrf'       =>  2,
                 ];
-                $updatedsn = $supernet->update($params);
-                if($updatedsn->id)
+                $siteprovsupernet = $supernet->update($params);
+                if($siteprovsupernet->id)
                 {
-                    $this->addLog(1, "Assigned PREFIX {$updatedsn->prefix} to site.");
+                    $this->addLog(1, "Assigned PREFIX {$siteprovsupernet->prefix} to site.");
                 } else {
                     $totalstatus = 0;
                     $this->addLog(0, "Failed to assign PREFIX {$supernet->prefix} to site.");
@@ -200,10 +200,44 @@ class ProvisioningController extends Controller
             }
         }
 
-        $location = Locations::where('site_id',$netboxsite->id)->where('name','MAIN_MDF')->first();
+        //Subnets
+        $provprefixes = $netboxsite->generateSitePrefix();
+        if(isset($siteprovsupernet->vrf->id))
+        {
+            $vrfid = $siteprovsupernet->vrf->id;
+        } else {
+            $vrfid = 2;
+        }
+        foreach($provprefixes as $provprefix)
+        {
+            unset($prefix);
+            unset($params);
+            $prefix = Prefixes::where('prefix', $provprefix['network'] . "/" . $provprefix['bitmask'])->first();
+            if(isset($prefix->id))
+            {
+                //check if prefix is configured right
+            } else {
+                //create new prefix
+                $params = [
+                    'site'          =>  $netboxsite->id,
+                    'prefix'        =>  $provprefix['network'] . "/" . $provprefix['bitmask'],
+                    'status'        =>  $provprefix['status'],
+                    'description'   =>  $provprefix['description'],
+                    'role'          =>  $provprefix['role'],
+                    'vrf'           =>  $vrfid,
+                ];
+                $prefix = Prefixes::create($params);
+                if(isset($prefix->id))
+                {
+                    $this->addLog(1, "Created subnet {$prefix->prefix}.");
+                }
+            }
+        }
+
+        $location = $netboxsite->getDefaultLocation();
         if(isset($location->id))
         {
-            $this->addLog(1, "Location ID {$location->id} already exists.");
+            $this->addLog(1, "Default Location ID {$location->id} already exists.");
         } else {
             $params = [
                 'name'  =>  'MAIN_MDF',
@@ -233,13 +267,89 @@ class ProvisioningController extends Controller
 
     public function getDhcpScopes($sitecode)
     {
-        $scope = Dhcp::getScopesBySitecode($sitecode);
-        return json_encode($scope);
+        $site = Sites::where('name__ic', $sitecode)->first();
+        if(!isset($site->id))
+        {
+            return null;
+        }
+        return $site->getDhcpScopes();
     }
 
-    public function deployDhcpScopes(Request $request, $sitecode)
+    public function deployDhcpScope($sitecode, $vlan)
     {
+        $vlans = [1,5,9,13];
+        if($vlan)
+        {
+            if(!in_array($vlan, $vlans))
+            {
+                $this->addLog(0, "Vlan {$vlan} is not valid for site {$sitecode}.");
+                $return['status'] = 0;
+                $return['log'] = $this->logs;
+                $return['data'] = null;
+                return $return;
+            }
+        }
 
+        $site = Sites::where('name__ic', $sitecode)->first();
+        if(!isset($site->id))
+        {
+            $this->addLog(0, "Unable to find site with name {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+
+        $totalstatus = 1;
+
+        $scope = $site->deployDhcpScope($vlan);
+
+        if(isset($scope->scopeID))
+        {
+            $this->addLog(1, "Deployed DHCP scope {$scope->scopeID} for site {$sitecode}.");
+        } else {
+            $totalstatus = 0;
+            $this->addLog(0, "Failed to deploy DHCP scope for vlan {$vlan} for site {$sitecode}.");
+        }
+
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = $scope;
+        return $return;
+    }
+
+    public function deployDhcpScopes($sitecode)
+    {
+        $vlans = [1,5,9,13];
+
+        $site = Sites::where('name__ic', $sitecode)->first();
+        if(!isset($site->id))
+        {
+            $this->addLog(0, "Unable to find site with name {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+
+        $totalstatus = 1;
+        foreach($vlans as $vlan)
+        {
+            unset($scope);
+            $scope = $site->deployDhcpScope($vlan);
+            if(isset($scope->scopeID))
+            {
+                $scopes[] = $scope;
+                $this->addLog(1, "Deployed DHCP scope {$scope->scopeID} for site {$sitecode}.");                
+            } else {
+                $this->addLog(0, "Failed to deploy DHCP scope for vlan {$vlan} for site {$sitecode}.");                
+            }
+        }
+
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = $scopes;
+        return $return;
     }
 
     public function getMistSite($sitecode)

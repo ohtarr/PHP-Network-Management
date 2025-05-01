@@ -11,9 +11,13 @@ class Asns extends BaseModel
     protected $app = "ipam";
     protected $model = "asns";
 
-    public function getNextAvailable()
+    public static function getNextAvailable()
     {
-
+        $available = AsnRanges::where('name','AUTO-PROVISIONING')->first()->getNextAvailableAsn();
+        if(isset($available->asn))
+        {
+            return $available->asn;
+        }
     }
 
     public function getAssignedSites()

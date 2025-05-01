@@ -18,7 +18,7 @@ class Dhcp extends Gizmo
 
     ];
 
-    public function getToken()
+    public static function getToken()
     {
         return Azure::getToken('api://' . env('GIZMO_CLIENT_ID') . '/.default');
     }
@@ -54,7 +54,6 @@ class Dhcp extends Gizmo
         ];
 
         $client = new GuzzleHttpClient();
-        //Build a Guzzle POST request
         $apiRequest = $client->request($verb, $url, $params);
         $response = $apiRequest->getBody()->getContents();
         $array = json_decode($response,true);
@@ -386,7 +385,7 @@ class Dhcp extends Gizmo
 			'headers'   =>  [
 				'Content-Type'  => 'application/json',
 				'Accept'        => 'application/json',
-		        'Authorization'   => 'Bearer ' . $this->getToken(),
+		        'Authorization'   => 'Bearer ' . self::getToken(),
 				//'Authorization' => $token,
 			],
 			'body'  =>  json_encode($body),

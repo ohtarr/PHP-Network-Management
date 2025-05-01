@@ -7,6 +7,7 @@ use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\DCIM\Locations;
 use App\Models\ServiceNow\Location;
 use IPv4\SubnetCalculator;
+use App\Models\Gizmo\Dhcp;
 
 #[\AllowDynamicProperties]
 class Sites extends BaseModel
@@ -162,6 +163,11 @@ class Sites extends BaseModel
         return $prefixes->where('site_id', $this->id)->get();
     }
 
+    public function getActivePrefixes()
+    {
+        return Prefixes::where('site_id', $this->id)->where('status', 'active')->get();
+    }
+
     public function getSupernets()
     {
         $prefixes = new Prefixes($this->query);
@@ -176,7 +182,7 @@ class Sites extends BaseModel
 
     public function getAsns()
     {
-        return $this->asns;
+        return collect($this->asns);
     }
 
     public function getPrimaryAsn()
@@ -189,10 +195,63 @@ class Sites extends BaseModel
 
     }
 
-    public function GenerateDhcpScopes()
+    public function generateSitePrefix($vlan = null)
     {
         $supernet = $this->getProvisioningSupernet();
-        if(!$supernet)
+        if(!isset($supernet->id))
+        {
+            return null;
+        }
+
+        $IPV4LONG = ip2long($supernet->cidr()['network']);
+        $params = [
+            1   =>  [
+                "network"		=> long2ip($IPV4LONG),
+                "netmask"		=> "255.255.252.0",
+                "bitmask"       => 22,
+                "description"	=> $this->name . " VLAN 1 - WIRED",
+                "status"        => "active",
+                "role"          => 1,
+            ],
+            5   =>  [
+                "network"		=> long2ip($IPV4LONG + 1024),
+                "netmask"		=> "255.255.252.0",
+                "bitmask"       => 22,
+                "description"	=> $this->name . " VLAN 5 - WIRELESS",
+                "status"        => "active",
+                "role"          => 2,
+            ],
+            9   =>  [
+                "network"		=> long2ip($IPV4LONG + 2048),
+                "netmask"		=> "255.255.252.0",
+                "bitmask"       => 22,
+                "description"	=> $this->name . " VLAN 9 - VOICE",
+                "status"        => "active",
+                "role"          => 3,
+            ],
+            13   =>  [
+                "network"		=> long2ip($IPV4LONG + 3072),
+                "netmask"		=> "255.255.254.0",
+                "bitmask"       => 23,
+                "description"	=> $this->name . " VLAN 13 - RESTRICTED",
+                "status"        => "active",
+                "role"          => 4,
+            ],
+        ];
+        if(!$vlan)
+        {
+            return $params;
+        } elseif($vlan && isset($params[$vlan])){
+            return $params[$vlan];
+        } else {
+            return null;
+        }
+    }
+
+    public function generateDns()
+    {
+        $supernet = $this->getProvisioningSupernet();
+        if(!isset($supernet->id))
         {
             return null;
         }
@@ -209,87 +268,203 @@ class Sites extends BaseModel
 				'10.251.12.190',
 			];
         }
+        return $dns;        
+    }
+
+    public function generateDhcpScopes($vlan = null)
+    {
+        $supernet = $this->getProvisioningSupernet();
+        if(!isset($supernet->id))
+        {
+            return null;
+        }
+        $dns = $this->generateDns();
+
         $IPV4LONG = ip2long($supernet->cidr()['network']);
-        $SCOPES = [];
-
-        $calc = new SubnetCalculator(long2ip($IPV4LONG),22);
-        $SCOPES[long2ip($IPV4LONG)] = [
-			"name"			=> $this->name . " VLAN 1 - WIRED",
-			"description"	=> $this->name . " VLAN 1 - WIRED",
-			"network"		=> long2ip($IPV4LONG),
-			"gateway"		=> long2ip($IPV4LONG +    1),
-			"netmask"		=> $calc->getSubnetMask(),
-			"firstip"		=> long2ip($IPV4LONG +   50),
-			"lastip"		=> long2ip($IPV4LONG + 1010),
-			"options"		=> [
-				"003"	=>	[long2ip($IPV4LONG +    1)],
-				"006"	=>	$dns,
-				//"051"	=>	["691200"],
-				"015"	=>	["kiewitplaza.com"],
+        $vlan1 = [
+			"name"			    => $this->name . " VLAN 1 - WIRED",
+			"description"	    => $this->name . " VLAN 1 - WIRED",
+			"subnetMask"		=> "255.255.252.0",
+			"startRange"		=> long2ip($IPV4LONG +   50),
+			"endRange"		    => long2ip($IPV4LONG + 1010),
+			"dhcpOptions"		=> [
+                [
+                    'optionId'  =>  "003",
+                    'value'     =>  [long2ip($IPV4LONG +    1)],
+                ],
+                [
+                    'optionId'  =>  "006",
+                    'value'     =>  $dns,
+                ],
+                [
+                    'optionId'  =>  "015",
+                    'value'     =>  ["kiewitplaza.com"],
+                ],
 			],
 		];
-
+        $scopes[1] = $vlan1;
         $IPV4LONG += 1024;
-        $calc = new SubnetCalculator(long2ip($IPV4LONG),22);
-		$SCOPES[long2ip($IPV4LONG)] = [
-			"name"			=> $this->name . " VLAN 5 - WIRELESS",
-			"description"	=> $this->name . " VLAN 5 - WIRELESS",
-			"network"		=> long2ip($IPV4LONG),
-			"gateway"		=> long2ip($IPV4LONG +    1),
-			"netmask"		=> $calc->getSubnetMask(),
-			"firstip"		=> long2ip($IPV4LONG +   10),
-			"lastip" 		=> long2ip($IPV4LONG + 1010),
-			"options"		=>	[
-				"003" =>	[long2ip($IPV4LONG +    1)],
-				"006"	=>	$dns,
-				//"051"	=>	["36000"],
-				"015"	=>	["kiewitplaza.com"],
+        $vlan5 = [
+			"name"			    => $this->name . " VLAN 5 - WIRELESS",
+			"description"	    => $this->name . " VLAN 5 - WIRELESS",
+			"subnetMask"		=> "255.255.252.0",
+			"startRange"		=> long2ip($IPV4LONG +   10),
+			"endRange" 		    => long2ip($IPV4LONG + 1010),
+            "dhcpOptions"		=> [
+                [
+                    'optionId'  =>  "003",
+                    'value'     =>  [long2ip($IPV4LONG +    1)],
+                ],
+                [
+                    'optionId'  =>  "006",
+                    'value'     =>  $dns,
+                ],
+                [
+                    'optionId'  =>  "015",
+                    'value'     =>  ["kiewitplaza.com"],
+                ],
 			],
-		];
-
+        ];
+        $scopes[5] = $vlan5;
         $IPV4LONG += 1024;
-        $calc = new SubnetCalculator(long2ip($IPV4LONG),22);
-		$SCOPES[long2ip($IPV4LONG)] = [
-			"name"			=> $this->name . " VLAN 9 - VOICE",
-			"description"	=> $this->name . " VLAN 9 - VOICE",
-			"network"		=> long2ip($IPV4LONG),
-			"gateway"		=> long2ip($IPV4LONG +    1),
-			"netmask"		=> $calc->getSubnetMask(),
-			"firstip"		=> long2ip($IPV4LONG +   10),
-			"lastip"		=> long2ip($IPV4LONG + 1010),
-			"options"		=>	[ // 150 is TFTP server list, comma separated
-				"003"	=>	[long2ip($IPV4LONG +    1)],
-				"006"	=>	$dns,
-				"150"	=>	["10.252.11.14","10.252.22.14"],
-				//"051"	=>	["691200"],
-				"015"	=>	["kiewitplaza.com"],
+        $vlan9 = [
+			"name"			    => $this->name . " VLAN 9 - VOICE",
+			"description"	    => $this->name . " VLAN 9 - VOICE",
+			"subnetMask"		=> "255.255.252.0",
+			"startRange"		=> long2ip($IPV4LONG +   10),
+			"endRange"		    => long2ip($IPV4LONG + 1010),
+			"dhcpOptions"		=> [
+                [
+                    'optionId'  =>  "003",
+                    'value'     =>  [long2ip($IPV4LONG +    1)],
+                ],
+                [
+                    'optionId'  =>  "006",
+                    'value'     =>  $dns,
+                ],
+                [
+                    'optionId'  =>  "015",
+                    'value'     =>  ["kiewitplaza.com"],
+                ],
+                [
+                    'optionId'  =>  "150",
+                    'value'     =>  ["10.252.11.14","10.252.22.14"],
+                ],
 			],
-		];
-
+        ];
+        $scopes[9] = $vlan9;
         $IPV4LONG += 1024;
-        $calc = new SubnetCalculator(long2ip($IPV4LONG),23);
-		$SCOPES[long2ip($IPV4LONG)] = [
-			"name"			=> $this->name . " VLAN 13 - GUEST_PARTNER_JV",
-			"description"	=> $this->name . " VLAN 13 - GUEST_PARTNER_JV",
-			"network" => long2ip($IPV4LONG),
-			"gateway" => long2ip($IPV4LONG +    1),
-			"netmask" => $calc->getSubnetMask(),
-			"firstip" => long2ip($IPV4LONG +   10),
-			"lastip"  => long2ip($IPV4LONG +  500),
-			"options"   =>	[ // 006 is dns servers
-				"003"	=>	[long2ip($IPV4LONG +    1)],
-				"006"	=>	["10.251.12.189","10.251.12.190"],
-				//"051"	=>	["691200"],
-				"015"	=>	["kiewitplaza.com"],
-			]
-		];
-		return $SCOPES;
+        $vlan13 = [
+			"name"			=> $this->name . " VLAN 13 - RESTRICTED",
+			"description"	=> $this->name . " VLAN 13 - RESTRICTED",
+			"subnetMask" => "255.255.254.0",
+			"startRange" => long2ip($IPV4LONG +   10),
+			"endRange"  => long2ip($IPV4LONG +  500),
+            "dhcpOptions"		=> [
+                [
+                    'optionId'  =>  "003",
+                    'value'     =>  [long2ip($IPV4LONG +    1)],
+                ],
+                [
+                    'optionId'  =>  "006",
+                    'value'     =>  ["10.251.12.189","10.251.12.190"],
+                ],
+                [
+                    'optionId'  =>  "015",
+                    'value'     =>  ["kiewitplaza.com"],
+                ],
+			],
+        ];
+        $scopes[13] = $vlan13;
+        if(!$vlan)
+        {
+            return $scopes;
+        } elseif($vlan && isset($scopes[$vlan])){
+            return $scopes[$vlan];
+        } else {
+            return null;
+        }
+    }
+
+    public function deployDhcpScope($vlan)
+    {
+        if(!$vlan)
+        {
+            return null;
+        }
+        $params = $this->generateDhcpScopes($vlan);
+
+        try{
+            $scope = Dhcp::addScope($params);
+            if(isset($scope['scopeID']))
+            {
+                return Dhcp::make($scope);
+            }
+        } catch (\Exception $e) {
+    
+        }
+    }
+
+    public function deployDhcpScopes()
+    {
+        $vlans = [1,5,9,13];
+        $scopes = [];
+        foreach($vlans as $vlan)
+        {
+            $scopes[] = $this->deployDhcpScope($vlan);
+        }
+        return collect($scopes);
+    }
+
+/*     public function deployDhcpScopes()
+    {
+        $scopes = [];
+        $newscopes = $this->GenerateDhcpScopes();
+        foreach($newscopes as $newscope)
+        {
+            unset($scope);
+            try{
+                $scope = Dhcp::addScope($newscope);
+                if(isset($scope['scopeID']))
+                {
+                    $scopes[] = $scope;
+                }
+            } catch (\Exception $e) {
+
+            }
+        }
+        return collect($scopes);
+    } */
+
+    public function getDhcpScopesBySitecode()
+    {
+        return Dhcp::getScopesBySitecode($this->name);
+    }
+
+    public function getDhcpScopes()
+    {
+        $active = $this->getActivePrefixes();
+        foreach($active as $prefix)
+        {
+            $scope = $prefix->getDhcpScope();
+            if(isset($scope->scopeID))
+            {
+                $dhcp[] = $scope;
+            }
+
+        }
+        return collect($dhcp);
     }
 
     public function locations()
     {
         $locations = new Locations($this->query);
         return $locations->where('site_id', $this->id)->get();
+    }
+
+    public function getDefaultLocation()
+    {
+        return Locations::where('site_id', $this->id)->where('ordering', 'id')->first();
     }
 
     public function getServiceNowLocationByName()
