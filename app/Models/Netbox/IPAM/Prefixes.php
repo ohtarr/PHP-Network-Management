@@ -169,8 +169,8 @@ class Prefixes extends BaseModel
             ];
         } elseif($this->role->name == "RESTRICTED") {
             $params = [
-                "name"			    => $site->name . " VLAN 13 - RESTRICTED",
-                "description"	    => $site->name . " VLAN 13 - RESTRICTED",
+                "name"			    => $this->site->name . " VLAN 13 - RESTRICTED",
+                "description"	    => $this->site->name . " VLAN 13 - RESTRICTED",
                 "subnetMask"        => $this->netmask(),
                 "startRange"        => long2ip(ip2long($this->network()) +   10),
                 "endRange"          => long2ip(ip2long($this->network()) +  500),    

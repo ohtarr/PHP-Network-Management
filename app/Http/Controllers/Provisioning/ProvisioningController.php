@@ -287,8 +287,18 @@ class ProvisioningController extends Controller
         }
 
         $totalstatus = 1;
+
+        $exists = $prefix->getDhcpScope();
+        if(isset($exists->scopeID))
+        {
+            $this->addLog(0, "Scope {$prefix->cidr()['network']} already exists for {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+
         $scope = null;
-        
         try{
             $start = microtime(true);
             $scope = $prefix->deployDhcpScope();
