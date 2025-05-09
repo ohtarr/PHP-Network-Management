@@ -287,7 +287,8 @@ class ProvisioningController extends Controller
         }
 
         $totalstatus = 1;
-
+        $scope = null;
+        
         try{
             $start = microtime(true);
             $scope = $prefix->deployDhcpScope();
