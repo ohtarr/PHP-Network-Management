@@ -279,7 +279,11 @@ class ProvisioningController extends Controller
         $prefix = Prefixes::where('site_id',$site->id)->where('status','active')->where('role_id',$roleid)->first();
         if(!isset($prefix->id))
         {
-            return null;
+            $this->addLog(0, "Unable to find PREFIX with role_id {$roleid} for {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
         }
 
         $totalstatus = 1;
