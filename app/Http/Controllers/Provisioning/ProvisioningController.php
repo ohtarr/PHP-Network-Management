@@ -201,36 +201,15 @@ class ProvisioningController extends Controller
         }
 
         //Subnets
-        $provprefixes = $netboxsite->generateSitePrefix();
-        if(isset($siteprovsupernet->vrf->id))
-        {
-            $vrfid = $siteprovsupernet->vrf->id;
-        } else {
-            $vrfid = 2;
-        }
-        foreach($provprefixes as $provprefix)
+        foreach($netboxsite->vlanToRoleMapping() as $vlan => $roleid)
         {
             unset($prefix);
-            unset($params);
-            $prefix = Prefixes::where('prefix', $provprefix['network'] . "/" . $provprefix['bitmask'])->first();
+            $prefix = $netboxsite->deployActivePrefix($vlan);
             if(isset($prefix->id))
             {
-                //check if prefix is configured right
+                $this->addLog(1, "Created PREFIX {$prefix->prefix} for vlan {$vlan}.");
             } else {
-                //create new prefix
-                $params = [
-                    'site'          =>  $netboxsite->id,
-                    'prefix'        =>  $provprefix['network'] . "/" . $provprefix['bitmask'],
-                    'status'        =>  $provprefix['status'],
-                    'description'   =>  $provprefix['description'],
-                    'role'          =>  $provprefix['role'],
-                    'vrf'           =>  $vrfid,
-                ];
-                $prefix = Prefixes::create($params);
-                if(isset($prefix->id))
-                {
-                    $this->addLog(1, "Created subnet {$prefix->prefix}.");
-                }
+                $this->addLog(0, "Failed to create PREFIX for vlan {$vlan}.");
             }
         }
 
@@ -277,19 +256,6 @@ class ProvisioningController extends Controller
 
     public function deployDhcpScope($sitecode, $vlan)
     {
-        $vlans = [1,5,9,13];
-        if($vlan)
-        {
-            if(!in_array($vlan, $vlans))
-            {
-                $this->addLog(0, "Vlan {$vlan} is not valid for site {$sitecode}.");
-                $return['status'] = 0;
-                $return['log'] = $this->logs;
-                $return['data'] = null;
-                return $return;
-            }
-        }
-
         $site = Sites::where('name__ic', $sitecode)->first();
         if(!isset($site->id))
         {
@@ -300,13 +266,35 @@ class ProvisioningController extends Controller
             return $return;
         }
 
+        if(!isset($vlan) || !isset($site->vlanToRoleMapping()[$vlan]))
+        {
+            $this->addLog(0, "Vlan {$vlan} is not valid for site {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+
+        $roleid = $site->vlanToRoleMapping()[$vlan];
+        $prefix = Prefixes::where('site_id',$site->id)->where('status','active')->where('role_id',$roleid)->first();
+        if(!isset($prefix->id))
+        {
+            return null;
+        }
+
         $totalstatus = 1;
 
-        $scope = $site->deployDhcpScope($vlan);
+        try{
+            $start = microtime(true);
+            $scope = $prefix->deployDhcpScope();
+            $end = microtime(true);
+        } catch (\Exception $e) {
+            
+        }
 
         if(isset($scope->scopeID))
         {
-            $this->addLog(1, "Deployed DHCP scope {$scope->scopeID} for site {$sitecode}.");
+            $this->addLog(1, "Deployed DHCP scope {$scope->scopeID} for site {$sitecode} in " . round($end - $start,1) . " seconds.");
         } else {
             $totalstatus = 0;
             $this->addLog(0, "Failed to deploy DHCP scope for vlan {$vlan} for site {$sitecode}.");
@@ -315,40 +303,6 @@ class ProvisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = $scope;
-        return $return;
-    }
-
-    public function deployDhcpScopes($sitecode)
-    {
-        $vlans = [1,5,9,13];
-
-        $site = Sites::where('name__ic', $sitecode)->first();
-        if(!isset($site->id))
-        {
-            $this->addLog(0, "Unable to find site with name {$sitecode}.");
-            $return['status'] = 0;
-            $return['log'] = $this->logs;
-            $return['data'] = null;
-            return $return;
-        }
-
-        $totalstatus = 1;
-        foreach($vlans as $vlan)
-        {
-            unset($scope);
-            $scope = $site->deployDhcpScope($vlan);
-            if(isset($scope->scopeID))
-            {
-                $scopes[] = $scope;
-                $this->addLog(1, "Deployed DHCP scope {$scope->scopeID} for site {$sitecode}.");                
-            } else {
-                $this->addLog(0, "Failed to deploy DHCP scope for vlan {$vlan} for site {$sitecode}.");                
-            }
-        }
-
-        $return['status'] = $totalstatus;
-        $return['log'] = $this->logs;
-        $return['data'] = $scopes;
         return $return;
     }
 

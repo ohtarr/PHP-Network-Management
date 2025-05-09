@@ -56,6 +56,12 @@ class Prefixes extends BaseModel
         return $this->cidr()['bitmask'];
     }
 
+    public function netmask()
+    {
+        $ipcalc = new SubnetCalculator($this->network(), $this->length());
+        return $ipcalc->getSubnetMask();
+    }
+
     public static function getNextAvailable()
     {
         return self::where('status','available')->where('site','null')->where('mask_length', 20)->first();
@@ -89,4 +95,109 @@ class Prefixes extends BaseModel
         }
         return collect($scopes);
     } */
+
+    public function generateDhcpScope()
+    {
+        //$site = $this->site();
+        //$sitesupernet = $site->getProvisioningSupernet();
+        //if(!isset($sitesupernet->id))
+        //{
+        //    return null;
+        //}
+        if(!isset($this->role->id))
+        {
+            return null;
+        }
+        //if($sitesupernet->vrf->name == "V101:DATACENTER")
+        if($this->vrf->name == "V101:DATACENTER")
+        {
+            $dns = [
+				'10.252.13.134',
+				'10.252.13.133',
+				'10.252.13.135'
+			];
+        } else {
+            $dns = [
+				'10.251.12.189',
+				'10.251.12.190',
+			];
+        }
+
+        $optionsparams = [
+            [
+                'optionId'  =>  "3",
+                'value'     =>  [long2ip(ip2long($this->network()) +   1)],
+            ],
+            [
+                'optionId'  =>  "6",
+                'value'     =>  $dns,
+            ],
+            [
+                'optionId'  =>  "15",
+                'value'     =>  ["kiewitplaza.com"],
+            ],
+        ];
+
+        if($this->role->name == "WIRED")
+        {
+            $params = [
+                "name"			    => $this->site->name . " VLAN 1 - WIRED",
+                "description"	    => $this->site->name . " VLAN 1 - WIRED",
+                "subnetMask"		=> $this->netmask(),
+                "startRange"		=> long2ip(ip2long($this->network()) +   50),
+                "endRange"		    => long2ip(ip2long($this->network()) + 1010),
+            ];
+        } elseif($this->role->name == "WIRELESS") {
+            $params = [
+                "name"			    => $this->site->name . " VLAN 5 - WIRELESS",
+                "description"	    => $this->site->name . " VLAN 5 - WIRELESS",
+                "subnetMask"		=> $this->netmask(),
+                "startRange"		=> long2ip(ip2long($this->network()) +   10),
+                "endRange" 		    => long2ip(ip2long($this->network()) + 1010),
+            ];
+        } elseif($this->role->name == "VOICE") {
+            $params = [
+                "name"			    => $this->site->name . " VLAN 9 - VOICE",
+                "description"	    => $this->site->name . " VLAN 9 - VOICE",
+                "subnetMask"		=> $this->netmask(),
+                "startRange"		=> long2ip(ip2long($this->network()) +   10),
+                "endRange"		    => long2ip(ip2long($this->network()) + 1010),
+            ];
+            $optionsparams[] = [
+                'optionId'  =>  "150",
+                'value'     =>  ["10.252.11.14","10.252.22.14"],
+            ];
+        } elseif($this->role->name == "RESTRICTED") {
+            $params = [
+                "name"			    => $site->name . " VLAN 13 - RESTRICTED",
+                "description"	    => $site->name . " VLAN 13 - RESTRICTED",
+                "subnetMask"        => $this->netmask(),
+                "startRange"        => long2ip(ip2long($this->network()) +   10),
+                "endRange"          => long2ip(ip2long($this->network()) +  500),    
+            ];
+        } else {
+            return null;
+        }
+        $params['dhcpOptions'] = $optionsparams;
+        return $params;
+    }
+
+    public function deployDhcpScope()
+    {
+        $params = $this->generateDhcpScope();
+        if(!$params)
+        {
+            return null;
+        }
+        try{
+            $scope = Dhcp::addScope($params);
+            if(isset($scope['scopeID']))
+            {
+                return Dhcp::make($scope);
+            }
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
 }

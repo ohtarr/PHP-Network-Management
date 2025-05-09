@@ -15,6 +15,16 @@ class Sites extends BaseModel
     protected $app = "dcim";
     protected $model = "sites";
 
+    public function vlanToRoleMapping()
+    {
+        return [
+            1   =>  1,
+            5   =>  2,
+            9   =>  3,
+            13  =>  4,
+        ];
+    }
+
     public function formatAddress()
     {
         $address = [
@@ -180,6 +190,26 @@ class Sites extends BaseModel
         return $prefixes->where('site_id', $this->id)->where('role_id',6)->where('mask_length',20)->first();
     }
 
+    public function getWiredPrefix()
+    {
+        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',1)->first();
+    }
+
+    public function getWirelessPrefix()
+    {
+        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',2)->first();
+    }
+
+    public function getVoicePrefix()
+    {
+        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',3)->first();
+    }
+
+    public function getRestrictedPrefix()
+    {
+        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',4)->first();
+    }
+
     public function getAsns()
     {
         return collect($this->asns);
@@ -202,6 +232,12 @@ class Sites extends BaseModel
         {
             return null;
         }
+        if(isset($supernet->vrf->id))
+        {
+            $vrfid = $supernet->vrf->id;
+        } else {
+            $vrfid = 2;
+        }
 
         $IPV4LONG = ip2long($supernet->cidr()['network']);
         $params = [
@@ -212,6 +248,7 @@ class Sites extends BaseModel
                 "description"	=> $this->name . " VLAN 1 - WIRED",
                 "status"        => "active",
                 "role"          => 1,
+                "vrf"           => $vrfid,
             ],
             5   =>  [
                 "network"		=> long2ip($IPV4LONG + 1024),
@@ -220,6 +257,7 @@ class Sites extends BaseModel
                 "description"	=> $this->name . " VLAN 5 - WIRELESS",
                 "status"        => "active",
                 "role"          => 2,
+                "vrf"           => $vrfid,
             ],
             9   =>  [
                 "network"		=> long2ip($IPV4LONG + 2048),
@@ -228,6 +266,7 @@ class Sites extends BaseModel
                 "description"	=> $this->name . " VLAN 9 - VOICE",
                 "status"        => "active",
                 "role"          => 3,
+                "vrf"           => $vrfid,
             ],
             13   =>  [
                 "network"		=> long2ip($IPV4LONG + 3072),
@@ -236,6 +275,7 @@ class Sites extends BaseModel
                 "description"	=> $this->name . " VLAN 13 - RESTRICTED",
                 "status"        => "active",
                 "role"          => 4,
+                "vrf"           => $vrfid,
             ],
         ];
         if(!$vlan)
@@ -248,193 +288,52 @@ class Sites extends BaseModel
         }
     }
 
-    public function generateDns()
+    public function deployActivePrefix($vlan)
     {
-        $supernet = $this->getProvisioningSupernet();
-        if(!isset($supernet->id))
-        {
-            return null;
-        }
-        if($supernet->vrf->name == "V101:DATACENTER")
-        {
-            $dns = [
-				'10.252.13.134',
-				'10.252.13.133',
-				'10.252.13.135'
-			];
-        } else {
-            $dns = [
-				'10.251.12.189',
-				'10.251.12.190',
-			];
-        }
-        return $dns;        
-    }
+        $provprefix = $this->generateSitePrefix($vlan);
 
-    public function generateDhcpScopes($vlan = null)
-    {
-        $supernet = $this->getProvisioningSupernet();
-        if(!isset($supernet->id))
+        $params = [
+            'site'          =>  $this->id,
+            'prefix'        =>  $provprefix['network'] . "/" . $provprefix['bitmask'],
+            'status'        =>  $provprefix['status'],
+            'description'   =>  $provprefix['description'],
+            'role'          =>  $provprefix['role'],
+            'vrf'           =>  $provprefix['vrf'],
+        ];
+        $existing = Prefixes::where("prefix", $provprefix['network'] . "/" . $provprefix['bitmask'])->where('vrf_if',$provprefix['vrf'])->first();
+        if(isset($existing->id))
         {
-            return null;
-        }
-        $dns = $this->generateDns();
-
-        $IPV4LONG = ip2long($supernet->cidr()['network']);
-        $vlan1 = [
-			"name"			    => $this->name . " VLAN 1 - WIRED",
-			"description"	    => $this->name . " VLAN 1 - WIRED",
-			"subnetMask"		=> "255.255.252.0",
-			"startRange"		=> long2ip($IPV4LONG +   50),
-			"endRange"		    => long2ip($IPV4LONG + 1010),
-			"dhcpOptions"		=> [
-                [
-                    'optionId'  =>  "003",
-                    'value'     =>  [long2ip($IPV4LONG +    1)],
-                ],
-                [
-                    'optionId'  =>  "006",
-                    'value'     =>  $dns,
-                ],
-                [
-                    'optionId'  =>  "015",
-                    'value'     =>  ["kiewitplaza.com"],
-                ],
-			],
-		];
-        $scopes[1] = $vlan1;
-        $IPV4LONG += 1024;
-        $vlan5 = [
-			"name"			    => $this->name . " VLAN 5 - WIRELESS",
-			"description"	    => $this->name . " VLAN 5 - WIRELESS",
-			"subnetMask"		=> "255.255.252.0",
-			"startRange"		=> long2ip($IPV4LONG +   10),
-			"endRange" 		    => long2ip($IPV4LONG + 1010),
-            "dhcpOptions"		=> [
-                [
-                    'optionId'  =>  "003",
-                    'value'     =>  [long2ip($IPV4LONG +    1)],
-                ],
-                [
-                    'optionId'  =>  "006",
-                    'value'     =>  $dns,
-                ],
-                [
-                    'optionId'  =>  "015",
-                    'value'     =>  ["kiewitplaza.com"],
-                ],
-			],
-        ];
-        $scopes[5] = $vlan5;
-        $IPV4LONG += 1024;
-        $vlan9 = [
-			"name"			    => $this->name . " VLAN 9 - VOICE",
-			"description"	    => $this->name . " VLAN 9 - VOICE",
-			"subnetMask"		=> "255.255.252.0",
-			"startRange"		=> long2ip($IPV4LONG +   10),
-			"endRange"		    => long2ip($IPV4LONG + 1010),
-			"dhcpOptions"		=> [
-                [
-                    'optionId'  =>  "003",
-                    'value'     =>  [long2ip($IPV4LONG +    1)],
-                ],
-                [
-                    'optionId'  =>  "006",
-                    'value'     =>  $dns,
-                ],
-                [
-                    'optionId'  =>  "015",
-                    'value'     =>  ["kiewitplaza.com"],
-                ],
-                [
-                    'optionId'  =>  "150",
-                    'value'     =>  ["10.252.11.14","10.252.22.14"],
-                ],
-			],
-        ];
-        $scopes[9] = $vlan9;
-        $IPV4LONG += 1024;
-        $vlan13 = [
-			"name"			=> $this->name . " VLAN 13 - RESTRICTED",
-			"description"	=> $this->name . " VLAN 13 - RESTRICTED",
-			"subnetMask" => "255.255.254.0",
-			"startRange" => long2ip($IPV4LONG +   10),
-			"endRange"  => long2ip($IPV4LONG +  500),
-            "dhcpOptions"		=> [
-                [
-                    'optionId'  =>  "003",
-                    'value'     =>  [long2ip($IPV4LONG +    1)],
-                ],
-                [
-                    'optionId'  =>  "006",
-                    'value'     =>  ["10.251.12.189","10.251.12.190"],
-                ],
-                [
-                    'optionId'  =>  "015",
-                    'value'     =>  ["kiewitplaza.com"],
-                ],
-			],
-        ];
-        $scopes[13] = $vlan13;
-        if(!$vlan)
-        {
-            return $scopes;
-        } elseif($vlan && isset($scopes[$vlan])){
-            return $scopes[$vlan];
+            $prefix = $existing;
         } else {
-            return null;
+            $prefix = Prefixes::create($params);
         }
+        return $prefix;
     }
 
     public function deployDhcpScope($vlan)
     {
+        $scope = null;
         if(!$vlan)
         {
             return null;
         }
-        $params = $this->generateDhcpScopes($vlan);
-
+        if(!isset($this->vlanToRoleMapping()[$vlan]))
+        {
+            return null;
+        }
+        $roleid = $this->vlanToRoleMapping[$vlan];
+        $prefix = Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',$roleid)->first();
+        if(!isset($prefix->id))
+        {
+            return null;
+        }
         try{
-            $scope = Dhcp::addScope($params);
-            if(isset($scope['scopeID']))
-            {
-                return Dhcp::make($scope);
-            }
+            $scope = $prefix->deployDhcpScope();
         } catch (\Exception $e) {
-    
+            
         }
+        return $scope;
     }
-
-    public function deployDhcpScopes()
-    {
-        $vlans = [1,5,9,13];
-        $scopes = [];
-        foreach($vlans as $vlan)
-        {
-            $scopes[] = $this->deployDhcpScope($vlan);
-        }
-        return collect($scopes);
-    }
-
-/*     public function deployDhcpScopes()
-    {
-        $scopes = [];
-        $newscopes = $this->GenerateDhcpScopes();
-        foreach($newscopes as $newscope)
-        {
-            unset($scope);
-            try{
-                $scope = Dhcp::addScope($newscope);
-                if(isset($scope['scopeID']))
-                {
-                    $scopes[] = $scope;
-                }
-            } catch (\Exception $e) {
-
-            }
-        }
-        return collect($scopes);
-    } */
 
     public function getDhcpScopesBySitecode()
     {
@@ -498,4 +397,83 @@ class Sites extends BaseModel
         return $snowloc;
     }
 
+    public function generateMistSiteVariables()
+    {
+        $subnets = $this->generateSitePrefix();
+		if(!$subnets)
+		{
+			$msg = "Unable to generate Mist Site Variables";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+		$reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3})\.0/";
+
+		$variables = [
+			'SITE_CODE'		    =>	strtoupper($this->name),
+	        'CORP_WIFI_VLAN'   	=>  5,
+			'GUEST_WIFI_VLAN'   =>  13,
+		];
+
+		foreach($subnets as $vlan => $subnet)
+		{
+			unset($hits);
+			preg_match($reg, $subnet['network'], $hits);
+			$variables['SITE_VLAN_' . $vlan . '_PREFIX'] = $hits[1];
+			$variables['SITE_VLAN_' . $vlan . '_MASK'] = $subnet['bitmask'];			
+		}
+		return $variables;
+    }
+
+    public function generateMistSiteSettings()
+    {
+        $variables = $this->generateMistSiteVariables();
+		if(!$variables)
+		{
+			$msg = "Unable to generate Mist Site Settings";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+
+		$mistsettings = [
+			'persist_config_on_device'  =>  1,
+			'switch_mgmt'   =>  [
+				'root_password' =>  env('MIST_LOCAL_ADMIN_USERNAME'),
+			],
+			'gateway_mgmt'  =>  [
+				'root_password' =>  env('MIST_LOCAL_ADMIN_PASSWORD'),
+				'app_usage'	=>	1,
+				'auto_signature_update' => [
+					'enable'		=>	false,
+					'time_of_day'	=>	'02:00',
+					'day_of_week'	=>	'sun',
+				],
+			],
+			'auto_upgrade'  =>  [
+				'enabled'   =>  null,
+				'version'   =>  'beta',
+				'time_of_day'   =>  '02:00',
+				'custom_versions'	=>	[],
+				'day_of_week'   =>  'sun',
+			],
+			'rogue' => [
+				'min_rssi' => -70,
+				'min_duration' => 10,
+				'enabled' => 1,
+				'honeypot_enabled' => 1,
+				'whitelisted_bssids' => [
+					'0' => null,
+				],
+				'whitelisted_ssids' => [
+						'0' => 'KiewitWLan',
+						'1' => 'KiewitGuest',
+						'2' => 'KiewitTV',
+				],
+			],
+		];
+
+		//Setup custom Variables for site.
+		$mistsettings['vars'] = $variables;
+		
+		return $mistsettings;
+    }
  }
