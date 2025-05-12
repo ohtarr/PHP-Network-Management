@@ -566,6 +566,10 @@ class Device extends BaseModel
         ];
         foreach($this->module_stat as $vcmember)
         {
+            if(!isset($vcmember->fpc_idx))
+            {
+                continue;
+            }
             $tmp = new \stdClass();
 
             foreach($modulekeys as $key)
