@@ -105,6 +105,26 @@ class Device extends BaseModel
         return static::hydrateMany(static::getQuery()->get($url));
     }
 
+    public function isVcMaster()
+    {
+        if($this->mac == $this->vc_mac)
+        {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
+    public function getVcMaster()
+    {
+        return static::findByMac($this->vc_mac);
+    }
+
+    public function getVcMembers()
+    {
+        return static::where('vc_mac', $this->vc_mac);
+    }
+
     public static function claim($magic)
     {
         $params = [$magic];
@@ -214,7 +234,7 @@ class Device extends BaseModel
         return $this->put($path, $attributes);
     }
 
-    public static function getModelDefinitions()
+/*     public static function getModelDefinitions()
     {
         return [
             'EX3400-48P'    =>  [
@@ -346,9 +366,9 @@ class Device extends BaseModel
                 ],
             ],
         ];
-    }
+    } */
 
-    public static function findModelTemplate($model)
+/*     public static function findModelTemplate($model)
     {
         foreach(static::getModelDefinitions() as $modeltemplate)
         {
@@ -361,7 +381,7 @@ class Device extends BaseModel
                 return $modeltemplate;
             }
         }
-    }
+    } */
 
     public function getSummary()
     {
@@ -428,7 +448,7 @@ class Device extends BaseModel
 
     }
 
-    public function getSummaryDetails()
+/*     public function getSummaryDetails()
     {
         if(!isset($this->module_stat))
         {
@@ -519,9 +539,120 @@ class Device extends BaseModel
             $this->custom->vc_members[] = $tmp;
         }
         return $this;
+    } */
+
+    public function getSummaryDetails()
+    {
+        $vcmembers = $this->getVcMembers();
+
+        //if(!isset($this->module_stat))
+        //{
+        //    $master->getSiteDeviceStats();
+        //}
+        $this->getSiteDeviceStats();
+        $vclinkreg = "/\S+\-(\d+)\/(\d+)\/(\d+)/";
+        $this->custom = new \stdClass();
+        $this->custom->vc_member_count = count($this->module_stat);
+        $this->custom->vc_members = [];
+        $portdetails = $this->getPortDetails();
+        $modulekeys = [
+            //'model',
+            'serial',
+            'mac',
+            'version',
+            'uptime',
+            'vc_state',
+            'vc_role',
+        ];
+        foreach($this->module_stat as $vcmember)
+        {
+            $tmp = new \stdClass();
+
+            foreach($modulekeys as $key)
+            {
+                if(isset($vcmember->$key))
+                {
+                    $tmp->$key = $vcmember->$key;
+                }
+            }
+            $tmp->id = $vcmember->fpc_idx;
+            foreach($vcmembers as $vcm)
+            {
+                if($vcmember->mac == $vcm->mac)
+                {
+                    $tmp->model = $vcm->model;
+                }
+            }
+            foreach($vcmember->pics as $pic)
+            {
+                $numports = 0;
+                foreach($pic->port_groups as $portgroup)
+                {
+                    $numports = $numports + $portgroup->count;
+                }
+                $pics[$pic->index] = $numports; 
+            }
+
+            foreach($pics as $picnum => $portstotal)
+            {
+                unset($ports);
+                $pic = new \stdClass();
+                $pic->id = $picnum;
+                for ($currentport = 0; $currentport < $portstotal; $currentport++)
+                {
+                    unset($match);
+                    $currentname = $vcmember->fpc_idx . "/" . $picnum . "/" . $currentport;
+                    $reg = "#" . $currentname . "$#";
+                    foreach($portdetails as $portdetail)
+                    {
+                        if(preg_match($reg, $portdetail->port_id))
+                        {
+                            $match = $portdetail;
+                            break;
+                        }
+                        if(isset($vcmember->vc_links))
+                        {
+                            foreach($vcmember->vc_links as $vclink)
+                            {
+                                if(preg_match($vclinkreg, $vclink->port_id, $hits))
+                                {
+                                    if($hits[1] == $vcmember->fpc_idx)
+                                    {
+                                        if($hits[2] == $picnum)
+                                        {
+                                            if($hits[3] == $currentport)
+                                            {
+                                                $match = $vclink;
+                                                $match->up = true; 
+                                            }
+                                        }
+                                    }
+                                }   
+                            }
+                        }
+                    }
+                    if(!isset($match))
+                    {
+                        $match = new \stdClass();
+                    }
+                    if(!isset($match->up))
+                    {
+                        $match->up = false;
+                    }
+                    $match->id = $currentport;
+                    $ports[] = (object)$match;
+                }
+                $pic->ports = $ports;
+                $tmp->pics[] = $pic;
+            }
+            //get stack ports
+            //$device->vc_members[] = $tmp;
+            $this->custom->vc_members[] = $tmp;
+        }
+        return $this;
     }
 
-    public function getSummaryDetails2()
+/*     public function getSummaryDetails2()
     {
         if(!isset($this->module_stat))
         {
@@ -636,6 +767,6 @@ class Device extends BaseModel
             $device->custom->vc_members[] = $tmp;
         }
         return $device;
-    }
+    } */
 
 }
