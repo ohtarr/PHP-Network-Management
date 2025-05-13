@@ -8,6 +8,10 @@ use App\Models\Netbox\DCIM\Locations;
 use App\Models\ServiceNow\Location;
 use IPv4\SubnetCalculator;
 use App\Models\Gizmo\Dhcp;
+use App\Models\Mist\Site;
+use App\Models\Mist\RfTemplate;
+use App\Models\Mist\NetworkTemplate;
+use App\Models\Mist\SiteGroup;
 
 #[\AllowDynamicProperties]
 class Sites extends BaseModel
@@ -419,7 +423,7 @@ class Sites extends BaseModel
 			unset($hits);
 			preg_match($reg, $subnet['network'], $hits);
 			$variables['SITE_VLAN_' . $vlan . '_PREFIX'] = $hits[1];
-			$variables['SITE_VLAN_' . $vlan . '_MASK'] = $subnet['bitmask'];			
+			$variables['SITE_VLAN_' . $vlan . '_MASK'] = $subnet['bitmask'];
 		}
 		return $variables;
     }
@@ -437,7 +441,7 @@ class Sites extends BaseModel
 		$mistsettings = [
 			'persist_config_on_device'  =>  1,
 			'switch_mgmt'   =>  [
-				'root_password' =>  env('MIST_LOCAL_ADMIN_USERNAME'),
+				'root_password' =>  env('MIST_LOCAL_ADMIN_PASSWORD'),
 			],
 			'gateway_mgmt'  =>  [
 				'root_password' =>  env('MIST_LOCAL_ADMIN_PASSWORD'),
@@ -476,4 +480,165 @@ class Sites extends BaseModel
 		
 		return $mistsettings;
     }
+
+    public function generateMistSiteParameters()
+	{
+        $rftemplateid = env('MIST_RF_TEMPLATE_ID');
+        $networktemplateid = env('MIST_NETWORK_TEMPLATE_ID');
+   		//Check to make sure RF template exists, if not get out of here!
+        $rftemplate = RfTemplate::find($rftemplateid);
+		if(!$rftemplate)
+		{
+			$msg = 'RFTEMPLATE does not exist!';
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+
+        $networktemplate = NetworkTemplate::find($networktemplateid);
+		if(!$networktemplate)
+		{
+			$msg = 'NETWORKTEMPLATE does not exist!';
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+		
+		$snowloc = $this->getServiceNowLocation();
+		if(!isset($snowloc->sys_id))
+		{
+			$msg = "No SNOW site found!";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+		if(!$snowloc->latitude || !$snowloc->longitude)
+		{
+			$msg = "SNOW site missing latitude/longitude!  Please ensure SNOW site has proper coordinates and try again!";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+		$country_format = [
+			"USA"   =>  "US",
+			"US"	=>	"US",
+			"CAN"   =>  "CA",
+			"CA"	=>	"CA",
+			"MEX"   =>  "MX",
+			"MX"	=>	"MX",
+		];
+		
+		if(isset($country_format[$snowloc->country]))
+		{
+			$countrycode = $country_format[$snowloc->country];			
+		} else {
+			$msg = "Unsupported Country! (" . $snowloc->country . ")";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+
+		$params = [
+			'name'  => $this->name,
+			'address'   =>  '',
+			'timezone'	=>	'UTC',
+			'country_code'	=>	$countrycode,
+			'latlng' => [
+				'lat'   =>  $snowloc->latitude,
+				'lng'   =>  $snowloc->longitude,
+			],
+			'rftemplate_id' =>  $rftemplateid,
+			'networktemplate_id'    =>  $networktemplateid,
+		];
+		
+		return $params;
+	}
+
+    public function generateMistSiteGroups()
+	{
+		return [
+			env('MIST_SITE_GROUP_1'),
+			env('MIST_SITE_GROUP_2'),
+		];
+	}
+
+	public function getMistSite()
+	{
+		try{
+            $site = Site::findByName($this->name);
+		} catch (Exception $E) {
+			print "Failed to get Mist Location!\n";
+			return null;
+		}
+		return $site;
+	}
+
+    public function createMistSite()
+	{
+ 		$mistsite = $this->getMistSite();
+		if($mistsite)
+		{
+			$msg = "Mist Site already exists!";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+		$snowloc = $this->getServiceNowLocation();
+		if(!$snowloc)
+		{
+			$msg = "No SNOW site found!";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+		if($snowloc['u_network_demob_date'])
+		{
+			$msg = 'SNOW site is demobed!  The "Network Demobilization Date" MUST be blank in SNOW location!';
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+		$mistsettings = $this->generateMistSiteSettings();
+		
+		if(!$mistsettings)
+		{
+			$msg = "Unable to generate Mist Site Settings";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+
+		$sitegroupids = $this->generateMistSiteGroups();
+
+		$sitegroups = SiteGroup::all();
+
+		//check if site groups exist
+		foreach($sitegroupids as $sitegroupid)
+		{
+			$exists = 0;
+			foreach($sitegroups as $sitegroup)
+			{
+				if($sitegroupid == $sitegroup->id)
+				{
+					$exists = 1;
+					break;
+				}
+			}
+			if($exists == 0)
+			{
+				$msg = 'SITEGROUP does not exist!';
+				print $msg . PHP_EOL;
+				throw new \Exception($msg);
+			}
+
+		}
+	
+		$params = $this->generateMistSiteParameters();
+
+        $mistsite = Site::create($params);
+		if(!$mistsite)
+		{
+			$msg = "Failed to create mist site " . $this->data['sitecode'];
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+		
+		foreach($sitegroupids as $sitegroupid)
+		{
+            $mistsite = $mistsite->addToSiteGroup($sitegroupid);
+        }
+        $mistsite->updateSettings($mistsettings);
+		return $mistsite;
+	}
  }

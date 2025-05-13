@@ -148,7 +148,9 @@ class Site extends BaseModel
         $params = [
             'sitegroup_ids' =>  $groupids,
         ];
+        //$this->sitegroup_ids = $groupids;
         $this->update($params);
+        return $this->fresh();
     }
 
     public function addVariable(array $variables)

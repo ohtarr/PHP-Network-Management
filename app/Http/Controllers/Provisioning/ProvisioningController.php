@@ -12,6 +12,7 @@ use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Roles;
 use App\Models\ServiceNow\Location;
+use App\Models\Mist\Site;
 
 class ProvisioningController extends Controller
 {
@@ -328,7 +329,42 @@ class ProvisioningController extends Controller
 
     public function deployMistSite(Request $request, $sitecode)
     {
+        $netboxsite = Sites::where('name__ie', $sitecode)->first();
+        if(isset($netboxsite->id))
+        {
+            $this->addLog(1, "Netbox SITE ID {$netboxsite->id} found.");
+        } else {
+            $this->addLog(0, "Netbox SITE {$sitecode} NOT found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+        $mistsite = Site::findByName($sitecode);
+        if(!isset($mistsite->id))
+        {
+            $this->addLog(1, "Mist SITE {$sitecode} does not yet exist.");
+        } else {
+            $this->addLog(0, "Mist SITE ID {$mistsite->id} already exists.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = $mistsite;
+            return $return;
+        }
 
+        $mistsite = $netboxsite->createMistSite();
+        if(isset($mistsite->id))
+        {
+            $this->addLog(1, "Mist SITE ID {$mistsite->id} has been created.");
+            $return['status'] = 1;
+            $return['data'] = $mistsite;
+        } else {
+            $this->addLog(0, "Mist SITE {$sitecode} failed to create.");
+            $return['status'] = 0;
+            $return['data'] = null;
+        }
+        $return['log'] = $this->logs;
+        return $return;
     }
 
     public function getNetboxDevices($sitecode)

@@ -68,4 +68,12 @@ class BaseModel extends Model
     {
         return static::getQuery()->delete($path);
     }
+
+    public function fresh($with = [])
+    {
+        if(isset($this->id))
+        {
+            return $this->find($this->id);
+        }
+    }
 }

@@ -59,4 +59,6 @@ Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\Pr
 Route::post('provisioning/dhcp/{sitecode}/vlan/{vlan}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScope']);
 Route::post('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScopes']);
 
+Route::post('provisioning/mist/site/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistSite']);
+
 Route::get('validation/netboxsite/{sitecode}', [App\Http\Controllers\Validation\ValidationController::class, 'validateNetboxSite']);
