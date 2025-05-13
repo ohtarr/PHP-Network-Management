@@ -372,7 +372,7 @@ class Sites extends BaseModel
 
     public function getServiceNowLocationByName()
     {
-        $snowloc = Location::where('name', $this->name)->first();
+        $snowloc = Location::where('companyISNOTEMPTY')->where('name', $this->name)->first();
         if($snowloc)
         {
             return $snowloc;
@@ -584,7 +584,7 @@ class Sites extends BaseModel
 			print $msg . PHP_EOL;
 			throw new \Exception($msg);
 		}
-		if($snowloc['u_network_demob_date'])
+		if($snowloc->u_network_demob_date)
 		{
 			$msg = 'SNOW site is demobed!  The "Network Demobilization Date" MUST be blank in SNOW location!';
 			print $msg . PHP_EOL;

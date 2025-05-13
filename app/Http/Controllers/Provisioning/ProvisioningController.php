@@ -351,8 +351,21 @@ class ProvisioningController extends Controller
             $return['data'] = $mistsite;
             return $return;
         }
-
-        $mistsite = $netboxsite->createMistSite();
+        //Stupid code to check for duplicate SITES with same name in SNOW, cuz that exists for some reason.
+        $snowlocs = Location::where('companyISNOTEMPTY')->where('name',$sitecode)->get();
+        if($snowlocs->count() > 1)
+        {
+            $this->addLog(0, "Multiple SNOW Locations for site {$sitecode}, Please fix.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = $snowlocs;
+            return $return;
+        }
+        try{
+            $mistsite = $netboxsite->createMistSite();
+        } catch (\Exception $e) {
+            
+        }
         if(isset($mistsite->id))
         {
             $this->addLog(1, "Mist SITE ID {$mistsite->id} has been created.");
@@ -374,7 +387,7 @@ class ProvisioningController extends Controller
 
     public function deployNetboxDevices(Request $request, $sitecode)
     {
-
+        return $request->collect();
     }
 
 }
