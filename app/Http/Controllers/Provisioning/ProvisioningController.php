@@ -388,6 +388,7 @@ class ProvisioningController extends Controller
 
     public function deployNetboxDevices(Request $request, $sitecode)
     {
+        $totalstatus = 1;
         $newdevices = [];
         $site = Sites::where('name__ic',$sitecode)->first();
         if(!isset($site->id))
@@ -412,16 +413,19 @@ class ProvisioningController extends Controller
             if(!isset($device['name']))
             {
                 $this->addLog(0, "Device NAME is missing, skipping.");
+                $totalstatus = 0;
                 continue;
             }
             if(!isset($device['serial']))
             {
                 $this->addLog(0, "Device SERIAL is missing, skipping.");
+                $totalstatus = 0;
                 continue;
             }
             if(!isset($device['model']))
             {
                 $this->addLog(0, "Device MODEL is missing, skipping.");
+                $totalstatus = 0;
                 continue;
             }
 
@@ -429,18 +433,21 @@ class ProvisioningController extends Controller
             if(isset($nameexists->id))
             {
                 $this->addLog(0, "Device with name {$nameexists->name} already exists, skipping.");
+                $totalstatus = 0;
                 continue;
             }
             $serialexists = Devices::where('serial__ie',$device['serial'])->first();
             if(isset($serialexists->id))
             {
                 $this->addLog(0, "Device with serial {$serialexists->serial} already exists, skipping.");
+                $totalstatus = 0;
                 continue;
             }
             $modelexists = DeviceTypes::where('model__ie', $device['model'])->first();
             if(!isset($modelexists->id))
             {
                 $this->addLog(0, "DEVICE-TYPE {$device['model']} does not exist, skipping.");
+                $totalstatus = 0;
                 continue;
             }
 
@@ -457,6 +464,7 @@ class ProvisioningController extends Controller
             if(!$roleid)
             {
                 $this->addLog(0, "Unable to determine ROLE for device type {$rolecode}, skipping.");
+                $totalstatus = 0;
                 continue;
             }
 
@@ -464,6 +472,7 @@ class ProvisioningController extends Controller
             if(!isset($location->id))
             {
                 $this->addLog(0, "Default LOCATION not found for site {$site->name}, skipping.");
+                $totalstatus = 0;
                 continue;
             }
             
@@ -483,7 +492,7 @@ class ProvisioningController extends Controller
             }
             $newdevices[] = $newdevice;
         }
-        $return['status'] = 1;
+        $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = $newdevices;
         return $return;
