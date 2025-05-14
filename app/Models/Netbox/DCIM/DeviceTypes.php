@@ -8,5 +8,11 @@ use App\Models\Netbox\BaseModel;
 class DeviceTypes extends BaseModel
 {
     protected $app = "dcim";
-    protected $model = "device-types";
+    protected $model2 = "device-types";
+    //public $model;
+
+    public function getModel()
+    {
+        return $this->model2;
+    }
 }

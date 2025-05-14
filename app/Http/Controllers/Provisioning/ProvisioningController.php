@@ -11,6 +11,7 @@ use App\Models\Netbox\IPAM\AsnRanges;
 use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Roles;
+use App\Models\Netbox\DCIM\DeviceTypes;
 use App\Models\ServiceNow\Location;
 use App\Models\Mist\Site;
 
@@ -387,7 +388,105 @@ class ProvisioningController extends Controller
 
     public function deployNetboxDevices(Request $request, $sitecode)
     {
-        return $request->collect();
+        $newdevices = [];
+        $site = Sites::where('name__ic',$sitecode)->first();
+        if(!isset($site->id))
+        {
+            $this->addLog(0, "SITE not found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "SITE ID {$site->id} found.");
+        }
+
+        $devices = $request->collect();
+        foreach($devices as $device)
+        {
+            unset($nameexists);
+            unset($serialexists);
+            unset($modelexists);
+            unset($roleid);
+            unset($newdevice);
+            if(!isset($device['name']))
+            {
+                $this->addLog(0, "Device NAME is missing, skipping.");
+                continue;
+            }
+            if(!isset($device['serial']))
+            {
+                $this->addLog(0, "Device SERIAL is missing, skipping.");
+                continue;
+            }
+            if(!isset($device['model']))
+            {
+                $this->addLog(0, "Device MODEL is missing, skipping.");
+                continue;
+            }
+
+            $nameexists = Devices::where('name__ie',$device['name'])->first();
+            if(isset($nameexists->id))
+            {
+                $this->addLog(0, "Device with name {$nameexists->name} already exists, skipping.");
+                continue;
+            }
+            $serialexists = Devices::where('serial__ie',$device['serial'])->first();
+            if(isset($serialexists->id))
+            {
+                $this->addLog(0, "Device with serial {$serialexists->serial} already exists, skipping.");
+                continue;
+            }
+            $modelexists = DeviceTypes::where('model__ie', $device['model'])->first();
+            if(!isset($modelexists->id))
+            {
+                $this->addLog(0, "DEVICE-TYPE {$device['model']} does not exist, skipping.");
+                continue;
+            }
+
+            $rolecode = substr(strtolower($device['name']), 8, 3);
+            foreach(Devices::getRoleMapping() as $key => $value)
+			{
+				if($rolecode == $key)
+				{
+					$roleid = $value;
+					break;
+				}
+			}
+
+            if(!$roleid)
+            {
+                $this->addLog(0, "Unable to determine ROLE for device type {$rolecode}, skipping.");
+                continue;
+            }
+
+            $location = $site->getDefaultLocation();
+            if(!isset($location->id))
+            {
+                $this->addLog(0, "Default LOCATION not found for site {$site->name}, skipping.");
+                continue;
+            }
+            
+            $params = [
+                'name'			=>	strtoupper($device['name']),
+                'device_type'	=>	$modelexists->id,
+                'role'			=>	$roleid,
+                'site'			=>	$site->id,
+                'location'		=>	$location->id,
+                'serial'        =>  strtoupper($device['serial']),
+            ];
+
+            $newdevice = Devices::create($params);
+            if(isset($newdevice->id))
+            {
+                $this->addLog(1, "Successfully added DEVICE {$newdevice->name}.");
+            }
+            $newdevices[] = $newdevice;
+        }
+        $return['status'] = 1;
+        $return['log'] = $this->logs;
+        $return['data'] = $newdevices;
+        return $return;
     }
 
 }

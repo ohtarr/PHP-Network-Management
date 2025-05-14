@@ -8,8 +8,8 @@ use App\Models\Netbox\DCIM\Locations;
 
 class BaseModel
 {
-    protected $app;
-    protected $model;
+    //protected $app;
+    //protected $model;
     protected $query;
 
     public function getApp()

@@ -52,8 +52,10 @@ Route::get('/mist/site/{siteid}/device/{deviceid}/details', [App\Models\Mist\Mis
 
 Route::get('provisioning/snowlocations', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocations']);
 Route::get('provisioning/snowlocation/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocation']);
+
 Route::get('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getNetboxSite']);
 Route::post('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxSite']);
+Route::post('provisioning/netboxsite/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxDevices']);
 
 Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopes']);
 Route::post('provisioning/dhcp/{sitecode}/vlan/{vlan}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScope']);
