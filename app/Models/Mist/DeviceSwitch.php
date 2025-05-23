@@ -12,7 +12,22 @@ class DeviceSwitch extends Device
 
     public static function all($columns = [])
     {
-        return Device::where('type','switch');
+        return Device::where('type','switch')->get();
+    }
+
+    public static function get($path = null)
+    {
+        return Device::where('type','switch')->get($path);
+    }
+
+    public static function first($path = null)
+    {
+        return static::getQuery()->where('type','switch')->first($path);
+    }
+
+    public static function where($column, $value)
+    {
+        return static::getQuery()->where('type','switch')->where($column, $value);
     }
 
 }

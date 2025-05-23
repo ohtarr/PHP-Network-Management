@@ -9,6 +9,8 @@ class QueryBuilder
     protected $token;
     protected $baseurl;
     protected $orgid;
+    public $search = [];
+    public $model;
 
     public function __construct()
     {
@@ -17,106 +19,75 @@ class QueryBuilder
         $this->orgid = env('MIST_ORG_ID');
     }
 
-    public function get($path)
+    public function getGuzzleClient()
     {
-        $guzzleparams = [
-            'verb'      =>  'get',
-            'url'       =>  $this->baseurl . $path,
-            'params'    =>  [
-                'headers'   =>  [
-                    'authorization' => "Token " . $this->token,
-                    'Accept'        => 'application/json',
-                ],
-                //'query' =>  $this->search,
+        return new GuzzleClient([
+            'base_uri'  =>   $this->baseurl,
+            'headers'   =>  [
+                'authorization' => "Token " . $this->token,
+                'Accept'        => 'application/json',
+                'Content-Type'  =>  'application/json',
             ],
-            'options'   =>  [],
-        ];
-        $client = new GuzzleClient($guzzleparams['options']);
-        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
-        $body = $response->getBody()->getContents();
-        $object = json_decode($body);
-        return $object;
+        ]);
     }
 
-    public function first($path)
+    public function get($custompath = null, $format = 0)
     {
-        $guzzleparams = [
-            'verb'      =>  'get',
-            'url'       =>  $this->baseurl . $path,
-            'params'    =>  [
-                'headers'   =>  [
-                    'authorization' => "Token " . $this->token,
-                    'Accept'        => 'application/json',
-                ],
-            ],
-            'options'   =>  [],
-        ];
-        $client = new GuzzleClient($guzzleparams['options']);
-        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
+        if($custompath)
+        {
+            $path = $custompath;
+        } else {
+            $path = $this->model::getPath();
+        }
+        $client = $this->getGuzzleClient();
+        $response = $client->request('get', $path, ['query' =>  $this->search]);
         $body = $response->getBody()->getContents();
-        $object = json_decode($body);
-        return $object;
+        $decoded = json_decode($body);
+        if($format == 1)
+        {
+            return $decoded;
+        }
+        if($format == 2)
+        {
+            return collect([$this->model::hydrateOne($decoded)]);
+        }
+        if($format == 3)
+        {
+            return $this->model::hydrateMany($decoded);
+        }
+        if(is_array($decoded))
+        {
+            return $this->model::hydrateMany($decoded);
+        } else {
+            return collect([$this->model::hydrateOne($decoded)]);
+        }
     }
 
-    public function find($path)
+    public function first($custompath = null)
     {
-        $guzzleparams = [
-            'verb'      =>  'get',
-            'url'       =>  $this->baseurl . $path,
-            'params'    =>  [
-                'headers'   =>  [
-                    'authorization' => "Token " . $this->token,
-                    'Accept'        => 'application/json',
-                ],
-            ],
-            'options'   =>  [],
-        ];
-        $client = new GuzzleClient($guzzleparams['options']);
-        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
-        $body = $response->getBody()->getContents();
-        $object = json_decode($body);
-        return $object;
+        return $this->get($custompath)->first();
+    }
+
+    public function where($column, $value)
+    {
+        $this->search[$column] = $value;
+        return $this;
     }
 
     public function post($path, $body)
     {
-        $guzzleparams = [
-            'verb'      =>  'POST',
-            'url'       =>  $this->baseurl . $path,
-            'params'    =>  [
-                'headers'   =>  [
-                    'authorization' =>  "Token " . $this->token,
-                    'Content-Type'  =>  'application/json',
-                    'Accept'        =>  'application/json',
-                ],
-                'body' => json_encode($body),
-            ],
-            'options'   =>  [],
-        ];
-        $client = new GuzzleClient($guzzleparams['options']);
-        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
+        $client = $this->getGuzzleClient();
+        $response = $client->request('post', $path, ['body' => json_encode($body)]);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
-        return $object;
+        //return $object;
+        return $this->model::hydrateOne($object);
     }
 
     public function put($path, $body)
     {
-        $guzzleparams = [
-            'verb'      =>  'PUT',
-            'url'       =>  $this->baseurl . $path,
-            'params'    =>  [
-                'headers'   =>  [
-                    'authorization' =>  "Token " . $this->token,
-                    'Content-Type'  =>  'application/json',
-                    'Accept'        =>  'application/json',
-                ],
-                'body' => json_encode($body),
-            ],
-            'options'   =>  [],
-        ];
-        $client = new GuzzleClient($guzzleparams['options']);
-        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
+        $client = $this->getGuzzleClient();
+        $response = $client->request('put', $path, ['body' => json_encode($body)]);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
         return $object;
@@ -124,21 +95,8 @@ class QueryBuilder
 
     public function patch($path, $body)
     {
-        $guzzleparams = [
-            'verb'      =>  'PATCH',
-            'url'       =>  $this->baseurl . $path,
-            'params'    =>  [
-                'headers'   =>  [
-                    'authorization' =>  "Token " . $this->token,
-                    'Content-Type'  =>  'application/json',
-                    'Accept'        =>  'application/json',
-                ],
-                'body' => json_encode($body),
-            ],
-            'options'   =>  [],
-        ];
-        $client = new GuzzleClient($guzzleparams['options']);
-        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
+        $client = $this->getGuzzleClient();
+        $response = $client->request('patch', $path, ['body' => json_encode($body)]);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
         return $object;
@@ -146,19 +104,8 @@ class QueryBuilder
 
     public function delete($path)
     {
-        $guzzleparams = [
-            'verb'      =>  "DELETE",
-            'url'       =>  $this->baseurl . $path,
-            'params'    =>  [
-                'headers'   =>  [
-                    'authorization' =>  "Token " . $this->token,
-                    'Accept'        =>  'application/json',
-                ],
-            ],
-            'options'   =>  [],
-        ];
-        $client = new GuzzleClient($guzzleparams['options']);
-        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
+        $client = $this->getGuzzleClient();
+        $response = $client->request('delete', $path);
         $responsecode = $response->getStatusCode();
         if($responsecode == 200)
         {

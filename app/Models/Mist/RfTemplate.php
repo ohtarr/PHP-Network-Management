@@ -7,16 +7,24 @@ use App\Models\Mist\Site;
 
 class RfTemplate extends BaseModel
 {
-    public static function all($columns = [])
+    protected static $mistapp = "orgs";
+    protected static $mistmodel = "rftemplates";
+
+/*     public static function all($columns = [])
     {
         $path = "orgs/" . static::getOrgId() . "/rftemplates";
         return static::getMany($path);
-    }
+    } */
 
     public static function find($id)
     {
-        $path = "orgs/" . static::getOrgId() . "/rftemplates/" . $id;
-        return static::getOne($path);
+        $path = static::getPath() . "/" . $id;
+        return static::getQuery()->get($path)->first();
+    }
+
+    public static function where($key, $value)
+    {
+        return static::all()->where($key, $value);
     }
 
     public function getSites()

@@ -8,22 +8,24 @@ use App\Models\Mist\SiteGroup;
 
 class WlanTemplate extends BaseModel
 {
-    public static function all($columns = [])
-    {
-        $path = "orgs/" . static::getOrgId() . "/templates";
-        return static::getMany($path);
-    }
+    protected static $mistapp = "orgs";
+    protected static $mistmodel = "templates";
 
     public static function find($id)
     {
-        $path = "orgs/" . static::getOrgId() . "/templates/" . $id;
-        return static::getOne($path);
+        $path = static::getPath() . "/" . $id;
+        return static::getQuery()->get($path)->first();
+    }
+
+    public static function where($key, $value)
+    {
+        return static::all()->where($key, $value);
     }
 
     public function getSites()
     {
         $siteids = $this->applies->site_ids;
-        $sites = null;
+        $sites = [];
         foreach($siteids as $siteid)
         {
             $sites[] = Site::find($siteid);
@@ -34,7 +36,7 @@ class WlanTemplate extends BaseModel
     public function getSiteGroups()
     {
         $groupids = $this->applies->sitegroup_ids;
-        $groups = null;
+        $groups = [];
         foreach($groupids as $groupid)
         {
             $groups[] = SiteGroup::find($groupid);

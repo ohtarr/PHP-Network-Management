@@ -12,54 +12,40 @@ use App\Models\Mist\SiteGroup;
 
 class Site extends BaseModel
 {
-    public static function all($columns = [])
-    {
-        $path = "orgs/" . static::getOrgId() . "/sites";
-        return static::getMany($path);
-    }
-
-    public static function first()
-    {
-        $path = "orgs/" . static::getOrgId() . "/sites";
-        $objects = static::getMany($path);
-        return $objects->first();
-    }
+    protected static $mistapp = "orgs";
+    protected static $mistmodel = "sites";
 
     public static function find(string $id)
     {
-        $path = "sites/" . $id;
-        return static::getOne($path);
+        return static::all()->where('id', $id)->first();
+    }
+
+    public static function where($key, $value)
+    {
+        return static::all()->where($key, $value);
     }
 
     public static function findByName(string $name)
     {
-        $path = "orgs/" . static::getOrgId() . "/sites";
-        $sites = static::getMany($path);
-        foreach($sites as $site)
-        {
-            if(strtolower($site->name) == strtolower($name))
-            {
-                return $site;
-            }
-        }
+        return static::where('name', $name)->first();
     }
 
     public function getDevices($type="all")
     {
-        $path = "sites/" . $this->id . "/devices?type=" . $type;
-        return Device::getMany($path);
+        $path = "sites/" . $this->id . "/devices";
+        return Device::where('type', $type)->get($path);
     }
 
     public function getDeviceStats($type="all")
     {
-        $path = "sites/" . $this->id . "/stats/devices?type=" . $type;
-        return Device::getMany($path);
+        $path = "sites/" . $this->id . "/stats/devices";
+        return Device::where('type', $type)->get($path);
     }
 
     public static function getDeviceStatsBySiteId($siteid, $type="all")
     {
-        $path = "sites/" . $siteid . "/stats/devices?type=" . $type;
-        return Device::getMany($path);
+        $path = "sites/" . $siteid . "/stats/devices";
+        return Device::where('type', $type)->get($path);
     }
 
     public static function getAllSummarized()
@@ -86,39 +72,18 @@ class Site extends BaseModel
             $tmp = $device->getSummary();
             $results[] = $tmp;
         }
-        return $results;
+        return collect($results);
     }
 
     public function getSettings()
     {
-        $qb = static::getQuery();
-        return $qb->get("sites/" . $this->id . "/setting");
-    }
-
-    public function getInventory()
-    {
-        $path = "orgs/" . static::getOrgId() . "/inventory?site_id=" . $this->id;
-        return Device::getMany($path);
-    }
-
-    public static function create(array $params)
-    {
-        $path = "orgs/" . static::getOrgId() . "/sites";
-        return static::post($path, $params);
-    }
-
-    public function update(array $attributes = [], array $options = [])
-    {
-        $qb = static::getQuery();
-        $path = "sites/" . $this->id;
-        return $qb->put($path, $attributes);
+        return static::getQuery()->get("sites/" . $this->id . "/setting", 1);
     }
 
     public function updateSettings(array $params)
     {
-        $qb = static::getQuery();
         $path = "sites/" . $this->id . "/setting";
-        return $qb->put($path, $params);
+        return static::getQuery()->put($path, $params);
     }
 
     public function getSiteGroups()
@@ -172,7 +137,7 @@ class Site extends BaseModel
     public function delete()
     {
         $path = "sites/" . $this->id;
-        return static::deleteOne($path);
+        return static::getQuery()->delete($path);
     }
 
     public function getAssets()
@@ -184,9 +149,8 @@ class Site extends BaseModel
 
     public function getDiscoveredSwitches()
     {
-        $qb = static::getQuery();
         $path = "sites/" . $this->id . "/stats/discovered_switches/search";
-        return $qb->get($path);
+        return static::getQuery()->get($path);
     }
 
     public function setRfTemplate($templateid)
@@ -197,17 +161,38 @@ class Site extends BaseModel
 
     public function getRfTemplate()
     {
-        return RfTemplate::find($this->rftemplate_id);
+        if(!isset($this->rftemplate_id))
+        {
+            return null;
+        }
+        if($this->rftemplate_id)
+        {
+            return RfTemplate::find($this->rftemplate_id);
+        }
     }
 
     public function getNetworkTemplate()
     {
-        return NetworkTemplate::find($this->networktemplate_id);
+        if(!isset($this->networktemplate_id))
+        {
+            return null;
+        }
+        if($this->networktemplate_id)
+        {
+            return NetworkTemplate::find($this->networktemplate_id);
+        }
     }
 
     public function getGatewayTemplate()
     {
+        if(!isset($this->gatewaytemplate_id))
+        {
+            return null;
+        }
+        if($this->gatewaytemplate_id)
+        {
         return GatewayTemplate::find($this->gatewaytemplate_id);
+        }
     }
 
     public function getWlanTemplates()

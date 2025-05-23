@@ -7,17 +7,20 @@ use App\Models\Mist\WlanTemplate;
 
 class SiteGroup extends BaseModel
 {
-    public static function all($columns = [])
+    protected static $mistapp = "orgs";
+    protected static $mistmodel = "sitegroups";
+
+/*     public static function all($columns = [])
     {
         $path = "orgs/" . static::getOrgId() . "/sitegroups";
         return static::getMany($path);
-    }
+    } */
 
-    public static function first()
+/*     public static function first()
     {
         $objects = static::all();
         return $objects->first();
-    }
+    } */
 
     public static function find(string $id)
     {
@@ -55,8 +58,7 @@ class SiteGroup extends BaseModel
     public static function create($name)
     {
         $params = ['name'   =>  $name];
-        $path = "orgs/" . static::getOrgId() . "/sitegroups";
-        return static::post($path, $params);
+        return static::post(static::getPath(), $params);
     }
 
     public function addToWlanTemplate($templateid)

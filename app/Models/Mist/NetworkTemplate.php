@@ -7,16 +7,24 @@ use App\Models\Mist\Site;
 
 class NetworkTemplate extends BaseModel
 {
-    public static function all($columns = [])
+    protected static $mistapp = "orgs";
+    protected static $mistmodel = "networktemplates";
+
+/*     public static function all($columns = [])
     {
         $path = "orgs/" . static::getOrgId() . "/networktemplates";
         return static::getMany($path);
-    }
+    } */
 
     public static function find($id)
     {
-        $path = "orgs/" . static::getOrgId() . "/networktemplates/" . $id;
-        return static::getOne($path);
+        $path = static::getPath() . "/" . $id;
+        return static::getQuery()->get($path)->first();
+    }
+
+    public static function where($key, $value)
+    {
+        return static::all()->where($key, $value);
     }
 
     public function getSites()

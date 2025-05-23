@@ -13,6 +13,13 @@ class Device extends BaseModel
 {
     use HasRolesAndAbilities;
 
+    protected static $mistapp = "orgs";
+    protected static $mistmodel = "inventory";
+/*     public static function getPath()
+    {
+        return "orgs/" . static::getOrgId() . "/inventory";
+    } */
+
     public static function hydrateOne($data)
     {
         $types = [
@@ -59,10 +66,15 @@ class Device extends BaseModel
         return collect($objects);
     }
 
-    public static function all($columns = [])
+/*     public static function all($columns = [])
     {
         $url = "orgs/" . static::getOrgId() . "/inventory";
         return static::hydrateMany(static::getQuery()->get($url));
+    } */
+
+    public static function find($id)
+    {
+        return static::getQuery()->get();
     }
 
     public static function findById($id)
@@ -82,6 +94,10 @@ class Device extends BaseModel
         $devices = static::all();
         foreach($devices as $device)
         {
+            if(!isset($device->name))
+            {
+                continue;
+            }
             if(strtolower($device->name) == strtolower($name))
             {
                 return $device;
@@ -99,11 +115,11 @@ class Device extends BaseModel
         return static::where("mac",$mac)->first();
     }
 
-    public static function where($key, $value)
+/*     public static function where($key, $value)
     {
         $url = "orgs/" . static::getOrgId() . "/inventory?vc=true&" . $key . "=" . $value;
         return static::hydrateMany(static::getQuery()->get($url));
-    }
+    } */
 
     public function isVcMaster()
     {
@@ -164,7 +180,7 @@ class Device extends BaseModel
         }
     }
 
-    public function getSiteDevice()
+    public function getSiteDevice($type = "all")
     {
         if(!isset($this->site_id))
         {
@@ -172,8 +188,8 @@ class Device extends BaseModel
         }
         if(isset($this->name))
         {
-            $path = "sites/" . $this->site_id . "/devices?type=all&name=" . $this->name;
-            $device = Device::getMany($path)->first();
+            $path = "sites/" . $this->site_id . "/devices?type={$type}&name=" . $this->name;
+            $device = Device::get($path)->first();
             foreach($device as $key=>$value)
             {
                 $this->$key = $value;
@@ -207,7 +223,7 @@ class Device extends BaseModel
         if(isset($this->id))
         {
             $path = "sites/" . $this->site_id . "/stats/devices/" . $this->id;
-            $device = Device::getOne($path);
+            $device = Device::get($path)->first();
             foreach($device as $key=>$value)
             {
                 $this->$key = $value;
@@ -224,7 +240,7 @@ class Device extends BaseModel
             throw new \Exception('Object is missing {mac}');
         }
         $url = "sites/" . $this->site_id . "/stats/ports/search?mac=" . $this->mac;
-        $response =  static::getQuery()->get($url);
+        $response =  static::getQuery()->get($url, 1);
         return $response->results;
     }
 
@@ -233,155 +249,6 @@ class Device extends BaseModel
         $path = "sites/" . $this->site_id . "/devices/" . $this->id;
         return $this->put($path, $attributes);
     }
-
-/*     public static function getModelDefinitions()
-    {
-        return [
-            'EX3400-48P'    =>  [
-                'model'     =>  'EX3400-48P',
-                'mistmodel' =>  'EX3400-48P',
-                'pics'      =>  [
-                    0   =>  48,
-                    1   =>  2,
-                    2   =>  4,
-                ],
-            ],
-            'EX3400-24P'    =>  [
-                'model'     =>  'EX3400-24P',
-                'mistmodel' =>  'EX3400-24P',
-                'pics'      =>  [
-                    0   =>  24,
-                    1   =>  2,
-                    2   =>  4,
-                ],
-            ],
-            'EX4100-48MP'    =>  [
-                'model'     =>  'EX4100-48MP',
-                'mistmodel' =>  'EX4100-48MP-CHAS',
-                'pics'      =>  [
-                    0   =>  48,
-                    1   =>  4,
-                    2   =>  4,
-                ],
-            ],
-            'EX4100-24MP'    =>  [
-                'model'     =>  'EX4100-24MP',
-                'mistmodel' =>  'EX4100-24MP-CHAS',
-                'pics'      =>  [
-                    0   =>  24,
-                    1   =>  4,
-                    2   =>  4,
-                ],
-            ],
-            'EX4100-48P'    =>  [
-                'model'     =>  'EX4100-48P',
-                'mistmodel' =>  'EX4100-48P-CHAS',
-                'pics'      =>  [
-                    0   =>  48,
-                    1   =>  4,
-                    2   =>  4,
-                ],
-            ],
-            'EX4100-24P'    =>  [
-                'model'     =>  'EX4100-24P',
-                'mistmodel' =>  'EX4100-24P-CHAS',
-                'pics'      =>  [
-                    0   =>  24,
-                    1   =>  4,
-                    2   =>  4,
-                ],
-            ],
-            'EX4100-F-12P'    =>  [
-                'model'     =>  'EX4100-F-12P',
-                'mistmodel' =>  'EX4100-F-12P',
-                'pics'      =>  [
-                    0   =>  12,
-                    1   =>  4,
-                    2   =>  2,
-                ],
-            ],
-            'EX2300-48P'    =>  [
-                'model'     =>  'EX2300-48P',
-                'mistmodel' =>  'EX2300-48P',
-                'pics'      =>  [
-                    0   =>  48,
-                    1   =>  4,
-                ],
-            ],
-            'EX2300-24P'    =>  [
-                'model'     =>  'EX2300-24P',
-                'mistmodel' =>  'EX2300-24P',
-                'pics'      =>  [
-                    0   =>  24,
-                    1   =>  4,
-                ],
-            ],
-            'EX2300-C-12P'    =>  [
-                'model'     =>  'EX2300-C-12P',
-                'mistmodel' =>  'EX2300-C-12P',
-                'pics'      =>  [
-                    0   =>  12,
-                    1   =>  2,
-                ],
-            ],
-            'QFX5120-48Y'    =>  [
-                'model'     =>  'QFX5120-48Y',
-                'mistmodel' =>  'QFX5120-48Y',
-                'pics'      =>  [
-                    0   =>  56,
-                ],
-            ],
-            'QFX5120-32C'    =>  [
-                'model'     =>  'QFX5120-32C',
-                'mistmodel' =>  'QFX5120-32C',
-                'pics'      =>  [
-                    0   =>  32,
-                ],
-            ],
-            'EX4600-40F'    =>  [
-                'model'     =>  'EX4600-40F',
-                'mistmodel' =>  'EX4600-40F',
-                'pics'      =>  [
-                    0   =>  28,
-                    1   =>  8,
-                    2   =>  8,
-                ],
-            ],
-            'EX4300-48P'    =>  [
-                'model'     =>  'EX4300-48P',
-                'mistmodel' =>  'EX4300-48P',
-                'pics'      =>  [
-                    0   =>  48,
-                    1   =>  4,
-                    2   =>  4,
-                ],
-            ],
-            'EX4300-48P'    =>  [
-                'model'     =>  'EX4300-48P',
-                'mistmodel' =>  'EX4300-48P',
-                'pics'      =>  [
-                    0   =>  48,
-                    1   =>  4,
-                    2   =>  4,
-                ],
-            ],
-        ];
-    } */
-
-/*     public static function findModelTemplate($model)
-    {
-        foreach(static::getModelDefinitions() as $modeltemplate)
-        {
-            if(strtolower($model) == strtolower($modeltemplate['model']))
-            {
-                return $modeltemplate;
-            }
-            if(strtolower($model) == strtolower($modeltemplate['mistmodel']))
-            {
-                return $modeltemplate;
-            }
-        }
-    } */
 
     public function getSummary()
     {
