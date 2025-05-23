@@ -183,12 +183,18 @@ class ProvisioningController extends Controller
             {
                 $this->addLog(1, "Found next available SUPERNET {$supernet->prefix}.");
                 $params = [
-                    'site'      =>  $netboxsite->id,
-                    'status'    =>  'container',
-                    'role'      =>  6,
-                    'vrf'       =>  2,
+                    //'scope_type'    =>  'dcim.site',
+                    //'scope_id'      =>  $netboxsite->id,
+                    'site'       =>  $netboxsite->id,
+                    'status'        =>  'container',
+                    'role'          =>  6,
+                    'vrf'           =>  2,
                 ];
-                $siteprovsupernet = $supernet->update($params);
+                try{
+                    $siteprovsupernet = $supernet->update($params);
+                } catch (\Exception $e) {
+
+                }
                 if($siteprovsupernet->id)
                 {
                     $this->addLog(1, "Assigned PREFIX {$siteprovsupernet->prefix} to site.");
@@ -496,6 +502,83 @@ class ProvisioningController extends Controller
         $return['log'] = $this->logs;
         $return['data'] = $newdevices;
         return $return;
+    }
+
+    public function deployMistDevices($sitecode)
+    {
+        $totalstatus = 1;
+        $netboxsite = Sites::where('name__ic',$sitecode)->first();
+        if(!isset($netboxsite->id))
+        {
+            $this->addLog(0, "SITE {$sitecode} not found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "SITE ID {$netboxsite->id} found.");
+        }
+
+        $mistsite = $netboxsite->getMistSite();
+        if(!isset($mistsite->id))
+        {
+            $this->addLog(0, "Unable to find MIST SITE {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "Found MIST SITE ID: {$mistsite->id}.");
+        }
+
+        $devices = $netboxsite->devices();
+        if($devices->count() == 0)
+        {
+            $this->addLog(0, "NETBOX SITE ID {$netboxsite->id}: No devices found for site.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+
+        foreach($devices as $device)
+        {
+            unset($mistdevice);
+            if(!isset($device->device_type->manufacturer->name))
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Unable to determine Manufacturer for device.");
+                $totalstatus = 0;
+                continue;
+            }
+            if($device->device_type->manufacturer->name != "Juniper")
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Device is not a Juniper device.");
+                $totalstatus = 0;
+                continue;
+            }
+            if(!isset($device->serial))
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Device does not have a valid serial number.");
+                $totalstatus = 0;
+                continue;
+            }
+            $mistdevice = Device::findBySerial($device->serial);
+            if(!isset($mistdevice->serial))
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Unable to find matching MIST DEVICE with serial {$device->serial}.");
+                $totalstatus = 0;
+                continue;
+            }
+            $this->addLog(1, "NETBOX DEVICE ID {$device->id}: found matching MIST DEVICE with serial {$device->serial}.");
+            if($mistdevice->site_id)
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Device is already assigned to a site in Mist.");
+                $totalstatus = 0;
+                continue;
+            }
+            $status = $mistdevice->assignToSite($mistsite->id);
+            
+        }
     }
 
 }

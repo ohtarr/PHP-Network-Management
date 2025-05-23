@@ -9,6 +9,7 @@ use App\Models\Netbox\DCIM\FrontPorts;
 use App\Models\Netbox\DCIM\RearPorts;
 use App\Models\Netbox\DCIM\Racks;
 use App\Models\Netbox\DCIM\ModuleBays;
+use App\Models\Mist\Device;
 
 #[\AllowDynamicProperties]
 class Devices extends BaseModel
@@ -143,6 +144,22 @@ class Devices extends BaseModel
             {
                 return $master->custom_fields->ip;
             }
-        }     
+        }
+    }
+
+    public function getMistDeviceBySerial()
+    {
+        if(isset($this->serial))
+        {
+            return Device::findByserial($this->serial);
+        }
+    }
+
+    public function getMistDeviceByName()
+    {
+        if(isset($this->name))
+        {
+            return Device::findByName($this->name);
+        }
     }
 }

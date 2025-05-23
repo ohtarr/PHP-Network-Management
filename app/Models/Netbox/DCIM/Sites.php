@@ -171,6 +171,11 @@ class Sites extends BaseModel
         return false;
     }
 
+    public function devices()
+    {
+        return Devices::where('site_id', $this->id)->get();        
+    }
+
     public function prefixes()
     {
         $prefixes = new Prefixes($this->query);
