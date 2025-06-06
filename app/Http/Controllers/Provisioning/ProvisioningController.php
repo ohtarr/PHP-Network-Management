@@ -588,6 +588,7 @@ class ProvisioningController extends Controller
         {
             $return[] = $type->model;
         }
+        sort($return);
         return $return;
     }
 
