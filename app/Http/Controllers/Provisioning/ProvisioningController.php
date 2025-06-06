@@ -467,7 +467,7 @@ class ProvisioningController extends Controller
 				}
 			}
 
-            if(!$roleid)
+            if(!isset($roleid))
             {
                 $this->addLog(0, "Unable to determine ROLE for device type {$rolecode}, skipping.");
                 $totalstatus = 0;
@@ -579,6 +579,16 @@ class ProvisioningController extends Controller
             $status = $mistdevice->assignToSite($mistsite->id);
             
         }
+    }
+
+    public function getNetboxDeviceTypesSummarized()
+    {
+        $types = DeviceTypes::all();
+        foreach($types as $type)
+        {
+            $return[] = $type->model;
+        }
+        return $return;
     }
 
 }
