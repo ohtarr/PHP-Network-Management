@@ -138,7 +138,7 @@ class Device extends BaseModel
 
     public function getVcMembers()
     {
-        return static::where('vc_mac', $this->vc_mac);
+        return static::where('vc_mac', $this->vc_mac)->get();
     }
 
     public static function claim($magic)
