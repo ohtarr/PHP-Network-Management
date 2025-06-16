@@ -239,8 +239,8 @@ class Device extends BaseModel
         {
             throw new \Exception('Object is missing {mac}');
         }
-        $url = "sites/" . $this->site_id . "/stats/ports/search?mac=" . $this->mac;
-        $response =  static::getQuery()->get($url, 1);
+        $url = "sites/" . $this->site_id . "/stats/ports/search";
+        $response =  static::getQuery()->where('mac',$this->mac)->get($url, 1);
         return $response->results;
     }
 
@@ -433,12 +433,13 @@ class Device extends BaseModel
         ];
         foreach($this->module_stat as $vcmember)
         {
+            //if NO vc member ID, skip
             if(!isset($vcmember->fpc_idx))
             {
                 continue;
             }
             $tmp = new \stdClass();
-
+            //grab the key=>values we care about
             foreach($modulekeys as $key)
             {
                 if(isset($vcmember->$key))
@@ -447,6 +448,7 @@ class Device extends BaseModel
                 }
             }
             $tmp->id = $vcmember->fpc_idx;
+            //Grab model from getVcMembers() output
             foreach($vcmembers as $vcm)
             {
                 if($vcmember->mac == $vcm->mac)
@@ -454,6 +456,7 @@ class Device extends BaseModel
                     $tmp->model = $vcm->model;
                 }
             }
+            //calculate number of ports on each pic
             foreach($vcmember->pics as $pic)
             {
                 $numports = 0;
@@ -463,24 +466,28 @@ class Device extends BaseModel
                 }
                 $pics[$pic->index] = $numports; 
             }
-
+            //build custom pic/port information
             foreach($pics as $picnum => $portstotal)
             {
                 unset($ports);
                 $pic = new \stdClass();
                 $pic->id = $picnum;
+                //Go through all ports and match up port details from getPortDetails() method.
                 for ($currentport = 0; $currentport < $portstotal; $currentport++)
                 {
                     unset($match);
+                    //   SWITCH_ID/PIC_ID/PORT_ID = 0/0/0 as an example
                     $currentname = $vcmember->fpc_idx . "/" . $picnum . "/" . $currentport;
                     $reg = "#" . $currentname . "$#";
                     foreach($portdetails as $portdetail)
                     {
+                        //If port_id matches regex above, set it and move on
                         if(preg_match($reg, $portdetail->port_id))
                         {
                             $match = $portdetail;
                             break;
                         }
+                        //If port is being used for VC_LINK, show status of it.
                         if(isset($vcmember->vc_links))
                         {
                             foreach($vcmember->vc_links as $vclink)
