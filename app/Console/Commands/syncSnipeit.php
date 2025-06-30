@@ -35,7 +35,7 @@ class syncSnipeit extends Command
      */
     public function handle()
     {
-        //$this->syncLocations();
+        $this->syncLocations();
         $this->syncAssets();
     }
 
@@ -99,6 +99,8 @@ class syncSnipeit extends Command
             unset($correctloc);
             unset($mistsite);
             unset($model);
+            unset($vcmaster);
+            unset($siteid);
             if(isset($mistdevice->serial))
             {
                 print "Found Mist Serial {$mistdevice->serial}..." . PHP_EOL;
@@ -140,11 +142,17 @@ class syncSnipeit extends Command
                 print "Unable to find Model {$mistdevice->model}, Creating new Model in SnipeIT" . PHP_EOL;
                 $model = $this->createModel($mistdevice->model);
             }
-
-            if($mistdevice->site_id)
+            $vcmaster = $mistdevices->where('mac',$mistdevice->vc_mac)->first();
+            if($vcmaster)
             {
-                print "Mist Device assigned to Mist Site {$mistdevice->site_id}...." . PHP_EOL;
-                $mistsite = $mistsites->where('id',$mistdevice->site_id)->first();
+                $siteid = $vcmaster->site_id;
+            } else {
+                $siteid = $mistdevice->site_id;
+            }
+            if($siteid)
+            {
+                print "Mist Device assigned to Mist Site {$siteid}...." . PHP_EOL;
+                $mistsite = $mistsites->where('id',$siteid)->first();
                 $correctloc = $snipeitlocs->where('name', $mistsite->name)->first();
                 if(!$correctloc)
                 {
@@ -164,7 +172,7 @@ class syncSnipeit extends Command
                         //if(strtolower($mistsite->name) != strtolower($loc->name))
                         if($currentloc->id != $correctloc->id)
                         {
-                            print "MIST SITE ({$mistsite->name}) and SNIPEIT LOCATION ({$loc->name}) do not match!  Checking In Asset" . PHP_EOL;
+                            print "MIST SITE ({$mistsite->name}) and SNIPEIT LOCATION ({$currentloc->name}) do not match!  Checking In Asset" . PHP_EOL;
                             $asset->checkin();
                             $asset->checkoutToLocation($mistsite->name);
                         } 
