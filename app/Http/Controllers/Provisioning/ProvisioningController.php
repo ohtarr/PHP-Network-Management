@@ -183,9 +183,9 @@ class ProvisioningController extends Controller
             {
                 $this->addLog(1, "Found next available SUPERNET {$supernet->prefix}.");
                 $params = [
-                    //'scope_type'    =>  'dcim.site',
-                    //'scope_id'      =>  $netboxsite->id,
-                    'site'       =>  $netboxsite->id,
+                    'scope_type'    =>  'dcim.site',
+                    'scope_id'      =>  $netboxsite->id,
+                    //'site'       =>  $netboxsite->id,
                     'status'        =>  'container',
                     'role'          =>  6,
                     'vrf'           =>  2,
@@ -284,7 +284,8 @@ class ProvisioningController extends Controller
         }
 
         $roleid = $site->vlanToRoleMapping()[$vlan];
-        $prefix = Prefixes::where('site_id',$site->id)->where('status','active')->where('role_id',$roleid)->first();
+        //$prefix = Prefixes::where('site_id',$site->id)->where('status','active')->where('role_id',$roleid)->first();
+        $prefix = Prefixes::where('scope_type',"dcim.site")->where('scope_id',$site->id)->where('status','active')->where('role_id',$roleid)->first();
         if(!isset($prefix->id))
         {
             $this->addLog(0, "Unable to find PREFIX with role_id {$roleid} for {$sitecode}.");

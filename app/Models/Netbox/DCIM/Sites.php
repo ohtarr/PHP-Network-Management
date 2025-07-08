@@ -178,8 +178,7 @@ class Sites extends BaseModel
 
     public function prefixes()
     {
-        $prefixes = new Prefixes($this->query);
-        return $prefixes->where('site_id', $this->id)->get();
+        return Prefixes::where('site_id', $this->id)->get();
     }
 
     public function getActivePrefixes()
@@ -189,14 +188,12 @@ class Sites extends BaseModel
 
     public function getSupernets()
     {
-        $prefixes = new Prefixes($this->query);
-        return $prefixes->where('site_id', $this->id)->where('role_id',6)->get();
+        return Prefixes::where('site_id', $this->id)->where('role_id',6)->get();
     }
 
     public function getProvisioningSupernet()
     {
-        $prefixes = new Prefixes($this->query);
-        return $prefixes->where('site_id', $this->id)->where('role_id',6)->where('mask_length',20)->first();
+        return Prefixes::where('site_id', $this->id)->where('role_id',6)->where('mask_length',20)->first();
     }
 
     public function getWiredPrefix()
@@ -302,7 +299,9 @@ class Sites extends BaseModel
         $provprefix = $this->generateSitePrefix($vlan);
 
         $params = [
-            'site'          =>  $this->id,
+            //'site'          =>  $this->id,
+            'scope_type'    =>  'dcim.site',
+            'scope_id'      =>  $this->id,
             'prefix'        =>  $provprefix['network'] . "/" . $provprefix['bitmask'],
             'status'        =>  $provprefix['status'],
             'description'   =>  $provprefix['description'],
@@ -331,7 +330,8 @@ class Sites extends BaseModel
             return null;
         }
         $roleid = $this->vlanToRoleMapping[$vlan];
-        $prefix = Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',$roleid)->first();
+        //$prefix = Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',$roleid)->first();
+        $prefix = Prefixes::where('scope_type',"dcim.site")->where('scope_id', $this->id)->where('status','active')->where('role_id',$roleid)->first();
         if(!isset($prefix->id))
         {
             return null;
