@@ -216,6 +216,13 @@ class ProvisioningController extends Controller
             if(isset($prefix->id))
             {
                 $this->addLog(1, "Created PREFIX {$prefix->prefix} for vlan {$vlan}.");
+                $range = $netboxsite->deployIpRange($vlan);
+                if(isset($range->id))
+                {
+                    $this->addLog(1, "Created IP RANGE ID {$range->id} : {$range->display} for vlan {$vlan}.");
+                } else {
+                    $this->addLog(0, "Failed to create IP RANGE for vlan {$vlan}.");
+                }
             } else {
                 $this->addLog(0, "Failed to create PREFIX for vlan {$vlan}.");
             }
@@ -321,7 +328,7 @@ class ProvisioningController extends Controller
             $this->addLog(1, "Deployed DHCP scope {$scope->scopeID} for site {$sitecode} in " . round($end - $start,1) . " seconds.");
         } else {
             $totalstatus = 0;
-            $this->addLog(0, "Failed to deploy DHCP scope for vlan {$vlan} for site {$sitecode}.");
+            $this->addLog(0, "Failed to deploy DHCP scope {$prefix->cidr()['network']} for vlan {$vlan} for site {$sitecode}.");
         }
 
         $return['status'] = $totalstatus;

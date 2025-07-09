@@ -60,18 +60,18 @@ class IpRanges extends BaseModel
         $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
         preg_match($reg, $this->start_address, $hits);
         $ipcalc = new SubnetCalculator($hits[1], $hits[2]);
-        $return['name'] = $this->description;
-        $return['description'] = $this->description;
+        //$return['name'] = $this->description;
+        //$return['description'] = $this->description;
         $return['start_address'] = $hits[1];
         preg_match($reg, $this->end_address, $hits);
         $return['end_address'] = $hits[1];
         $return['network'] = $ipcalc->getNetworkPortion();
         $return['bitmask'] = $hits[2];
         $return['netmask'] = $ipcalc->getSubnetMask();
-        foreach($this->custom_fields as $key => $value)
-        {
-            $return[$key] = $this->custom_fields->$key;
-        }
+        //foreach($this->custom_fields as $key => $value)
+        //{
+        //    $return[$key] = $this->custom_fields->$key;
+        //}
         return $return;
     }
 
@@ -83,18 +83,25 @@ class IpRanges extends BaseModel
     public function generateDhcpScopeParams()
     {
         $rangeparams = $this->getParams();
+
         $params = [
-            "name"			    => $rangeparams['name'],
-            "description"	    => $rangeparams['description'],
-            "subnetMask"		=> $rangeparams['netmask'],
             "startRange"		=> $rangeparams['start_address'],
             "endRange"		    => $rangeparams['end_address'],
+            "subnetMask"		=> $rangeparams['netmask'],
         ];
+        if(isset($this->custom_fields->name))
+        {
+            $params['name'] = $this->custom_fields->name;
+        }
+        if(isset($this->custom_fields->description))
+        {
+            $params['description'] = $this->custom_fields->description;
+        }
         if(isset($this->custom_fields->gateway))
         {
             $optionsparams[] = [
                 'optionId'  =>  "3",
-                'value'     =>  $this->custom_fields->gateway,
+                'value'     =>  [$this->custom_fields->gateway],
             ];
         }
         if(isset($this->custom_fields->dns1))
@@ -138,6 +145,25 @@ class IpRanges extends BaseModel
 
         $params['dhcpOptions'] = $optionsparams;
         return $params;
+    }
+
+    public function deployDhcpScope()
+    {
+        $params = $this->generateDhcpScopeParams();
+        if(!$params)
+        {
+            return null;
+        }
+        try{
+            $scope = Dhcp::addScope($params);
+            if(isset($scope['scopeID']))
+            {
+                return Dhcp::make($scope);
+            }
+        } catch (\Exception $e) {
+            print $e->getMessage();
+            return null;
+        }
     }
 
 }

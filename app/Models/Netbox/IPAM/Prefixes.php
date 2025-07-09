@@ -7,6 +7,7 @@ use IPv4\SubnetCalculator;
 use App\Models\Gizmo\Dhcp;
 use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Netbox\IPAM\IpRanges;
+use App\Models\Netbox\IPAM\Vrfs;
 use App\Models\Netbox\DCIM\Sites;
 
 #[\AllowDynamicProperties]
@@ -45,6 +46,14 @@ class Prefixes extends BaseModel
         return $this->where('within',$this->prefix)->get();
     }
 
+    public function getVrf()
+    {
+        if(isset($this->vrf->id))
+        {
+            return Vrfs::find($this->vrf->id);
+        }
+    }
+
     public function getIpAddresses()
     {
         $query = IpAddresses::where('parent', $this->prefix);
@@ -63,6 +72,21 @@ class Prefixes extends BaseModel
             $query = $query->where('vrf_id', $this->vrf->id);
         }
         return $query->get();
+    }
+
+    public function getDhcpIpRange()
+    {
+        $role = Roles::where('name','DHCP_SCOPE')->first();
+        if(!isset($role->id))
+        {
+            return null;
+        }
+        $query = IpRanges::where('parent', $this->prefix)->where('role_id', $role->id);
+        if(isset($this->vrf->id))
+        {
+            $query = $query->where('vrf_id', $this->vrf->id);
+        }
+        return $query->first();
     }
 
     public function getSite()
@@ -143,7 +167,7 @@ class Prefixes extends BaseModel
         return collect($scopes);
     } */
 
-    public function generateDhcpScope()
+/*     public function generateDhcpScope()
     {
         //$site = $this->site();
         //$sitesupernet = $site->getProvisioningSupernet();
@@ -188,24 +212,24 @@ class Prefixes extends BaseModel
         if($this->role->name == "WIRED")
         {
             $params = [
-                "name"			    => $this->site->name . " VLAN 1 - WIRED",
-                "description"	    => $this->site->name . " VLAN 1 - WIRED",
+                "name"			    => $this->scope->name . " VLAN 1 - WIRED",
+                "description"	    => $this->scope->name . " VLAN 1 - WIRED",
                 "subnetMask"		=> $this->netmask(),
                 "startRange"		=> long2ip(ip2long($this->network()) +   50),
                 "endRange"		    => long2ip(ip2long($this->network()) + 1010),
             ];
         } elseif($this->role->name == "WIRELESS") {
             $params = [
-                "name"			    => $this->site->name . " VLAN 5 - WIRELESS",
-                "description"	    => $this->site->name . " VLAN 5 - WIRELESS",
+                "name"			    => $this->scope->name . " VLAN 5 - WIRELESS",
+                "description"	    => $this->scope->name . " VLAN 5 - WIRELESS",
                 "subnetMask"		=> $this->netmask(),
                 "startRange"		=> long2ip(ip2long($this->network()) +   10),
                 "endRange" 		    => long2ip(ip2long($this->network()) + 1010),
             ];
         } elseif($this->role->name == "VOICE") {
             $params = [
-                "name"			    => $this->site->name . " VLAN 9 - VOICE",
-                "description"	    => $this->site->name . " VLAN 9 - VOICE",
+                "name"			    => $this->scope->name . " VLAN 9 - VOICE",
+                "description"	    => $this->scope->name . " VLAN 9 - VOICE",
                 "subnetMask"		=> $this->netmask(),
                 "startRange"		=> long2ip(ip2long($this->network()) +   10),
                 "endRange"		    => long2ip(ip2long($this->network()) + 1010),
@@ -216,8 +240,8 @@ class Prefixes extends BaseModel
             ];
         } elseif($this->role->name == "RESTRICTED") {
             $params = [
-                "name"			    => $this->site->name . " VLAN 13 - RESTRICTED",
-                "description"	    => $this->site->name . " VLAN 13 - RESTRICTED",
+                "name"			    => $this->scope->name . " VLAN 13 - RESTRICTED",
+                "description"	    => $this->scope->name . " VLAN 13 - RESTRICTED",
                 "subnetMask"        => $this->netmask(),
                 "startRange"        => long2ip(ip2long($this->network()) +   10),
                 "endRange"          => long2ip(ip2long($this->network()) +  500),    
@@ -227,24 +251,14 @@ class Prefixes extends BaseModel
         }
         $params['dhcpOptions'] = $optionsparams;
         return $params;
-    }
+    } */
 
     public function deployDhcpScope()
     {
-        $params = $this->generateDhcpScope();
-        if(!$params)
+        $range = $this->getDhcpIpRange();
+        if(isset($range->id))
         {
-            return null;
-        }
-        try{
-            $scope = Dhcp::addScope($params);
-            if(isset($scope['scopeID']))
-            {
-                return Dhcp::make($scope);
-            }
-        } catch (\Exception $e) {
-            return null;
+            return $range->deployDhcpScope();
         }
     }
-
 }

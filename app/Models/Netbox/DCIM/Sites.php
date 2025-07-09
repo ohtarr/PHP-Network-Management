@@ -4,6 +4,9 @@ namespace App\Models\Netbox\DCIM;
 
 use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\IPAM\Prefixes;
+use App\Models\Netbox\IPAM\Vrfs;
+use App\Models\Netbox\IPAM\Roles;
+use App\Models\Netbox\IPAM\IpRanges;
 use App\Models\Netbox\DCIM\Locations;
 use App\Models\ServiceNow\Location;
 use IPv4\SubnetCalculator;
@@ -12,6 +15,7 @@ use App\Models\Mist\Site;
 use App\Models\Mist\RfTemplate;
 use App\Models\Mist\NetworkTemplate;
 use App\Models\Mist\SiteGroup;
+
 
 #[\AllowDynamicProperties]
 class Sites extends BaseModel
@@ -231,59 +235,108 @@ class Sites extends BaseModel
 
     }
 
-    public function generateSitePrefix($vlan = null)
+    public function generateSiteNetworks($vlan = null)
     {
         $supernet = $this->getProvisioningSupernet();
         if(!isset($supernet->id))
         {
             return null;
         }
-        if(isset($supernet->vrf->id))
+        $vrf = $supernet->getVrf();
+        if(!isset($vrf->id))
         {
-            $vrfid = $supernet->vrf->id;
+            $vrf = Vrfs::where('name', 'V102:OFFICE')->first();
+        }
+
+        if($vrf->name == "V101:DATACENTER")
+        {
+            $dns1 = '10.252.13.134';
+            $dns2 = '10.252.13.133';
+            $dns3 = '10.252.13.135';
         } else {
-            $vrfid = 2;
+            $dns1 = '10.251.12.189';
+            $dns2 = '10.251.12.190';
         }
 
         $IPV4LONG = ip2long($supernet->cidr()['network']);
-        $params = [
-            1   =>  [
-                "network"		=> long2ip($IPV4LONG),
-                "netmask"		=> "255.255.252.0",
-                "bitmask"       => 22,
-                "description"	=> $this->name . " VLAN 1 - WIRED",
-                "status"        => "active",
-                "role"          => 1,
-                "vrf"           => $vrfid,
-            ],
-            5   =>  [
-                "network"		=> long2ip($IPV4LONG + 1024),
-                "netmask"		=> "255.255.252.0",
-                "bitmask"       => 22,
-                "description"	=> $this->name . " VLAN 5 - WIRELESS",
-                "status"        => "active",
-                "role"          => 2,
-                "vrf"           => $vrfid,
-            ],
-            9   =>  [
-                "network"		=> long2ip($IPV4LONG + 2048),
-                "netmask"		=> "255.255.252.0",
-                "bitmask"       => 22,
-                "description"	=> $this->name . " VLAN 9 - VOICE",
-                "status"        => "active",
-                "role"          => 3,
-                "vrf"           => $vrfid,
-            ],
-            13   =>  [
-                "network"		=> long2ip($IPV4LONG + 3072),
-                "netmask"		=> "255.255.254.0",
-                "bitmask"       => 23,
-                "description"	=> $this->name . " VLAN 13 - RESTRICTED",
-                "status"        => "active",
-                "role"          => 4,
-                "vrf"           => $vrfid,
-            ],
+        $params[1] = [
+            "network"		=> long2ip($IPV4LONG),
+            "netmask"		=> "255.255.252.0",
+            "bitmask"       => 22,
+            "description"	=> $this->name . " - VLAN1 - WIRED",
+            "status"        => "active",
+            "role"          => $this->vlanToRoleMapping()[1],
+            "vrf"           => $vrf->id,
+            "start_address" => long2ip($IPV4LONG + 50),
+            "end_address"   => long2ip($IPV4LONG + 1010),
+            "gateway"       => long2ip($IPV4LONG + 1),
+            "dns1"          => $dns1,
+            "dns2"          => $dns2,
         ];
+        if(isset($dns3))
+        {
+            $params[1]['dns3'] = $dns3;
+        }
+        $IPV4LONG = $IPV4LONG + 1024;
+        $params[5] = [
+            "network"		=> long2ip($IPV4LONG),
+            "netmask"		=> "255.255.252.0",
+            "bitmask"       => 22,
+            "description"	=> $this->name . " - VLAN5 - WIRELESS",
+            "status"        => "active",
+            "role"          => $this->vlanToRoleMapping()[5],
+            "vrf"           => $vrf->id,
+            "start_address" => long2ip($IPV4LONG + 10),
+            "end_address"   => long2ip($IPV4LONG + 1010),
+            "gateway"       => long2ip($IPV4LONG + 1),
+            "dns1"          => $dns1,
+            "dns2"          => $dns2,
+        ];
+        if(isset($dns3))
+        {
+            $params[5]['dns3'] = $dns3;
+        }
+        $IPV4LONG = $IPV4LONG + 1024;
+        $params[9] = [
+            "network"		=> long2ip($IPV4LONG),
+            "netmask"		=> "255.255.252.0",
+            "bitmask"       => 22,
+            "description"	=> $this->name . " - VLAN9 - VOICE",
+            "status"        => "active",
+            "role"          => $this->vlanToRoleMapping()[9],
+            "vrf"           => $vrf->id,
+            "start_address" => long2ip($IPV4LONG + 10),
+            "end_address"   => long2ip($IPV4LONG + 1010),
+            "gateway"       => long2ip($IPV4LONG + 1),
+            "dns1"          => $dns1,
+            "dns2"          => $dns2,
+        ];
+        if(isset($dns3))
+        {
+            $params[9]['dns3'] = $dns3;
+        }
+        $params[9]['cm1'] = "10.252.11.14";
+        $params[9]['cm2'] = "10.252.22.14";
+        $IPV4LONG = $IPV4LONG + 1024;
+        $params[13] = [
+            "network"		=> long2ip($IPV4LONG),
+            "netmask"		=> "255.255.254.0",
+            "bitmask"       => 23,
+            "description"	=> $this->name . " - VLAN13 - RESTRICTED",
+            "status"        => "active",
+            "role"          => $this->vlanToRoleMapping()[13],
+            "vrf"           => $vrf->id,
+            "start_address" => long2ip($IPV4LONG + 10),
+            "end_address"   => long2ip($IPV4LONG + 500),
+            "gateway"       => long2ip($IPV4LONG + 1),
+            "dns1"          => $dns1,
+            "dns2"          => $dns2,
+        ];
+        if(isset($dns3))
+        {
+            $params[13]['dns3'] = $dns3;
+        }
+
         if(!$vlan)
         {
             return $params;
@@ -296,7 +349,7 @@ class Sites extends BaseModel
 
     public function deployActivePrefix($vlan)
     {
-        $provprefix = $this->generateSitePrefix($vlan);
+        $provprefix = $this->generateSiteNetworks($vlan);
 
         $params = [
             //'site'          =>  $this->id,
@@ -308,14 +361,43 @@ class Sites extends BaseModel
             'role'          =>  $provprefix['role'],
             'vrf'           =>  $provprefix['vrf'],
         ];
-        $existing = Prefixes::where("prefix", $provprefix['network'] . "/" . $provprefix['bitmask'])->where('vrf_if',$provprefix['vrf'])->first();
-        if(isset($existing->id))
+        $prefix = Prefixes::where("prefix", $provprefix['network'] . "/" . $provprefix['bitmask'])->where('vrf_id',$provprefix['vrf'])->first();
+        if(!isset($prefix->id))
         {
-            $prefix = $existing;
-        } else {
             $prefix = Prefixes::create($params);
         }
         return $prefix;
+    }
+
+    public function deployIpRange($vlan)
+    {
+        $provprefix = $this->generateSiteNetworks($vlan);
+
+        $role = Roles::where('name','DHCP_SCOPE')->first();
+        $custom_fields['name'] = $provprefix['description'];
+        $custom_fields['description'] = $provprefix['description'];
+        $custom_fields['gateway'] = $provprefix['gateway'];
+        $custom_fields['dns1'] = $provprefix['dns1'];
+        $custom_fields['dns2'] = $provprefix['dns2'];
+        if(isset($provprefix['dns3']))
+        {  
+            $custom_fields['dns3'] = $provprefix['dns3'];
+        }
+        $params = [
+            'start_address'     =>  $provprefix['start_address'] . "/" . $provprefix['bitmask'],
+            'end_address'       =>  $provprefix['end_address'] . "/" . $provprefix['bitmask'],
+            'vrf'               =>  $provprefix['vrf'],
+            'status'            =>  'active',
+            'description'       =>  $provprefix['description'],
+            'role'              =>  $role->id,
+            'custom_fields'     =>  $custom_fields,
+        ];
+        $range = IpRanges::where("start_address", $provprefix['start_address'] . "/" . $provprefix['bitmask'])->where('vrf_id',$provprefix['vrf'])->first();
+        if(!isset($range->id))
+        {
+            $range = IpRanges::create($params);
+        }
+        return $range;
     }
 
     public function deployDhcpScope($vlan)
@@ -408,7 +490,7 @@ class Sites extends BaseModel
 
     public function generateMistSiteVariables()
     {
-        $subnets = $this->generateSitePrefix();
+        $subnets = $this->generateSiteNetworks();
 		if(!$subnets)
 		{
 			$msg = "Unable to generate Mist Site Variables";
