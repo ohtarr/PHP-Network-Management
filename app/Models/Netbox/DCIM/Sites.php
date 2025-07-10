@@ -7,6 +7,7 @@ use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Vrfs;
 use App\Models\Netbox\IPAM\Roles;
 use App\Models\Netbox\IPAM\IpRanges;
+use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\DCIM\Locations;
 use App\Models\ServiceNow\Location;
 use IPv4\SubnetCalculator;
@@ -222,12 +223,18 @@ class Sites extends BaseModel
 
     public function getAsns()
     {
-        return collect($this->asns);
+        $asns = [];
+        foreach($this->asns as $asn)
+        {
+            $asns[] = Asns::find($asn->id);
+        }
+        return collect($asns);
+
     }
 
     public function getPrimaryAsn()
     {
-        return $this->asns[0];
+        return $this->getAsns()->first();
     }
 
     public function assignNextAvailableAsn()

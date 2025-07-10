@@ -211,21 +211,45 @@ class ProvisioningController extends Controller
         //Subnets
         foreach($netboxsite->vlanToRoleMapping() as $vlan => $roleid)
         {
-            unset($prefix);
-            $prefix = $netboxsite->deployActivePrefix($vlan);
-            if(isset($prefix->id))
+            $network = $netboxsite->generateSiteNetworks($vlan); 
+            $prefix = Prefixes::where('prefix', $network['network'] . "/" . $network['bitmask'])->first();
+            if(isset($prefix->prefix))
             {
-                $this->addLog(1, "Created PREFIX {$prefix->prefix} for vlan {$vlan}.");
-                $range = $netboxsite->deployIpRange($vlan);
-                if(isset($range->id))
+                $this->addLog(0, "PREFIX {$prefix->prefix} for vlan {$vlan} already exists."); 
+                  
+                if(isset($prefix->scope->id))
                 {
-                    $this->addLog(1, "Created IP RANGE ID {$range->id} : {$range->display} for vlan {$vlan}.");
-                } else {
-                    $this->addLog(0, "Failed to create IP RANGE for vlan {$vlan}.");
+                    if($prefix->scope->id != $netboxsite->id)
+                    {
+                        $this->addLog(0, "PREFIX {$prefix->prefix} for vlan {$vlan} is not assigned to netbox site ID {$netboxsite->id}.");   
+                    }
                 }
             } else {
-                $this->addLog(0, "Failed to create PREFIX for vlan {$vlan}.");
+                $prefix = $netboxsite->deployActivePrefix($vlan);
+                if(isset($prefix->id))
+                {
+                    $this->addLog(1, "Created PREFIX {$prefix->prefix} for vlan {$vlan}.");
+                } else {
+                    $this->addLog(0, "Failed to create PREFIX for vlan {$vlan}.");
+                }
             }
+            if(isset($prefix->id))
+            {
+                $range = $prefix->getDhcpIpRange();
+                if(isset($range->id))
+                {
+                    $this->addLog(0, "RANGE ID {$range->id} {$range->display} for vlan {$vlan} already exists.");
+                } else {
+                    $range = $netboxsite->deployIpRange($vlan);
+                    if(isset($range->id))
+                    {
+                        $this->addLog(1, "Created IP RANGE ID {$range->id} : {$range->display} for vlan {$vlan}.");
+                    } else {
+                        $this->addLog(0, "Failed to create IP RANGE for vlan {$vlan}.");
+                    }                    
+                }
+            }
+
         }
 
         $location = $netboxsite->getDefaultLocation();
