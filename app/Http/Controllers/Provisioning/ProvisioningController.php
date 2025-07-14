@@ -14,6 +14,7 @@ use App\Models\Netbox\IPAM\Roles;
 use App\Models\Netbox\DCIM\DeviceTypes;
 use App\Models\ServiceNow\Location;
 use App\Models\Mist\Site;
+use Illuminate\Support\Facades\Log;
 
 class ProvisioningController extends Controller
 {
@@ -30,10 +31,12 @@ class ProvisioningController extends Controller
             'status'    =>  $status,
             'msg'       =>  $msg,
         ];
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . debug_backtrace()[1]['function'] . ": " . $msg);
     }
 
     public function getSnowLocations()
     {
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $locs = Location::where('companyISNOTEMPTY')->where('u_network_mob_dateISEMPTY')->where('u_network_demob_dateISEMPTY')->get();
         if(!$locs)
@@ -62,6 +65,7 @@ class ProvisioningController extends Controller
 
     public function getSnowLocation($sitecode)
     {
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $loc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->get();
         if($loc)
         {
@@ -86,6 +90,10 @@ class ProvisioningController extends Controller
 
     public function deployNetboxSite(Request $request, $sitecode)
     {
+        $logcontext = [
+            'sitecode'  => $sitecode,
+        ];
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__, $logcontext);
         $totalstatus = 1;
         //Attempt to get existing snow location.
         $snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
@@ -285,6 +293,7 @@ class ProvisioningController extends Controller
 
     public function getDhcpScopes($sitecode)
     {
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $site = Sites::where('name__ic', $sitecode)->first();
         if(!isset($site->id))
         {
@@ -295,6 +304,7 @@ class ProvisioningController extends Controller
 
     public function deployDhcpScope($sitecode, $vlan)
     {
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $site = Sites::where('name__ic', $sitecode)->first();
         if(!isset($site->id))
         {
@@ -368,6 +378,7 @@ class ProvisioningController extends Controller
 
     public function deployMistSite(Request $request, $sitecode)
     {
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $netboxsite = Sites::where('name__ie', $sitecode)->first();
         if(isset($netboxsite->id))
         {
@@ -426,6 +437,7 @@ class ProvisioningController extends Controller
 
     public function deployNetboxDevices(Request $request, $sitecode)
     {
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $newdevices = [];
         $site = Sites::where('name__ic',$sitecode)->first();
@@ -538,6 +550,7 @@ class ProvisioningController extends Controller
 
     public function deployMistDevices($sitecode)
     {
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $netboxsite = Sites::where('name__ic',$sitecode)->first();
         if(!isset($netboxsite->id))
