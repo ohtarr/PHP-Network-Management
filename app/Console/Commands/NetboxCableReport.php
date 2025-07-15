@@ -15,7 +15,7 @@ class NetboxCableReport extends Command
      *
      * @var string
      */
-    protected $signature = 'netman:NetboxCableReport {--cableid=} {--rackid=} {--deviceid=} {--filename=}';
+    protected $signature = 'netman:NetboxCableReport {--cableid=} {--rackid=} {--deviceid=} {--filename=} {--labelonly}';
 
     /**
      * The console command description.
@@ -40,15 +40,20 @@ class NetboxCableReport extends Command
         if($options['cableid'])
         {
             $cable = Cables::find($options['cableid']);
-            $results = $cable->generateReport();
+            if(isset($options['labelonly']))
+            {
+                $results = $cable->generateLabel();
+            } else {
+                $results = $cable->generateReport();
+            }
+
             print_r($results);
             return $results;
         }
         if($options['rackid'])
         {
             $cables = Cables::where('rack_id',$options['rackid'])->limit(9999)->get();
-        } elseif($options['deviceid'])
-        {
+        } elseif($options['deviceid']) {
             $cables = Cables::where('device_id',$options['deviceid'])->limit(9999)->get();
         } else {
             print "No cableid, deviceid, or rackid provided!\n";
@@ -57,7 +62,13 @@ class NetboxCableReport extends Command
         $results = [];
         foreach($cables as $cable)
         {
-            $results[] = $cable->generateReport();
+            if(isset($options['labelonly']))
+            {
+                $results[] = $cable->generateLabel();
+            } else {
+                $results[] = $cable->generateReport();
+            }
+
         }
         print_r($results);
         if(isset($options['filename']))

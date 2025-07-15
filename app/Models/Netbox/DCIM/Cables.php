@@ -150,52 +150,11 @@ class Cables extends BaseModel
 
     public function generateLabel()
     {
-        $a = $this->getAEnd()->first();
-        if(!$a)
-        {
-            return null;
-        }
-        $adevice = $a->device();
-        if(!$adevice)
-        {
-            return null;
-        }
-        $arack = $a->device()->rack();
-        if(!$arack)
-        {
-            return null;
-        }
-        $aru = intval($adevice->position);
-        if(!$aru)
-        {
-            return null;
-        }
-
-        $b = $this->getBEnd()->first();
-        if(!$b)
-        {
-            return null;
-        }
-        $bdevice = $b->device();
-        if(!$bdevice)
-        {
-            return null;
-        }
-        $brack = $b->device()->rack();
-        if(!$brack)
-        {
-            return null;
-        }
-        $bru = intval($bdevice->position);
-        if(!$bru)
-        {
-            return null;
-        }
-
-        $alabel = $arack->name . "_RU" . $aru . "_" . $a->label;
-        $blabel = $brack->name . "_RU" . $bru . "_" . $b->label;
-        return [$alabel,$blabel];
-        //return $alabel . "\n" . $blabel;
+        $report = $this->generateReport();
+        return [
+            'label1'    =>  $report['label1'],
+            'label2'    =>  $report['label2'],
+        ];
     }
 
 }
