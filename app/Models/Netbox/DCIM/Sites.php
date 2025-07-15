@@ -440,6 +440,7 @@ class Sites extends BaseModel
 
     public function getDhcpScopes()
     {
+        $dhcp = [];
         $active = $this->getActivePrefixes();
         foreach($active as $prefix)
         {
@@ -497,6 +498,7 @@ class Sites extends BaseModel
 
     public function generateMistSiteVariables()
     {
+        $supernet = $this->getProvisioningSupernet();
         $subnets = $this->generateSiteNetworks();
 		if(!$subnets)
 		{
@@ -510,6 +512,12 @@ class Sites extends BaseModel
 			'SITE_CODE'		    =>	strtoupper($this->name),
 	        'CORP_WIFI_VLAN'   	=>  5,
 			'GUEST_WIFI_VLAN'   =>  13,
+   			'SITE_AGG_PREFIX'	=>	$supernet->network(),
+			'SITE_AGG_MASK'		=>	$supernet->length(),
+			'INT_WAN_INET_1'	=>	'ge-0/0/0',
+			'INT_WAN_INET_2'	=>	'ge-0/0/15',
+			'INT_WAN_KPN_1'		=>	'ge-0/0/14',
+			'INT_LAN_RANGE'		=>	'ge-0/0/1-13',
 		];
 
 		foreach($subnets as $vlan => $subnet)
