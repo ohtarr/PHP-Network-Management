@@ -93,6 +93,21 @@ class addPermission extends Command
             }
         }
 
+        if(strtolower($type) == "write")
+        {
+            $actions = [
+                'provision-netbox-sites',
+                'provision-netbox-devices',
+                'provision-dhcp-scopes',
+                'provision-mist-sites',
+                'provision-mist-devices',
+            ];
+
+            foreach ($actions as $action) {
+                Bouncer::allow($role)->to($action);
+            }
+        }
+
         echo 'Finished Assigning Permissions'.PHP_EOL;
     }
 }

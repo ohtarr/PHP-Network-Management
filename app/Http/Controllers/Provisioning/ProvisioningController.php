@@ -90,6 +90,10 @@ class ProvisioningController extends Controller
 
     public function deployNetboxSite(Request $request, $sitecode)
     {
+        $user = auth()->user();
+		if ($user->cant('provision-netbox-sites')) {
+			abort(401, 'You are not authorized');
+        }
         $logcontext = [
             'sitecode'  => $sitecode,
         ];
@@ -304,6 +308,11 @@ class ProvisioningController extends Controller
 
     public function deployDhcpScope($sitecode, $vlan)
     {
+        $user = auth()->user();
+		if ($user->cant('provision-dhcp-scopes')) {
+			abort(401, 'You are not authorized');
+        }
+
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $site = Sites::where('name__ic', $sitecode)->first();
         if(!isset($site->id))
@@ -378,6 +387,11 @@ class ProvisioningController extends Controller
 
     public function deployMistSite(Request $request, $sitecode)
     {
+        $user = auth()->user();
+		if ($user->cant('provision-mist-sites')) {
+			abort(401, 'You are not authorized');
+        }
+
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $netboxsite = Sites::where('name__ie', $sitecode)->first();
         if(isset($netboxsite->id))
@@ -437,6 +451,11 @@ class ProvisioningController extends Controller
 
     public function deployNetboxDevices(Request $request, $sitecode)
     {
+        $user = auth()->user();
+		if ($user->cant('provision-netbox-devices')) {
+			abort(401, 'You are not authorized');
+        }
+
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $newdevices = [];
@@ -550,6 +569,11 @@ class ProvisioningController extends Controller
 
     public function deployMistDevices($sitecode)
     {
+        $user = auth()->user();
+		if ($user->cant('provision-mist-devices')) {
+			abort(401, 'You are not authorized');
+        }
+
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $netboxsite = Sites::where('name__ic',$sitecode)->first();
