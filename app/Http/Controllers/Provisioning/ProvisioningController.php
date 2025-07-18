@@ -12,6 +12,7 @@ use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Roles;
 use App\Models\Netbox\DCIM\DeviceTypes;
+use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\ServiceNow\Location;
 use App\Models\Mist\Site;
 use Illuminate\Support\Facades\Log;
@@ -479,9 +480,18 @@ class ProvisioningController extends Controller
             unset($modelexists);
             unset($roleid);
             unset($newdevice);
+            unset($basename);
+            unset($memberid);
+
             if(!isset($device['name']))
             {
                 $this->addLog(0, "Device NAME is missing, skipping.");
+                $totalstatus = 0;
+                continue;
+            }
+            if(strpos(trim($device['name']), ' ') !== false)
+            {
+                $this->addLog(0, "Device NAME {$device['name']} contains spaces, not allowed, skipping.");
                 $totalstatus = 0;
                 continue;
             }
@@ -498,7 +508,7 @@ class ProvisioningController extends Controller
                 continue;
             }
 
-            $nameexists = Devices::where('name__ie',$device['name'])->first();
+            $nameexists = Devices::where('name__ie',trim($device['name']))->first();
             if(isset($nameexists->id))
             {
                 $this->addLog(0, "Device with name {$nameexists->name} already exists, skipping.");
@@ -545,19 +555,71 @@ class ProvisioningController extends Controller
                 continue;
             }
             
+            $reg = "/^(\S+)_(\d)$/";
+            if(preg_match($reg, $device['name'], $hits))
+            {
+                $basename = $hits[1];
+                $memberid = $hits[2];
+            }
+            if(isset($basename))
+            {
+                $virtualchassis = VirtualChassis::where('name', $basename)->first();
+                if(!isset($virtualchassis->id))
+                {
+                    $this->addLog(1, "VirtualChassis {$basename} NOT found, attempting to create.");
+                    $virtualchassis = VirtualChassis::create(['name' => $basename]);
+                    if(!isset($virtualchassis->id))
+                    {
+                        $this->addLog(0, "VirtualChassis {$basename} FAILED to create, skipping device.");
+                        $totalstatus = 0;
+                        continue;
+                    } else {
+                        $this->addLog(1, "Existing VirtualChassis {$basename} found.");
+                    }
+                } else {
+                    $this->addLog(1, "Existing VirtualChassis {$basename} found.");
+                }
+            }
+
             $params = [
-                'name'			=>	strtoupper($device['name']),
+                'name'			=>	trim(strtoupper($device['name'])),
                 'device_type'	=>	$modelexists->id,
                 'role'			=>	$roleid,
                 'site'			=>	$site->id,
                 'location'		=>	$location->id,
-                'serial'        =>  strtoupper($device['serial']),
+                'serial'        =>  trim(strtoupper($device['serial'])),
             ];
+            if(isset($virtualchassis->id))
+            {
+                $params['virtual_chassis'] = $virtualchassis->id;
+                $params['vc_position'] = $memberid;
+                if($memberid == 0)
+                {
+                    $params['vc_priority'] = 200;
+                }
+            }
 
             $newdevice = Devices::create($params);
             if(isset($newdevice->id))
             {
                 $this->addLog(1, "Successfully added DEVICE {$newdevice->name}.");
+            }
+            if(isset($memberid))
+            {
+                $newdevice->renameInterfaces($memberid);
+            }
+            if($memberid == 0)
+            {
+                $params = [
+                    'master'    =>  $newdevice->id,
+                ];
+                $virtualchassis = $virtualchassis->update($params);
+                if(isset($virtualchassis->master->id))
+                {
+                    $this->addLog(1, "Successfully set switch {$newdevice->name} as MASTER on virtual chassis {$virtualchassis->name}.");
+                } else {
+                    $this->addLog(0, "FAILED to set switch {$newdevice->name} as MASTER on virtual chassis {$virtualchassis->name}.");
+                }
             }
             $newdevices[] = $newdevice;
         }
