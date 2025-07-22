@@ -15,6 +15,7 @@ use App\Models\Netbox\DCIM\DeviceTypes;
 use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\ServiceNow\Location;
 use App\Models\Mist\Site;
+use App\Models\Mist\Device;
 use Illuminate\Support\Facades\Log;
 
 class ProvisioningController extends Controller
@@ -393,6 +394,8 @@ class ProvisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
+        $sitecode = strtoupper($sitecode);
+
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $netboxsite = Sites::where('name__ie', $sitecode)->first();
         if(isset($netboxsite->id))
@@ -429,7 +432,10 @@ class ProvisioningController extends Controller
         try{
             $mistsite = $netboxsite->createMistSite();
         } catch (\Exception $e) {
-            
+            $msg = $e->getMessage();
+            $this->addLog(0, "Mist SITE {$sitecode} failed to create. {$msg}");
+            $return['status'] = 0;
+            $return['data'] = null;
         }
         if(isset($mistsite->id))
         {
@@ -604,7 +610,7 @@ class ProvisioningController extends Controller
             {
                 $this->addLog(1, "Successfully added DEVICE {$newdevice->name}.");
             }
-            if(isset($memberid))
+            if(isset($memberid) && $memberid != 0)
             {
                 $newdevice->renameInterfaces($memberid);
             }
@@ -671,7 +677,7 @@ class ProvisioningController extends Controller
             $return['data'] = null;
             return $return;
         }
-
+        $deploy = [];
         foreach($devices as $device)
         {
             unset($mistdevice);
@@ -693,6 +699,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
+            //Find existing Mist Device
             $mistdevice = Device::findBySerial($device->serial);
             if(!isset($mistdevice->serial))
             {
@@ -707,9 +714,31 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
+            //Assign Mist Device to site.
             $status = $mistdevice->assignToSite($mistsite->id);
-            
+            //fetch fresh copy of mistdevice
+            $mistdevice = Device::findBySerial($device->serial);
+            if($mistdevice->site_id == $mistsite->id)
+            {
+                $this->addLog(1, "Assigned devices to MISTSITE {$mistsite->name} successfully.");
+            } else {
+                $totalstatus = 0;
+                $this->addLog(1, "FAILED to assign devices to MISTSITE {$mistsite->name}.");
+            }         
+            //RENAME Mist Device
+            $params = ['name'   =>  $device->name];
+            $mistdevice = $mistdevice->update($params);
+            if(isset($mistdevice->name))
+            {
+                $this->addLog(1, "Renamed MIST DEVICE to {$mistdevice->name} successfully.");
+            } else {
+                $this->addLog(0, "Failed to rename MIST DEVICE with serial {$mistdevice->serial}.");
+            }
         }
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = null;
+        return $return;
     }
 
     public function getNetboxDeviceTypesSummarized()

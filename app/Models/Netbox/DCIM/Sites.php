@@ -646,6 +646,7 @@ class Sites extends BaseModel
 			],
 			'rftemplate_id' =>  $rftemplateid,
 			'networktemplate_id'    =>  $networktemplateid,
+            'sitegroup_ids'     =>  $this->generateMistSiteGroups(),
 		];
 		
 		return $params;
@@ -723,7 +724,6 @@ class Sites extends BaseModel
 				print $msg . PHP_EOL;
 				throw new \Exception($msg);
 			}
-
 		}
 	
 		$params = $this->generateMistSiteParameters();
@@ -736,10 +736,10 @@ class Sites extends BaseModel
 			throw new \Exception($msg);
 		}
 		
-		foreach($sitegroupids as $sitegroupid)
-		{
-            $mistsite = $mistsite->addToSiteGroup($sitegroupid);
-        }
+//		foreach($sitegroupids as $sitegroupid)
+//		{
+//          $mistsite = $mistsite->addToSiteGroup($sitegroupid);
+//      }
         $mistsite->updateSettings($mistsettings);
 		return $mistsite;
 	}

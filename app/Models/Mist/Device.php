@@ -148,6 +148,17 @@ class Device extends BaseModel
         return static::post($path, $params);
     }
 
+    public static function assignDevicesToSite(array $devices, $siteid)
+    {
+        $path = "orgs/" . static::getOrgId() . "/inventory";
+        $params = [
+            'op'        =>  'assign',
+            'site_id'   =>  $siteid,
+            'macs'      =>  $devices,
+        ];
+        return static::getQuery()->put($path, $params);
+    }
+
     public function assignToSite($siteid)
     {
         if(isset($this->mac))
@@ -158,7 +169,7 @@ class Device extends BaseModel
                 'site_id'   =>  $siteid,
                 'macs'      =>  [$this->mac],
             ];
-            return static::put($path, $params);
+            return $this->getQuery()->put($path, $params);
         }
     }
 
@@ -169,7 +180,7 @@ class Device extends BaseModel
             'op'        =>  'unassign',
             'macs'      =>  [$this->mac],
         ];
-        return static::put($path, $params);
+        return $this->getQuery()->put($path, $params);
     }
 
     public function getSite()
@@ -247,7 +258,7 @@ class Device extends BaseModel
     public function update(array $attributes = [], array $options = [])
     {
         $path = "sites/" . $this->site_id . "/devices/" . $this->id;
-        return $this->put($path, $attributes);
+        return $this->getQuery()->put($path, $attributes);
     }
 
     public function getSummary()

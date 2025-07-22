@@ -93,14 +93,15 @@ class BaseModel extends Model
         return static::getQuery()->post(static::getPath(), $params);
     }
 
-/*     public function update2($path, array $params)
+    public function update(array $attributes = [], array $options = [])
     {
-        return static::getQuery()->put($path, $params);
+        $path = $this->getPath() . "/" . $this->id;
+        return $this->getQuery()->put($path, $attributes);
     }
 
-    public function delete($path, array $params)
-    {
-        return static::getQuery()->delete($path, $params);
-    } */
+//    public function delete($path, array $params)
+//    {
+//        return static::getQuery()->delete($path, $params);
+//    } 
 
 }
