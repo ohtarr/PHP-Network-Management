@@ -151,10 +151,13 @@ class Cables extends BaseModel
     public function generateLabel()
     {
         $report = $this->generateReport();
-        return [
-            'label1'    =>  $report['label1'],
-            'label2'    =>  $report['label2'],
-        ];
+        if(isset($report['label1']) && isset($report['label2']))
+        {
+            return [
+                'label1'    =>  $report['label1'],
+                'label2'    =>  $report['label2'],
+            ];
+        }
     }
 
 }

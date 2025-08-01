@@ -64,9 +64,17 @@ class NetboxCableReport extends Command
         {
             if(isset($options['labelonly']))
             {
-                $results[] = $cable->generateLabel();
+                $report = $cable->generateLabel();
+                if(is_array($report))
+                {
+                    $results[] = $report;
+                }
             } else {
-                $results[] = $cable->generateReport();
+                $report = $cable->generateReport();
+                if(is_array($report))
+                {
+                    $results[] = $report;
+                }
             }
 
         }
