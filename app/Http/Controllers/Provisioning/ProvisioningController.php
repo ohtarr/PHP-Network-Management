@@ -16,6 +16,10 @@ use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\ServiceNow\Location;
 use App\Models\Mist\Site;
 use App\Models\Mist\Device;
+use App\Models\Mist\SiteGroup;
+use App\Models\Mist\GatewayTemplate;
+use App\Models\Mist\NetworkTemplate;
+use App\Models\Mist\RfTemplate;
 use Illuminate\Support\Facades\Log;
 
 class ProvisioningController extends Controller
@@ -395,6 +399,7 @@ class ProvisioningController extends Controller
         }
 
         $sitecode = strtoupper($sitecode);
+        $submitted = $request->collect();
 
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $netboxsite = Sites::where('name__ie', $sitecode)->first();
@@ -429,19 +434,85 @@ class ProvisioningController extends Controller
             $return['data'] = $snowlocs;
             return $return;
         }
-        try{
-            $mistsite = $netboxsite->createMistSite();
-        } catch (\Exception $e) {
-            $msg = $e->getMessage();
-            $this->addLog(0, "Mist SITE {$sitecode} failed to create. {$msg}");
-            $return['status'] = 0;
-            $return['data'] = null;
+
+		$mistsettings = $netboxsite->generateMistSiteSettings();
+		
+		if(!$mistsettings)
+		{
+			$msg = "Unable to generate Mist Site Settings";
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+
+		$sitegroupids = $netboxsite->generateMistSiteGroups();
+
+		$sitegroups = SiteGroup::all();
+
+		//check if site groups exist
+		foreach($sitegroupids as $sitegroupid)
+		{
+			$exists = 0;
+			foreach($sitegroups as $sitegroup)
+			{
+				if($sitegroupid == $sitegroup->id)
+				{
+					$exists = 1;
+					break;
+				}
+			}
+			if($exists == 0)
+			{
+				$msg = 'SITEGROUP does not exist!';
+				print $msg . PHP_EOL;
+				throw new \Exception($msg);
+			}
+		}
+	
+		$mistsiteparams = $netboxsite->generateMistSiteParameters();
+
+        if(isset($request['gateway_template']))
+        {
+            if($request['gateway_template'])
+            {
+                $gatewaytemplate = GatewayTemplate::where('name', $request['gateway_template'])->first();
+                if(isset($gatewaytemplate->id))
+                {
+                    $mistsiteparams['gatewaytemplate_id'] = $gatewaytemplate->id;
+                }
+            }
         }
+
+        if(isset($request['network_template']))
+        {
+            if($request['network_template'])
+            {
+                $networktemplate = NetworkTemplate::where('name', $request['network_template'])->first();
+                if(isset($networktemplate->id))
+                {
+                    $mistsiteparams['networktemplate_id'] = $networktemplate->id;
+                }
+            }
+        }
+
+        if(isset($request['rf_template']))
+        {
+            if($request['rf_template'])
+            {
+                $rftemplate = RfTemplate::where('name', $request['rf_template'])->first();
+                if(isset($rftemplate->id))
+                {
+                    $mistsiteparams['rftemplate_id'] = $rftemplate->id;
+                }
+            }
+        }
+
+        $mistsite = Site::create($mistsiteparams);
         if(isset($mistsite->id))
         {
             $this->addLog(1, "Mist SITE ID {$mistsite->id} has been created.");
             $return['status'] = 1;
             $return['data'] = $mistsite;
+            $mistsite->updateSettings($mistsettings);
         } else {
             $this->addLog(0, "Mist SITE {$sitecode} failed to create.");
             $return['status'] = 0;

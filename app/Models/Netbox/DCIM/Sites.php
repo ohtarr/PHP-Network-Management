@@ -15,8 +15,8 @@ use App\Models\Gizmo\Dhcp;
 use App\Models\Mist\Site;
 use App\Models\Mist\RfTemplate;
 use App\Models\Mist\NetworkTemplate;
+use App\Models\Mist\GatewayTemplate;
 use App\Models\Mist\SiteGroup;
-
 
 #[\AllowDynamicProperties]
 class Sites extends BaseModel
@@ -587,6 +587,7 @@ class Sites extends BaseModel
 	{
         $rftemplateid = env('MIST_RF_TEMPLATE_ID');
         $networktemplateid = env('MIST_NETWORK_TEMPLATE_ID');
+        $gatewaytemplateid = env('MIST_GATEWAY_TEMPLATE_ID');
    		//Check to make sure RF template exists, if not get out of here!
         $rftemplate = RfTemplate::find($rftemplateid);
 		if(!$rftemplate)
@@ -603,7 +604,15 @@ class Sites extends BaseModel
 			print $msg . PHP_EOL;
 			throw new \Exception($msg);
 		}
-		
+
+        $gatewaytemplate = GatewayTemplate::find($gatewaytemplateid);
+		if(!$gatewaytemplate)
+		{
+			$msg = 'GATEWAYTEMPLATE does not exist!';
+			print $msg . PHP_EOL;
+			throw new \Exception($msg);
+		}
+
 		$snowloc = $this->getServiceNowLocation();
 		if(!isset($snowloc->sys_id))
 		{
@@ -646,7 +655,9 @@ class Sites extends BaseModel
 			],
 			'rftemplate_id' =>  $rftemplateid,
 			'networktemplate_id'    =>  $networktemplateid,
+            'gatewaytemplate_id'    =>  $gatewaytemplateid,
             'sitegroup_ids'     =>  $this->generateMistSiteGroups(),
+            'gatewa'
 		];
 		
 		return $params;
