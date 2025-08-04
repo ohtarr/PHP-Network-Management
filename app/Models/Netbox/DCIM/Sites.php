@@ -657,7 +657,6 @@ class Sites extends BaseModel
 			'networktemplate_id'    =>  $networktemplateid,
             'gatewaytemplate_id'    =>  $gatewaytemplateid,
             'sitegroup_ids'     =>  $this->generateMistSiteGroups(),
-            'gatewa'
 		];
 		
 		return $params;
