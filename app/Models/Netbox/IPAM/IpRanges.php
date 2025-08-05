@@ -161,7 +161,7 @@ class IpRanges extends BaseModel
                 return Dhcp::make($scope);
             }
         } catch (\Exception $e) {
-            print $e->getMessage();
+            //print $e->getMessage();
             return null;
         }
     }

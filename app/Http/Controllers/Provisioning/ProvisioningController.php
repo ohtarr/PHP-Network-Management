@@ -559,6 +559,7 @@ class ProvisioningController extends Controller
             unset($newdevice);
             unset($basename);
             unset($memberid);
+            unset($virtualchassis);
 
             if(!isset($device['name']))
             {
