@@ -470,11 +470,11 @@ class ProvisioningController extends Controller
 	
 		$mistsiteparams = $netboxsite->generateMistSiteParameters();
 
-        if(isset($request['gateway_template']))
+        if(isset($submitted['gateway_template']))
         {
-            if($request['gateway_template'])
+            if($submitted['gateway_template'])
             {
-                $gatewaytemplate = GatewayTemplate::where('name', $request['gateway_template'])->first();
+                $gatewaytemplate = GatewayTemplate::where('name', $submitted['gateway_template'])->first();
                 if(isset($gatewaytemplate->id))
                 {
                     $mistsiteparams['gatewaytemplate_id'] = $gatewaytemplate->id;
@@ -482,11 +482,11 @@ class ProvisioningController extends Controller
             }
         }
 
-        if(isset($request['network_template']))
+        if(isset($submitted['network_template']))
         {
-            if($request['network_template'])
+            if($submitted['network_template'])
             {
-                $networktemplate = NetworkTemplate::where('name', $request['network_template'])->first();
+                $networktemplate = NetworkTemplate::where('name', $submitted['network_template'])->first();
                 if(isset($networktemplate->id))
                 {
                     $mistsiteparams['networktemplate_id'] = $networktemplate->id;
@@ -494,11 +494,11 @@ class ProvisioningController extends Controller
             }
         }
 
-        if(isset($request['rf_template']))
+        if(isset($submitted['rf_template']))
         {
-            if($request['rf_template'])
+            if($submitted['rf_template'])
             {
-                $rftemplate = RfTemplate::where('name', $request['rf_template'])->first();
+                $rftemplate = RfTemplate::where('name', $submitted['rf_template'])->first();
                 if(isset($rftemplate->id))
                 {
                     $mistsiteparams['rftemplate_id'] = $rftemplate->id;
