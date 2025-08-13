@@ -153,6 +153,7 @@ class ValidationController extends Controller
                 } else {
                     $this->addLog(0, "Netbox IPRANGE does NOT exist for prefix {$prefix->prefix}");
                     $totalstatus = 0;
+                    continue;
                 }
 
                 $scope = $iprange->getDhcpScope();
