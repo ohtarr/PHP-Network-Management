@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\ServiceNow\Location;
 use App\Models\Netbox\DCIM\Sites;
 use App\Models\Netbox\IPAM\Asns;
+use App\Models\Netbox\IPAM\Prefixes;
 
 class ValidationController extends Controller
 {
@@ -89,24 +90,133 @@ class ValidationController extends Controller
                 }
             }
 
-            $prefix = $netboxsite->getProvisioningSupernet();
-            if(isset($prefix->id))
+            $provprefix = $netboxsite->getProvisioningSupernet();
+            if(isset($provprefix->id))
             {
-                $this->addLog(1, "Netbox PREFIX {$prefix->id} is assigned to site ID {$netboxsite->id}");
+                $this->addLog(1, "Netbox PREFIX {$provprefix->prefix} (ID: {$provprefix->id}) is assigned to site ID {$netboxsite->id}");
             } else {
                 $this->addLog(0, "Netbox PREFIX not found for site ID {$netboxsite->id}");
                 $totalstatus = 0;
             }
 
-            if(isset($prefix->status))
+            if(isset($provprefix->status))
             {
-                if($prefix->status->value == "container")
+                if($provprefix->status->value == "container")
                 {
-                    $this->addLog(1, "Netbox PREFIX {$prefix->id} is set to status CONTAINER");
+                    $this->addLog(1, "Netbox PREFIX {$provprefix->prefix} is set to status CONTAINER");
                 }
             } else {
-                $this->addLog(0, "Netbox PREFIX is NOT set to status CONTAINER");
+                $this->addLog(0, "Netbox PREFIX {$provprefix->prefix} is NOT set to status CONTAINER");
                 $totalstatus = 0;
+            }
+
+            if(isset($provprefix->role->name))
+            {
+                if($provprefix->role->name == "SITE_SUPERNET")
+                {
+                    $this->addLog(1, "Netbox PREFIX {$provprefix->prefix} is set to role SITE_SUPERNET");
+                }
+            } else {
+                $this->addLog(0, "Netbox PREFIX {$provprefix->prefix} is NOT set to role SITE_SUPERNET");
+                $totalstatus = 0;
+            }
+
+            $networks = $netboxsite->generateSiteNetworks();
+            foreach($networks as $vlan => $network)
+            {
+                unset($prefixstring);
+                unset($scope);
+                $prefixstring = $network['network'] . '/' . $network['bitmask'];
+                $prefix = Prefixes::where('prefix', $prefixstring)->first();
+                if(isset($prefix->id))
+                {
+                    $this->addLog(1, "Netbox PREFIX {$prefixstring} exists");
+                } else {
+                    $this->addLog(0, "Netbox PREFIX {$prefixstring} does NOT exist");
+                    $totalstatus = 0;
+                    continue;
+                }
+
+                if($prefix->role->id == $network['role'])
+                {
+                    $this->addLog(1, "Netbox PREFIX {$prefixstring} is set to correct ROLE ({$prefix->role->name})");
+                } else {
+                    $this->addLog(0, "Netbox PREFIX {$prefixstring} is NOT set to correct ROLE.");
+                    $totalstatus = 0;
+                    continue;
+                }
+
+                $iprange = $prefix->getIpRanges()->where('role.name','DHCP_SCOPE')->first();
+                if(isset($iprange->id))
+                {
+                    $this->addLog(1, "Netbox IPRANGE {$iprange->display} exists for prefix {$prefix->prefix}");
+                } else {
+                    $this->addLog(0, "Netbox IPRANGE does NOT exist for prefix {$prefix->prefix}");
+                    $totalstatus = 0;
+                }
+
+                $scope = $iprange->getDhcpScope();
+                if(isset($scope->scopeID))
+                {
+                    $this->addLog(1, "DHCP Scope {$scope->scopeID} exists for prefix {$prefix->prefix}");
+                    if(isset($network['gateway']))
+                    {
+                        $option = $scope->findOption(3);
+                        if(!isset($option['value'][0]))
+                        {
+                            $this->addLog(0, "DHCP Scope {$scope->scopeID} does NOT have a gateway!}");                            
+                        } else {
+                            if($option['value'][0] == $network['gateway'])
+                            {
+                                $this->addLog(1, "DHCP Scope {$scope->scopeID} has correct gateway {$option['value'][0]}");
+                            } else {
+                                $this->addLog(0, "DHCP Scope {$scope->scopeID} has incorrect gateway {$option['value'][0]}");
+                            }
+                        }
+                    }
+                    $option = $scope->findOption(6);
+                    for($x = 1; $x <= 3; $x++)
+                    {
+                        $arraykey = $x - 1;
+                        if(isset($network['dns' . $x]))
+                        {
+                            if(isset($option['value'][$arraykey]))
+                            {
+                                if($option['value'][$arraykey] == $network['dns' . $x])
+                                {
+                                    $this->addLog(1, "DHCP Scope {$scope->scopeID} has correct dns{$x} OPTION ({$option['value'][$arraykey]})");
+                                } else {
+                                    $this->addLog(0, "DHCP Scope {$scope->scopeID} has incorrect dns{$x} OPTION ({$option['value'][$arraykey]})");
+                                }
+                            } else {
+                                $this->addLog(0, "DHCP Scope {$scope->scopeID} is missing dns{$x} OPTION");
+                            }
+                        }
+                    }
+                    $option = $scope->findOption(150);
+                    for($x = 1; $x <= 2; $x++)
+                    {
+                        $arraykey = $x - 1;
+                        if(isset($network['cm' . $x]))
+                        {
+                            if(isset($option['value'][$arraykey]))
+                            {
+                                if($option['value'][$arraykey] == $network['cm' . $x])
+                                {
+                                    $this->addLog(1, "DHCP Scope {$scope->scopeID} has correct cm{$x} OPTION ({$option['value'][$arraykey]})");
+                                } else {
+                                    $this->addLog(0, "DHCP Scope {$scope->scopeID} has incorrect cm{$x} OPTION ({$option['value'][$arraykey]})");
+                                }
+                            } else {
+                                $this->addLog(0, "DHCP Scope {$scope->scopeID} is missing cm{$x} OPTION");
+                            }
+                        }
+                    }
+                } else {
+                    $this->addLog(0, "DHCP Scope does NOT exist for prefix {$prefix->prefix}");
+                    $totalstatus = 0;
+                }
+
             }
 
             $asn = Asns::where('site_id',$netboxsite->id)->first();
