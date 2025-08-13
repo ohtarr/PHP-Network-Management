@@ -20,6 +20,7 @@ use App\Models\Mist\SiteGroup;
 use App\Models\Mist\GatewayTemplate;
 use App\Models\Mist\NetworkTemplate;
 use App\Models\Mist\RfTemplate;
+use App\Models\Gizmo\Dhcp;
 use Illuminate\Support\Facades\Log;
 
 class ProvisioningController extends Controller
@@ -357,6 +358,22 @@ class ProvisioningController extends Controller
         if(isset($exists->scopeID))
         {
             $this->addLog(0, "Scope {$prefix->cidr()['network']} already exists for {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+        
+        $overlaps = Dhcp::findOverlap($prefix->Network(), $prefix->Length());
+        if($overlaps->count() > 0)
+        {
+            $overlapsmsg = "";
+            foreach($overlaps as $overlap)
+            {
+                $overlapsmsg .= $overlap->scopeID . ',';
+            }
+
+            $this->addLog(0, "Scope {$prefix->cidr()['network']} has overlapping scopes! {$overlapsmsg}");
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
