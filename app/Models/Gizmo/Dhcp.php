@@ -5,6 +5,7 @@ namespace App\Models\Gizmo;
 use App\Models\Gizmo\Gizmo;
 use GuzzleHttp\Client as GuzzleHttpClient;
 use App\Models\Azure\Azure;
+use IPv4\SubnetCalculator;
 
 class Dhcp extends Gizmo
 {
@@ -423,6 +424,38 @@ class Dhcp extends Gizmo
 		return $array;
 	}
 
+    public static function findOverlap($network, $bitmask)
+    {
+        $overlaps = [];
+        $ipcalc = new SubnetCalculator($network, $bitmask);
+        $range = $ipcalc->getIPAddressRange();
+
+        $longstart = ip2long($range[0]);
+        $longend = ip2long($range[1]);
+
+        $scopes = self::all();
+
+        foreach($scopes as $scope){
+            if(ip2long($scope->scopeID) >= $longstart && ip2long($scope->scopeID) <= $longend){
+                $overlaps[] = $scope;
+            }
+        }
+        return collect($overlaps);
+    }
+
+    public function findOption($optionid)
+    {
+        if(isset($this->dhcpOptions))
+        {
+            foreach($this->dhcpOptions as $option)
+            {
+                if($option['optionId'] == $optionid)
+                {
+                    return $option;
+                }
+            }
+        }
+    }
 }
 //Initialize the model with the BASE_URL from env.
 Dhcp::init();
