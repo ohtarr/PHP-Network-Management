@@ -203,22 +203,42 @@ class Sites extends BaseModel
 
     public function getWiredPrefix()
     {
-        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',1)->first();
+        $role = Roles::where('name','WIRED')->first();
+        if(!isset($role->id))
+        {
+            return null;
+        }
+        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id', $role->id)->first();
     }
 
     public function getWirelessPrefix()
     {
-        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',2)->first();
+        $role = Roles::where('name','WIRELESS')->first();
+        if(!isset($role->id))
+        {
+            return null;
+        }
+        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id', $role->id)->first();
     }
 
     public function getVoicePrefix()
     {
-        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',3)->first();
+        $role = Roles::where('name','VOICE')->first();
+        if(!isset($role->id))
+        {
+            return null;
+        }
+        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id', $role->id)->first();
     }
 
     public function getRestrictedPrefix()
     {
-        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',4)->first();
+        $role = Roles::where('name','RESTRICTED')->first();
+        if(!isset($role->id))
+        {
+            return null;
+        }
+        return Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id', $role->id)->first();
     }
 
     public function getAsns()
@@ -389,6 +409,14 @@ class Sites extends BaseModel
         if(isset($provprefix['dns3']))
         {  
             $custom_fields['dns3'] = $provprefix['dns3'];
+        }
+        if(isset($provprefix['cm1']))
+        {  
+            $custom_fields['cm1'] = $provprefix['cm1'];
+        }
+        if(isset($provprefix['cm2']))
+        {  
+            $custom_fields['cm2'] = $provprefix['cm2'];
         }
         $params = [
             'start_address'     =>  $provprefix['start_address'] . "/" . $provprefix['bitmask'],
