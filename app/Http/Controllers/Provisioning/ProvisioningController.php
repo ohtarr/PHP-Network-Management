@@ -703,7 +703,7 @@ class ProvisioningController extends Controller
             {
                 $newdevice->renameInterfaces($memberid);
             }
-            if($memberid == 0)
+            if(isset($memberid) && $memberid == 0)
             {
                 $params = [
                     'master'    =>  $newdevice->id,
