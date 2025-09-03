@@ -46,6 +46,11 @@ class Gizmo extends Model
         static::$base_url = env('GIZMO_URL');
     }
 
+    public static function getToken()
+    {
+        return Azure::getToken('api://' . env('GIZMO_CLIENT_ID') . '/.default');
+    }
+
     //get ALL records of this model
     public static function all($columns = [])
     {
@@ -261,6 +266,27 @@ class Gizmo extends Model
             $filtered = $filtered->where($key, $value);
         }
         return $filtered;
+    }
+
+    public static function hydrateOne($data)
+    {
+        $object = new static;
+        foreach($data as $key => $value)
+        {
+            $object->$key = $value;
+        }
+        return $object;
+    }
+
+    public static function hydrateMany($response)
+    {
+        $objects = [];
+        foreach($response as $item)
+        {
+            $object = static::hydrateOne($item);
+            $objects[] = $object;
+        }
+        return collect($objects);
     }
 
 }

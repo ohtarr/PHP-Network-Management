@@ -126,23 +126,27 @@ class Devices extends BaseModel
 
     public function getIpAddress()
     {
-        /*
         $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
         if(isset($this->primary_ip->address))
         {
             $ip = $this->primary_ip->address;
-            preg_match($reg, $ip, $hits);
-            return $hits[1];
-        }
-        /**/
-
-        if(isset($this->custom_fields->ip)) {
-            return $this->custom_fields->ip;
-        } elseif(isset($this->virtual_chassis->master->id)) {
-            $master = self::find($this->virtual_chassis->master->id);
-            if(isset($master->custom_fields->ip))
+            if(preg_match($reg, $ip, $hits))
             {
-                return $master->custom_fields->ip;
+                return $hits[1];
+            }
+        } elseif(isset($this->custom_fields->ip)) {
+            return $this->custom_fields->ip;            
+        } elseif(isset($this->virtual_chassis->master->id)){
+            $master = self::find($this->virtual_chassis->master->id);
+            if(isset($master->primary_ip->address))
+            {
+                $ip = $master->primary_ip->address;
+                if(preg_match($reg, $ip, $hits))
+                {
+                    return $hits[1];
+                }
+            } elseif(isset($master->custom_fields->ip)) {
+                return $master->custom_fields->ip;            
             }
         }
     }
@@ -177,5 +181,20 @@ class Devices extends BaseModel
                 }
             }
         }
+    }
+
+    public function generateDnsNames()
+    {
+        $ip = $this->getIpAddress();
+        if(!$ip)
+        {
+            return null;
+        }
+        $dnsrecords[] = [
+            'hostname'  =>  $this->name,
+            'ip'        =>  $ip,
+            'type'      =>  'a',
+        ];
+        return $dnsrecords;
     }
 }
