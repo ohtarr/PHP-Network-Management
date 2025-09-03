@@ -119,7 +119,7 @@ class syncDns extends Command
         foreach($delete as $record)
         {
             try {
-                print "### deleting record {$record['hostname']... ###" . PHP_EOL;
+                print "### deleting record {$record['hostname']}... ###" . PHP_EOL;
                 $record->delete();
             } catch (\Exception $e) {
                 print "Error occurred: " . $e->getMessage() . PHP_EOL;
@@ -165,18 +165,18 @@ class syncDns extends Command
         print count($add) . " records to add..." . PHP_EOL;
         foreach($add as $record)
         {
-            print "### record {$record['hostname'] ###" . PHP_EOL;
-            $class = null;
+            print "### record {$record['hostname']} ###" . PHP_EOL;
+            $classtype = null;
             foreach($typemap as $key => $value)
             {
                 if($record['type'] == $key)
                 {
-                    $class = $value;
-                    print "detected class type {$class}" . PHP_EOL;
+                    $classtype = $value;
+                    print "detected class type {$classtype}" . PHP_EOL;
                     break;
                 }
             }
-            if(!$class)
+            if(!$classtype)
             {
                 print "Unable to determine class type, skipping!" . PHP_EOL;
                 continue;
@@ -184,7 +184,7 @@ class syncDns extends Command
             
             try {
                 print "Adding record {$record['hostname']}" . PHP_EOL;
-                $class::create($record['hostname'], $record['ip'])
+                $classtype::create($record['hostname'], $record['ip']);
             } catch (\Exception $e) {
                 print "Error occurred: " . $e->getMessage() . PHP_EOL;
             }
