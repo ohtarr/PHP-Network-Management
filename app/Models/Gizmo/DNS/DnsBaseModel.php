@@ -7,16 +7,19 @@ use App\Models\Gizmo\BaseModel;
 //#[\AllowDynamicProperties]
 class DnsBaseModel extends BaseModel
 {
-    protected static $path = "/api/dns";
-
     public static function getZone()
     {
         return env('DNSZONE');
     }
 
+    public static function getType()
+    {
+        return null;
+    }
+
     public static function getPath()
     {
-        return static::$path . "/" . static::$type;
+        return "/api/dns/" . static::getType();
     }
 
     public static function all($zone = null)

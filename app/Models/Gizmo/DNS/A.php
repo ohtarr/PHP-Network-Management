@@ -6,5 +6,8 @@ use App\Models\Gizmo\DNS\DnsBaseModel;
 
 class A extends DnsBaseModel
 {
-    protected static $type = "a";
+    public static function getType()
+    {
+        return "a";
+    }
 }
