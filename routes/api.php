@@ -64,6 +64,11 @@ Route::post('provisioning/dhcp/{sitecode}/vlan/{vlan}', [App\Http\Controllers\Pr
 Route::post('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScopes']);
 
 Route::post('provisioning/mist/site/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistSite']);
-Route::post('provisioning/mist/devices/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevices']);
+Route::post('provisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevices']);
+
+Route::delete('deprovisioning/mist/site/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteMistSite']);
+Route::delete('deprovisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'unassignMistDevices']);
+Route::delete('deprovisioning/dhcp/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteDhcpScopes']);
 
 Route::get('validation/netboxsite/{sitecode}', [App\Http\Controllers\Validation\ValidationController::class, 'validateNetboxSite']);
+

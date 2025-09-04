@@ -446,7 +446,7 @@ class Sites extends BaseModel
         {
             return null;
         }
-        $roleid = $this->vlanToRoleMapping[$vlan];
+        $roleid = $this->vlanToRoleMapping()[$vlan];
         //$prefix = Prefixes::where('site_id',$this->id)->where('status','active')->where('role_id',$roleid)->first();
         $prefix = Prefixes::where('scope_type',"dcim.site")->where('scope_id', $this->id)->where('status','active')->where('role_id',$roleid)->first();
         if(!isset($prefix->id))
