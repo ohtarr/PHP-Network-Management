@@ -7,9 +7,16 @@ use App\Models\Gizmo\BaseModel;
 //#[\AllowDynamicProperties]
 class DnsBaseModel extends BaseModel
 {
+    protected static $path = "/api/dns";
+
     public static function getZone()
     {
         return env('DNSZONE');
+    }
+
+    public static function getPath()
+    {
+        return static::$path . "/" . static::$type;
     }
 
     public static function all($zone = null)
@@ -18,7 +25,7 @@ class DnsBaseModel extends BaseModel
         {
             $zone = static::getZone();
         }
-        $path = static::$path . "/all/" . $zone;
+        $path = static::getPath() . "/all/" . $zone;
         $response = static::request('get', $path);
         return static::hydrateMany($response);
     }
@@ -29,7 +36,7 @@ class DnsBaseModel extends BaseModel
         {
             $zone = static::getZone();
         }
-        $path = static::$path . "/" . $name;
+        $path = static::getPath() . "/" . $name;
         $response = static::request('get', $path);
         return static::hydrateMany($response);
     }
@@ -64,7 +71,7 @@ class DnsBaseModel extends BaseModel
         ];
         $params['body'] = json_encode($bodyarray);
         try{
-            $response = static::request('POST', static::$path, $params);
+            $response = static::request('POST', static::getPath(), $params);
         } catch (\GuzzleHttp\Exception\ServerException $e) {
             print_r($e);
         }
@@ -87,7 +94,7 @@ class DnsBaseModel extends BaseModel
         ];
         $params['body'] = json_encode($bodyarray);
         try{
-            $response = static::request('DELETE', static::$path, $params);
+            $response = static::request('DELETE', static::getPath(), $params);
         } catch (\GuzzleHttp\Exception\ServerException $e) {
             print_r($e);
             return false;

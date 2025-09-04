@@ -8,7 +8,7 @@ use App\Models\Azure\Azure;
 #[\AllowDynamicProperties]
 class BaseModel
 {
-    protected static $path;
+    protected static $path = "/api";
 
     public static function getToken()
     {

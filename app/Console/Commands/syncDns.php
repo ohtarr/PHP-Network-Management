@@ -183,7 +183,7 @@ class syncDns extends Command
             }
             
             try {
-                print "Adding record {$record['hostname']}" . PHP_EOL;
+                print "Adding record {$record['hostname']} {$record['ip']}" . PHP_EOL;
                 $classtype::create($record['hostname'], $record['ip']);
             } catch (\Exception $e) {
                 print "Error occurred: " . $e->getMessage() . PHP_EOL;

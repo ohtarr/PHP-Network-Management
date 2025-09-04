@@ -6,5 +6,5 @@ use App\Models\Gizmo\DNS\DnsBaseModel;
 
 class Ptr extends DnsBaseModel
 {
-    protected static $path = "/api/dns/ptr";
+    protected static $type = "ptr";
 }
