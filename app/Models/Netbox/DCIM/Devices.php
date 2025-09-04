@@ -192,7 +192,7 @@ class Devices extends BaseModel
         }
         $dnsrecords[] = [
             'hostname'  =>  $this->name,
-            'ip'        =>  $ip,
+            'data'        =>  $ip,
             'type'      =>  'a',
         ];
         return $dnsrecords;

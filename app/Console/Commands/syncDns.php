@@ -35,12 +35,18 @@ class syncDns extends Command
 
     public function handle()
     {
-        $this->addRecords();
         $this->deleteRecords();
+        $this->checkCurrentRecords();
+        $this->addRecords();
+
     }
 
-    public function getARecords()
+    public function getARecords($fresh = false)
     {
+        if($fresh)
+        {
+            unset($this->arecords);
+        }
         if(!$this->arecords)
         {
             $this->arecords = A::all();
@@ -48,8 +54,12 @@ class syncDns extends Command
         return $this->arecords;
     }
 
-    public function getCnameRecords()
+    public function getCnameRecords($fresh = false)
     {
+        if($fresh)
+        {
+            unset($this->cnamerecords);
+        }
         if(!$this->cnamerecords)
         {
             $this->cnamerecords = Cname::all();
@@ -183,11 +193,41 @@ class syncDns extends Command
             }
             
             try {
-                print "Adding record {$record['hostname']} {$record['ip']}" . PHP_EOL;
-                $classtype::create($record['hostname'], $record['ip']);
+                print "Adding record {$record['hostname']} {$record['data']}" . PHP_EOL;
+                $classtype::create($record['hostname'], $record['data']);
             } catch (\Exception $e) {
                 print "Error occurred: " . $e->getMessage() . PHP_EOL;
             }
         }
+    }
+
+    public function checkCurrentRecords()
+    {
+        print "*** Checking existing DNS records ***" . PHP_EOL;
+        $generated = $this->generateAllRecords();
+        $arecords = $this->getARecords(true);
+        $cnames = $this->getCnameRecords(true);
+        $merged = $arecords->merge($cnames);
+
+        foreach($merged as $record)
+        {
+            print "Checking host {$record->hostName} data {$record->recordData}..." . PHP_EOL;
+            foreach($generated as $grecord)
+            {
+                if(strtolower($record->hostName) == strtolower($grecord['hostname']))
+                {
+                    print "Found match, checking data..." . PHP_EOL;
+                    if($record->recordData != $grecord['data'])
+                    {
+                        print "record data does NOT match, deleting record..." . PHP_EOL;
+                        $record->delete();
+                    } else {
+                        print "record data MATCHES, skipping..." . PHP_EOL;
+                    }
+                    break;
+                }
+            }
+        }
+
     }
 }
