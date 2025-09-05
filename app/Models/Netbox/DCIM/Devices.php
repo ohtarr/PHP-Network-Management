@@ -27,9 +27,13 @@ class Devices extends BaseModel
 			'pcr'	=>	5,
 			'rrr'	=>	6,
 			'rfw'	=>	7,
+            'fwc'   =>  7,
 			'agg'	=>	2,
 			'wlc'	=>	17,
 			'wbr'	=>	8,
+            'wap'   =>  20,
+            'owa'   =>  20,
+            'oob'   =>  11,
 		];
     }
 
@@ -180,6 +184,14 @@ class Devices extends BaseModel
                     $interface->update(['name'  =>  $name]);
                 }
             }
+        }
+    }
+
+    public function getVirtualChassis()
+    {
+        if(isset($this->virtual_chassis->id))
+        {
+            return VirtualChassis::find($this->virtual_chassis->id);
         }
     }
 

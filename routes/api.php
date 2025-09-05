@@ -69,6 +69,7 @@ Route::post('provisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\P
 Route::delete('deprovisioning/mist/site/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteMistSite']);
 Route::delete('deprovisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'unassignMistDevices']);
 Route::delete('deprovisioning/dhcp/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteDhcpScopes']);
+Route::delete('deprovisioning/netbox/site/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteNetboxSite']);
 
 Route::get('validation/netboxsite/{sitecode}', [App\Http\Controllers\Validation\ValidationController::class, 'validateNetboxSite']);
 

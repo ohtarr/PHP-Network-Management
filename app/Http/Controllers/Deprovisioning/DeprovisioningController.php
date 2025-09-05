@@ -165,4 +165,125 @@ class DeprovisioningController extends Controller
         return $return;
     }
 
+    public function deleteNetboxSite($sitecode)
+    {
+        $user = auth()->user();
+		if ($user->cant('provision-mist-devices')) {
+			abort(401, 'You are not authorized');
+        }
+
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
+        $totalstatus = 1;
+
+        $netboxsite = Sites::where('name__ic',$sitecode)->first();
+        if(!isset($netboxsite->id))
+        {
+            $this->addLog(0, "SITE {$sitecode} not found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "SITE ID {$netboxsite->id} found.");
+        }
+
+        $scopes = $netboxsite->getDhcpScopes();
+        $scopecount = $scopes->count();
+        if($scopecount > 0)
+        {
+            $this->addLog(0, "Found {$scopecount} scopes for site {$netboxsite->name}, cancelling netbox site deletion.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "Found {$scopecount} scopes for site {$netboxsite->name}.");
+        }
+
+        $mistsite = $netboxsite->getMistSite();
+        if(!isset($mistsite->id))
+        {
+            $this->addLog(1, "MIST SITE {$sitecode} does NOT exist.");
+
+        } else {
+            $this->addLog(0, "Found MIST SITE ID: {$mistsite->id}, cancelling netbox site deletion.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+
+        $netboxdevices = $netboxsite->devices();
+        foreach($netboxdevices as $device)
+        {
+            $freshdevice = Devices::find($device->id);
+            $vc = $freshdevice->getVirtualChassis();
+            if(isset($vc->id))
+            {
+                $vc->delete();
+                $this->addLog(1, "Deleted VirtualChassis {$vc->name}.");
+            }
+            $device->delete();
+            $freshdevice = Devices::where('id',$device->id)->get()->first();
+            if(!isset($freshdevice->id))
+            {
+                $this->addLog(1, "Successfully deleted device {$device->name}.");
+            }
+        }
+
+        $activeprefixes = $netboxsite->getActivePrefixes();
+        foreach($activeprefixes as $activeprefix)
+        {
+            $ips = $activeprefix->getIpAddresses();
+            foreach($ips as $ip)
+            {
+                $ip->delete();
+                $this->addLog(1, "Deleted IP ADDRESS {$ip->address}.");
+            }
+            $ranges = $activeprefix->getIpRanges();
+            foreach($ranges as $range)
+            {
+                $range->delete();
+                $this->addLog(1, "Deleted IP RANGE {$range->display}.");
+            }
+            $activeprefix->delete();
+            $this->addLog(1, "Deleted PREFIX {$activeprefix->prefix}.");
+        }
+
+        $availparams = [
+            'status'        =>  "available",
+            'scope_type'    =>  null,
+            'scope_id'      =>  null,
+            'description'   =>  "",
+        ];
+        $supernets = $netboxsite->getSupernets();
+        foreach($supernets as $supernet)
+        {
+            $supernet->update($availparams);
+            $this->addLog(1, "Set PREFIX {$supernet->prefix} back to AVAILABLE.");
+        }
+
+        $asns = $netboxsite->getAsns();
+        foreach($asns as $asn)
+        {
+            $asn->delete();
+            $this->addLog(1, "Deleted ASN {$asn->asn}.");
+        }
+
+        $locations = $netboxsite->locations();
+        foreach($locations as $location)
+        {
+            $location->delete();
+            $this->addLog(1, "Deleted LOCATION {$location->name}.");
+        }
+
+        $netboxsite->delete();
+        $this->addLog(1, "Deleted SITE {$netboxsite->name}.");
+
+        $return['status'] = 1;
+        $return['log'] = $this->logs;
+        $return['data'] = null;
+        return $return;
+    }
+
 }
