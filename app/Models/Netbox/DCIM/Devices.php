@@ -209,4 +209,13 @@ class Devices extends BaseModel
         ];
         return $dnsrecords;
     }
+
+    public function getDhcpId()
+    {
+        if(isset($this->cf_dhcp_id))
+        {
+            return $this->cf_dhcp_id;
+        }
+        
+    }
 }

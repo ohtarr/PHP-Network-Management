@@ -658,4 +658,14 @@ class Device extends BaseModel
         return $device;
     } */
 
+    public function getDhcpId()
+    {
+        if(isset($this->mac))
+        {
+            $hex = bin2hex($this->mac . "-0");
+            $formattedHex = chunk_split($hex, 2, '-');
+            return rtrim($formattedHex, '-');
+        }
+    }
+
 }
