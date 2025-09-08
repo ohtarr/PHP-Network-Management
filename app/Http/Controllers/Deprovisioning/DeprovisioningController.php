@@ -15,6 +15,7 @@ use App\Models\ServiceNow\Location;
 use App\Models\Mist\Site;
 use App\Models\Mist\Device;
 use App\Models\Gizmo\Dhcp;
+use \Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
 class DeprovisioningController extends Controller
@@ -33,6 +34,36 @@ class DeprovisioningController extends Controller
             'msg'       =>  $msg,
         ];
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . debug_backtrace()[1]['function'] . ": " . $msg);
+    }
+
+    public function getSnowLocations($days = 90)
+    {
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
+        $totalstatus = 1;
+        $locs = Location::where('companyISNOTEMPTY')->where('u_network_mob_dateISNOTEMPTY')->where('u_network_demob_date', '>=', Carbon::now()->subDays($days)->toDateString())->get();
+        if(!$locs)
+        {
+            $this->addLog(0, "Unable to find valid SNOW location.");
+            $totalstatus = 0;
+
+            $return['status'] = $totalstatus;
+            $return['log'] = $this->logs;
+            return json_encode($return);
+        }
+        foreach($locs as $loc)
+        {
+            if($loc['name'])
+            {
+                $sitecodes[] = $loc['name'];
+            }
+        }
+        sort($sitecodes);
+        $count = count($sitecodes);
+        $this->addLog(1, $count . " SNOW LOCATIONS successfully retreived.");
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = $sitecodes;
+        return json_encode($return);
     }
 
     public function unassignMistDevices($sitecode)

@@ -66,6 +66,8 @@ Route::post('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\P
 Route::post('provisioning/mist/site/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistSite']);
 Route::post('provisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevices']);
 
+
+Route::get('deprovisioning/snowlocations/{days?}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'getSnowLocations']);
 Route::delete('deprovisioning/mist/site/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteMistSite']);
 Route::delete('deprovisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'unassignMistDevices']);
 Route::delete('deprovisioning/dhcp/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteDhcpScopes']);
