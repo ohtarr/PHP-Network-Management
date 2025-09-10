@@ -38,6 +38,7 @@ class DeprovisioningController extends Controller
 
     public function getSnowLocations($days = 90)
     {
+        $netboxsites = Sites::all();
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $locs = Location::where('companyISNOTEMPTY')->where('u_network_mob_dateISNOTEMPTY')->where('u_network_demob_date', '>=', Carbon::now()->subDays($days)->toDateString())->get();
@@ -52,9 +53,14 @@ class DeprovisioningController extends Controller
         }
         foreach($locs as $loc)
         {
+            unset($netboxsite);
             if($loc['name'])
             {
-                $sitecodes[] = $loc['name'];
+                $netboxsite = $netboxsites->where('name', $loc['name'])->first();
+                if(isset($netboxsite->name))
+                {
+                    $sitecodes[] = $loc['name'];
+                }
             }
         }
         sort($sitecodes);

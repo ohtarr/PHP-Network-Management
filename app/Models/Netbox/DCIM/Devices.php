@@ -9,7 +9,9 @@ use App\Models\Netbox\DCIM\FrontPorts;
 use App\Models\Netbox\DCIM\RearPorts;
 use App\Models\Netbox\DCIM\Racks;
 use App\Models\Netbox\DCIM\ModuleBays;
+use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Mist\Device;
+use App\Models\Gizmo\Dhcp;
 
 #[\AllowDynamicProperties]
 class Devices extends BaseModel
@@ -139,7 +141,7 @@ class Devices extends BaseModel
                 return $hits[1];
             }
         } elseif(isset($this->custom_fields->ip)) {
-            return $this->custom_fields->ip;            
+            return $this->custom_fields->ip;
         } elseif(isset($this->virtual_chassis->master->id)){
             $master = self::find($this->virtual_chassis->master->id);
             if(isset($master->primary_ip->address))
@@ -157,7 +159,7 @@ class Devices extends BaseModel
 
     public function getMistDeviceBySerial()
     {
-        if(isset($this->serial))
+        if(isset($this->serial) && $this->serial)
         {
             return Device::findByserial($this->serial);
         }
@@ -165,7 +167,7 @@ class Devices extends BaseModel
 
     public function getMistDeviceByName()
     {
-        if(isset($this->name))
+        if(isset($this->name) && $this->name)
         {
             return Device::findByName($this->name);
         }
@@ -197,25 +199,88 @@ class Devices extends BaseModel
 
     public function generateDnsNames()
     {
+        $dnsrecords = [];
+        if(isset($this->virtual_chassis->id))
+        {
+            return $dnsrecords;
+        }
         $ip = $this->getIpAddress();
         if(!$ip)
         {
-            return null;
+            return $dnsrecords;
         }
         $dnsrecords[] = [
             'hostname'  =>  $this->name,
-            'data'        =>  $ip,
+            'data'      =>  $ip,
             'type'      =>  'a',
         ];
         return $dnsrecords;
     }
 
-    public function getDhcpId()
+    public function generateDhcpId()
     {
-        if(isset($this->cf_dhcp_id))
+        //If dhcp_id is defined on netbox device, return it
+        if(isset($this->custom_fields->dhcp_id))
         {
-            return $this->cf_dhcp_id;
+            return $this->custom_fields->dhcp_id;
         }
-        
+
+        if(isset($this->device_type->manufacturer->name) && $this->device_type->manufacturer->name == "Juniper")
+        {
+            $mistdevice = $this->getMistDeviceBySerial();
+            if(isset($mistdevice->mac) && $mistdevice->mac)
+            {
+                return $mistdevice->getDhcpId();
+            }
+        }
+
+        //convert device name to hex and return it.
+        $hex = bin2hex($this->name);
+        $formattedHex = chunk_split($hex, 2, '-');
+        return rtrim($formattedHex, '-');
+    }
+
+    public function getDhcpReservationByIp()
+    {
+        $ip = $this->getIpAddress();
+        if(isset($ip) && $ip)
+        {
+            return Dhcp::getReservationByIp($ip);
+        }
+    }
+
+    public function getDhcpReservationByDhcpId()
+    {
+        $dhcpid = $this->generateDhcpId();
+        if(isset($dhcpid) && $dhcpid)
+        {
+            return Dhcp::getReservationsByMac($dhcpid);
+        }
+    }
+
+    public function createDhcpReservation()
+    {
+
+        $dhcpid = $this->generateDhcpId();
+        if(!(isset($dhcpid) && $dhcpid))
+        {
+            return null;
+        }
+        $ip = $this->getIpAddress();
+        if(!(isset($ip) && $ip))
+        {
+            return null;
+        }
+        $prefix = Prefixes::getActivePrefixContainingIp($ip);
+        if(!(isset($prefix) && $prefix))
+        {
+            return null;
+        }
+        $scope = $prefix->getDhcpScope();
+        if(!(isset($scope) && $scope))
+        {
+            return null;
+        }
+        return $scope->addReservation($dhcpid, $ip, $this->name);
     }
 }

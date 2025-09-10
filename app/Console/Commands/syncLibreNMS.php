@@ -45,11 +45,11 @@ class syncLibreNMS extends Command
         //print count($this->getNetboxSites()) . PHP_EOL;
         //print count($this->getLibreNMSSiteGroups()) . PHP_EOL;
         //print count($this->LibreDevicesToAdd()) . PHP_EOL;
-        //print count($this->LibreDevicesToRemove()) . PHP_EOL;
+        print count($this->LibreDevicesToRemove()) . PHP_EOL;
         //print_r($this->addLibreDevice('khoneldcswa0101'));
         //var_dump($this->deleteLibreDevice('10.251.7.102'));
-        $this->addLibreDevices();
-        $this->removeLibreDevices();
+        //$this->addLibreDevices();
+        //$this->removeLibreDevices();
     }
 
     public function getNetboxDevices()
@@ -137,12 +137,19 @@ class syncLibreNMS extends Command
         foreach($this->getNetboxDevices() as $nbdevice)
         {
             unset($libredevice);
+            $vc = $nbdevice->getVirtualChassis();
+            if(isset($vc->id))
+            {
+                $name = $vc->name;
+            } else {
+                $name = $nbdevice->name;
+            }
             //unset($ip);
             //$ip = $nbdevice->getIpAddress();
-            $libredevice = $this->findLibreDeviceByHostname($nbdevice->name);
+            $libredevice = $this->findLibreDeviceByHostname($name);
             if(!$libredevice)
             {
-                $toadd[] = $nbdevice;
+                $toadd[] = $name;
             }
         }
         return $toadd;
@@ -165,12 +172,12 @@ class syncLibreNMS extends Command
     public function addLibreDevices()
     {
         $toadd = $this->LibreDevicesToAdd();
-        foreach($toadd as $nbdevice)
+        foreach($toadd as $name)
         {
             //unset($ip);
             unset($device);
             print "*************************************************" . PHP_EOL;
-            print "Attempting to add device {$nbdevice->name}" . PHP_EOL;
+            print "Attempting to add device {$name}" . PHP_EOL;
             //$ip = $nbdevice->getIpAddress();
             //if(!$ip)
             //{
@@ -179,7 +186,7 @@ class syncLibreNMS extends Command
             //}
             //print "IP {$ip}" . PHP_EOL;
             try{
-                $device = Device::addByHostname($nbdevice->name);
+                $device = Device::addByHostname($name);
             } catch (\Exception $e) {
                 //print $e->getMessage()."\n";
             }
@@ -201,7 +208,14 @@ class syncLibreNMS extends Command
             $match = null;
             foreach($this->getNetboxDevices() as $nbdevice)
             {
-                if($nbdevice->name == $libredevice->hostname)
+                $vc = $nbdevice->getVirtualChassis();
+                if(isset($vc->id))
+                {
+                    $name = $vc->name;
+                } else {
+                    $name = $nbdevice->name;
+                }
+                if(strtolower($name) == strtolower($libredevice->hostname))
                 {
                     $match = $nbdevice;
                     break;                    

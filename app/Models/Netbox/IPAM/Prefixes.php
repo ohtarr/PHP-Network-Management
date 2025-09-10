@@ -151,4 +151,9 @@ class Prefixes extends BaseModel
             return $range->deployDhcpScope();
         }
     }
+
+    public static function getActivePrefixContainingIp($ip)
+    {
+        return static::where('contains', $ip)->where('status','active')->first();
+    }
 }

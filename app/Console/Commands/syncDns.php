@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Netbox\DCIM\Devices;
+use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\Gizmo\DNS\A;
 use App\Models\Gizmo\DNS\Cname;
 
@@ -38,7 +39,6 @@ class syncDns extends Command
         $this->deleteRecords();
         $this->checkCurrentRecords();
         $this->addRecords();
-
     }
 
     public function getARecords($fresh = false)
@@ -71,17 +71,28 @@ class syncDns extends Command
     {
         if(!$this->generated)
         {
-            $devices = Devices::all();
+            //$devices = Devices::all();
+            $devices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','1000')->get();
             foreach($devices as $device)
             {
                 unset($devicedns);
-                if($device->getIpAddress())
+                //print_r($device);
+                print "Generating DNS for device {$device->name}..." . PHP_EOL;
+                $devicedns = $device->generateDnsNames();
+                foreach($devicedns as $record)
                 {
-                    $devicedns = $device->generateDnsNames();
-                    foreach($devicedns as $record)
-                    {
-                        $records[] = $record;
-                    }
+                    $records[] = $record;
+                }
+            }
+            $vcs = VirtualChassis::where('limit','1000')->get();
+            foreach($vcs as $vc)
+            {
+                unset($vcdns);
+                print "Generating DNS for virtual chassis {$vc->name}..." . PHP_EOL;
+                $vcdns = $vc->generateDnsNames();
+                foreach($vcdns as $record)
+                {
+                    $records[] = $record;
                 }
             }
             $this->generated = $records;
