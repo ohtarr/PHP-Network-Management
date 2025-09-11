@@ -76,7 +76,7 @@ class syncDns extends Command
             foreach($devices as $device)
             {
                 unset($devicedns);
-                //print_r($device);
+
                 print "Generating DNS for device {$device->name}..." . PHP_EOL;
                 $devicedns = $device->generateDnsNames();
                 foreach($devicedns as $record)

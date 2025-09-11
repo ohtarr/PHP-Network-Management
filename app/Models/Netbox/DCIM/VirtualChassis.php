@@ -26,20 +26,16 @@ class VirtualChassis extends BaseModel
 
     public function getIpAddress()
     {
-        $iptimestart = microtime(true);
         $master = $this->getMaster();
         if(isset($master) && $master)
         {
             $masterip = $master->getIpAddress();
-            $iptimestop = microtime(true);
-            print "IP ADDRESS fetched in " . $iptimestop-$iptimestart . "seconds" . PHP_EOL;
             return $masterip;
         }
     }
 
     public function generateDnsNames()
     {
-        $dnstimestart = microtime(true);
         $dnsrecords = [];
         $ip = $this->getIpAddress();
         if(!$ip)
@@ -51,8 +47,6 @@ class VirtualChassis extends BaseModel
             'data'      =>  $ip,
             'type'      =>  'a',
         ];
-        $dnstimestop = microtime(true);
-        print "DNS fetched in " . $dnstimestop-$dnstimestart . "seconds" . PHP_EOL;
         return $dnsrecords;
     }
 }
