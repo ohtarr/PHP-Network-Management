@@ -56,7 +56,7 @@ class syncLibreNMS extends Command
     {
         if(!$this->netboxdevices)
         {
-            $devices = Devices::where('cf_POLLING', 'true')->get();
+            $devices = Devices::where('cf_POLLING', 'true')->where('limit','1000')->get();
             foreach($devices as $device)
             {
                 if($device->getIpAddress())
@@ -205,9 +205,12 @@ class syncLibreNMS extends Command
         $libredevices = $this->getLibreDevices();
         foreach($libredevices as $libredevice)
         {
+            print "*************************************************" . PHP_EOL;
+            print "Processing libreNMS Device {$libredevice->hostname}..." . PHP_EOL;
             $match = null;
             foreach($this->getNetboxDevices() as $nbdevice)
             {
+                //print_r($nbdevice);
                 $vc = $nbdevice->getVirtualChassis();
                 if(isset($vc->id))
                 {
@@ -215,14 +218,17 @@ class syncLibreNMS extends Command
                 } else {
                     $name = $nbdevice->name;
                 }
+                //print strtolower($name) . " =? " . strtolower($libredevice->hostname) . PHP_EOL;
                 if(strtolower($name) == strtolower($libredevice->hostname))
                 {
                     $match = $nbdevice;
+                    //print_r($match);
                     break;                    
                 }
             }
             if(!$match)
             {
+                print "NO MATCH FOUND, ADDING TO DELETE PILE!" . PHP_EOL;
                 $todelete[] = $libredevice;
             }
         }
