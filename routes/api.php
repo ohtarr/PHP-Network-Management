@@ -57,6 +57,7 @@ Route::get('provisioning/netbox/devicetypes', [App\Http\Controllers\Provisioning
 Route::get('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getNetboxSite']);
 Route::post('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxSite']);
 Route::post('provisioning/netboxsite/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxDevices']);
+Route::get('provisioning/netboxsite/{sitecode}/addresses/{qty?}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getAvailableProvIps']);
 
 
 Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopes']);

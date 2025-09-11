@@ -841,4 +841,20 @@ class ProvisioningController extends Controller
         return $return;
     }
 
+    public function getAvailableProvIps($sitecode, $qty = 50)
+    {
+        $netboxsite = Sites::where('name__ic',$sitecode)->first();
+        if(!isset($netboxsite->id))
+        {
+            $this->addLog(0, "SITE {$sitecode} not found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "SITE ID {$netboxsite->id} found.");
+        }
+        $ips = $netboxsite->getAvailableProvIps($qty);
+        return $ips;
+    }
 }

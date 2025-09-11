@@ -120,7 +120,7 @@ class IpRanges extends BaseModel
         {
             $optionsparams[] = [
                 'optionId'  =>  "6",
-                'value'     =>  $dns,                
+                'value'     =>  $dns,
             ];
         }
         $optionsparams[] = [
@@ -164,6 +164,46 @@ class IpRanges extends BaseModel
             //print $e->getMessage();
             return null;
         }
+    }
+
+    public function getFirstIp()
+    {
+        $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
+        preg_match($reg, $this->start_address, $hits);
+        if(isset($hits[1]) && isset($hits[2]))
+        {
+            return [
+                "ip"        =>  $hits[1],
+                "bitmask"   =>  $hits[2],
+            ];
+        }
+    }
+
+    public function getAvailableIps($qty = 50)
+    {
+        if($qty > 254)
+        {
+            return null;
+        }
+        $count = 0;
+        $total = 0;
+        $ips = [];
+        $firstip = $this->getFirstIp()['ip'];
+        //print "FIRST IP: " . $firstip . PHP_EOL;
+        if(!$firstip)
+        {
+            return null;
+        }
+        $currentiplong = ip2long($firstip);
+        while(count($ips) < $qty)
+        {
+            //print "COUNT {$count} TOTAL {$total} IPLONG {$currentiplong}" . PHP_EOL;
+            $count++;
+            $ips[] = long2ip($currentiplong);
+            $currentiplong++;
+            $total++;   
+        }
+        return $ips;
     }
 
 }

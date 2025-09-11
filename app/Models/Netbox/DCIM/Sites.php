@@ -781,4 +781,19 @@ class Sites extends BaseModel
         $mistsite->updateSettings($mistsettings);
 		return $mistsite;
 	}
+
+    public function getAvailableProvIps($qty = 50)
+    {
+        $prefix = $this->getWiredPrefix();
+        if(!isset($prefix->id))
+        {
+            return null;
+        }
+        $range = $prefix->getDhcpIpRange();
+        if(!isset($range->id))
+        {
+            return null;
+        }
+        return $range->getAvailableIps($qty);
+    }
  }
