@@ -4,6 +4,7 @@ namespace App\Models\Netbox\IPAM;
 
 use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\IPAM\Prefixes;
+use App\Models\Netbox\DCIM\Devices;
 use App\Models\Gizmo\Dhcp;
 use IPv4\SubnetCalculator;
 
@@ -181,27 +182,31 @@ class IpRanges extends BaseModel
 
     public function getAvailableIps($qty = 50)
     {
-        if($qty > 254)
+        $max = 254;
+        if($qty > $max)
         {
-            return null;
+            $qty = $max;
         }
         $count = 0;
-        $total = 0;
         $ips = [];
         $firstip = $this->getFirstIp()['ip'];
-        //print "FIRST IP: " . $firstip . PHP_EOL;
         if(!$firstip)
         {
             return null;
         }
         $currentiplong = ip2long($firstip);
-        while(count($ips) < $qty)
+        while(count($ips) < $qty && $count < $max)
         {
-            //print "COUNT {$count} TOTAL {$total} IPLONG {$currentiplong}" . PHP_EOL;
             $count++;
-            $ips[] = long2ip($currentiplong);
+            $currentip = long2ip($currentiplong);
             $currentiplong++;
-            $total++;   
+            $device = Devices::where('cf_ip', $currentip)->first();
+            if(isset($device->id))
+            {
+                continue;
+            }
+
+            $ips[] = $currentip;
         }
         return $ips;
     }
