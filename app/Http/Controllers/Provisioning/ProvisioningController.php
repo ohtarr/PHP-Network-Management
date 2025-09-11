@@ -45,7 +45,7 @@ class ProvisioningController extends Controller
     {
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
-        $locs = Location::where('companyISNOTEMPTY')->where('u_network_mob_dateISEMPTY')->where('u_network_demob_dateISEMPTY')->get();
+        $locs = Location::where('companyISNOTEMPTY')->where('u_network_demob_dateISEMPTY')->get();
         if(!$locs)
         {
             $this->addLog(0, "Unable to find valid SNOW location.");
