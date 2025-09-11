@@ -852,9 +852,23 @@ class ProvisioningController extends Controller
             $return['data'] = null;
             return $return;
         } else {
-            $this->addLog(1, "SITE ID {$netboxsite->id} found.");
+            $this->addLog(1, "SITE: {$netboxsite->name} ID:{$netboxsite->id} found.");
         }
         $ips = $netboxsite->getAvailableProvIps($qty);
-        return $ips;
+        if(!$ips)
+        {
+            $this->addLog(0, "Unable to retrieve any available IPs");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $count = count($ips);
+            $this->addLog(1, "Retrieved {$count} IPs from site {$netboxsite->name}");
+        }
+        $return['status'] = 1;
+        $return['log'] = $this->logs;
+        $return['data'] = $ips;
+        return $return;
     }
 }
