@@ -782,7 +782,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
-            if(!isset($device->serial))
+            if(!isset($device->serial) && $device->serial)
             {
                 $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Device does not have a valid serial number.");
                 $totalstatus = 0;
@@ -790,7 +790,7 @@ class ProvisioningController extends Controller
             }
             //Find existing Mist Device
             $mistdevice = Device::findBySerial($device->serial);
-            if(!isset($mistdevice->serial))
+            if(!isset($mistdevice->serial) && $mistdevice->serial)
             {
                 $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Unable to find matching MIST DEVICE with serial {$device->serial}.");
                 $totalstatus = 0;
@@ -809,15 +809,20 @@ class ProvisioningController extends Controller
             $mistdevice = Device::findBySerial($device->serial);
             if($mistdevice->site_id == $mistsite->id)
             {
-                $this->addLog(1, "Assigned devices to MISTSITE {$mistsite->name} successfully.");
+                $this->addLog(1, "Assigned device to MISTSITE {$mistsite->name} successfully.");
             } else {
                 $totalstatus = 0;
-                $this->addLog(1, "FAILED to assign devices to MISTSITE {$mistsite->name}.");
+                $this->addLog(0, "FAILED to assign device to MISTSITE {$mistsite->name}.");
+                continue;
             }         
             //RENAME Mist Device
             $params = ['name'   =>  $device->name];
-            $mistdevice = $mistdevice->update($params);
-            if(isset($mistdevice->name))
+            try{
+                $mistdevice = $mistdevice->update($params);
+            } catch (\Exception $e) {
+                $this->addLog(1, "FAILED to assign devices to MISTSITE {$mistsite->name}.");
+            }
+            if(isset($mistdevice->name) && $mistdevice->name)
             {
                 $this->addLog(1, "Renamed MIST DEVICE to {$mistdevice->name} successfully.");
             } else {
