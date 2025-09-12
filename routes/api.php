@@ -65,7 +65,7 @@ Route::post('provisioning/dhcp/{sitecode}/vlan/{vlan}', [App\Http\Controllers\Pr
 Route::post('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScopes']);
 
 Route::post('provisioning/mist/site/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistSite']);
-Route::post('provisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevices2']);
+Route::post('provisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevices']);
 
 
 Route::get('deprovisioning/snowlocations/{days?}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'getSnowLocations']);
