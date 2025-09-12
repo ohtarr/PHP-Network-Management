@@ -566,6 +566,18 @@ class ProvisioningController extends Controller
             $this->addLog(1, "SITE ID {$site->id} found.");
         }
 
+        $location = $site->getDefaultLocation();
+        if(!isset($location->id))
+        {
+            $this->addLog(0, "Default LOCATION not found for site {$site->name}, skipping.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+
+        $models = DeviceTypes::all();
+
         $devices = $request->collect();
         foreach($devices as $device)
         {
@@ -617,7 +629,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
-            $modelexists = DeviceTypes::where('model__ie', $device['model'])->first();
+            $modelexists = $models->where('model', $device['model'])->first();
             if(!isset($modelexists->id))
             {
                 $this->addLog(0, "DEVICE-TYPE {$device['model']} does not exist, skipping.");
@@ -641,15 +653,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
-
-            $location = $site->getDefaultLocation();
-            if(!isset($location->id))
-            {
-                $this->addLog(0, "Default LOCATION not found for site {$site->name}, skipping.");
-                $totalstatus = 0;
-                continue;
-            }
-            
+      
             $reg = "/^(\S+)_(\d)$/";
             if(preg_match($reg, $device['name'], $hits))
             {
@@ -817,6 +821,117 @@ class ProvisioningController extends Controller
             }         
             //RENAME Mist Device
             $params = ['name'   =>  $device->name];
+            try{
+                $mistdevice = $mistdevice->update($params);
+            } catch (\Exception $e) {
+                $this->addLog(1, "FAILED to assign devices to MISTSITE {$mistsite->name}.");
+            }
+            if(isset($mistdevice->name) && $mistdevice->name)
+            {
+                $this->addLog(1, "Renamed MIST DEVICE to {$mistdevice->name} successfully.");
+            } else {
+                $this->addLog(0, "Failed to rename MIST DEVICE with serial {$mistdevice->serial}.");
+            }
+        }
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = null;
+        return $return;
+    }
+
+    public function deployMistDevices2(Request $request, $sitecode)
+    {
+        $user = auth()->user();
+		if ($user->cant('provision-mist-devices')) {
+			abort(401, 'You are not authorized');
+        }
+
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
+        $totalstatus = 1;
+        $netboxsite = Sites::where('name__ic',$sitecode)->first();
+        if(!isset($netboxsite->id))
+        {
+            $this->addLog(0, "SITE {$sitecode} not found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "SITE ID {$netboxsite->id} found.");
+        }
+
+        $mistsite = $netboxsite->getMistSite();
+        if(!isset($mistsite->id))
+        {
+            $this->addLog(0, "Unable to find MIST SITE {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "Found MIST SITE ID: {$mistsite->id}.");
+        }
+
+        $devices = $request->collect();
+
+        $deploy = [];
+        foreach($devices as $devicename)
+        {
+            unset($mistdevice);
+            $netboxdevice = Devices::where('name', $devicename)->first();
+            if(!isset($netboxdevice->name))
+            {
+                $this->addLog(0, "Unable to locate NETBOX DEVICE with name {$devicename}... skipping.");
+                $totalstatus = 0;
+                continue;
+            }            
+            if(!isset($netboxdevice->device_type->manufacturer->name))
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$netboxdevice->id}: Unable to determine Manufacturer for device.");
+                $totalstatus = 0;
+                continue;
+            }
+            if($netboxdevice->device_type->manufacturer->name != "Juniper")
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Device is not a Juniper device.");
+                $totalstatus = 0;
+                continue;
+            }
+            if(!isset($netboxdevice->serial) && $netboxdevice->serial)
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$netboxdevice->id}: Device does not have a valid serial number.");
+                $totalstatus = 0;
+                continue;
+            }
+            //Find existing Mist Device
+            $mistdevice = Device::findBySerial($netboxdevice->serial);
+            if(!isset($mistdevice->serial) && $mistdevice->serial)
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$netboxdevice->id}: Unable to find matching MIST DEVICE with serial {$netboxdevice->serial}.");
+                $totalstatus = 0;
+                continue;
+            }
+            $this->addLog(1, "NETBOX DEVICE ID {$netboxdevice->id}: found matching MIST DEVICE with serial {$netboxdevice->serial}.");
+            if($mistdevice->site_id)
+            {
+                $this->addLog(0, "NETBOX DEVICE ID {$netboxdevice->id}: Device is already assigned to a site in Mist.");
+                $totalstatus = 0;
+                continue;
+            }
+            //Assign Mist Device to site.
+            $status = $mistdevice->assignToSite($mistsite->id);
+            //fetch fresh copy of mistdevice
+            $mistdevice = Device::findBySerial($netboxdevice->serial);
+            if($mistdevice->site_id == $mistsite->id)
+            {
+                $this->addLog(1, "Assigned device to MISTSITE {$mistsite->name} successfully.");
+            } else {
+                $totalstatus = 0;
+                $this->addLog(0, "FAILED to assign device to MISTSITE {$mistsite->name}.");
+                continue;
+            }         
+            //RENAME Mist Device
+            $params = ['name'   =>  $netboxdevice->name];
             try{
                 $mistdevice = $mistdevice->update($params);
             } catch (\Exception $e) {
