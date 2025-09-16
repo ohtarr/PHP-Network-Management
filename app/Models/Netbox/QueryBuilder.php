@@ -211,6 +211,26 @@ class QueryBuilder
         return $this->hydrateOne($object);
     }
 
+    public function patch2($path, $body)
+    {
+        $headers = $this->headers;
+        $headers['Content-Type'] = 'application/json';
+        $guzzleparams = [
+            'verb'      =>  'PATCH',
+            'url'       =>  $path,
+            'params'    =>  [
+                'headers'   =>  $headers,
+                'body' => json_encode($body),
+            ],
+            'options'   =>  [],
+        ];
+        $client = new GuzzleClient($guzzleparams['options']);
+        $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
+        $body = $response->getBody()->getContents();
+        $object = json_decode($body);
+        return $this->hydrateOne($object);
+    }
+
     public function delete($id)
     {
         $headers = $this->headers;

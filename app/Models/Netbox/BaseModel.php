@@ -93,6 +93,17 @@ class BaseModel
         return static::getQuery()->patch($this->id, $params);
     }
 
+    public function update2($body, $path = null)
+    {
+        $query = static::getQuery();
+        if(!$path)
+        {
+            $path = $query->buildUrl();
+        }
+        print $path . PHP_EOL;
+        return static::getQuery()->patch2($path, $body);
+    }
+
     public function delete()
     {
         return static::getQuery()->delete($this->id);

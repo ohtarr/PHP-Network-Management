@@ -189,6 +189,30 @@ class Devices extends BaseModel
         }
     }
 
+    public function renameInterfaces2($vcposition)
+    {
+        $reg = "/^(\S+)-(\d)\/(\d)\/(\d{1,2})$/";
+        foreach($this->interfaces() as $interface)
+        {
+            if(preg_match($reg, $interface->name, $hits))
+            {
+                if($hits[2] != $vcposition)
+                {
+                    $name = $hits[1] . "-" . $vcposition . "/" . $hits[3] . "/" . $hits[4];
+                    $label = $hits[4];
+                    //$interface->update(['name'  =>  $name]);
+                    $tomodify[] = [
+                        'id'    =>  $interface->id,
+                        'name'  =>  $name,
+                        'label' =>  $label,
+                    ];
+                }
+            }
+        }
+        $path = env('NETBOX_BASE_URL') . "/api/dcim/interfaces/";
+        $response = $this->update2($tomodify, $path);
+    }
+
     public function getVirtualChassis()
     {
         if(isset($this->virtual_chassis->id))
