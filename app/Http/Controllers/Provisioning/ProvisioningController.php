@@ -589,7 +589,7 @@ class ProvisioningController extends Controller
             unset($newdevice);
             unset($basename);
             unset($memberid);
-            unset($virtualchassis);
+            //unset($virtualchassis);
 
             if(!isset($device['name']))
             {
@@ -663,7 +663,10 @@ class ProvisioningController extends Controller
             }
             if(isset($basename))
             {
-                $virtualchassis = VirtualChassis::where('name', $basename)->first();
+                if(!isset($virtualchassis->name) || (isset($virtualchassis->name) && $virtualchassis->name != $basename))
+                {
+                    $virtualchassis = VirtualChassis::where('name', $basename)->first();
+                }
                 if(!isset($virtualchassis->id))
                 {
                     $this->addLog(1, "VirtualChassis {$basename} NOT found, attempting to create.");
@@ -697,6 +700,10 @@ class ProvisioningController extends Controller
                 {
                     $params['vc_priority'] = 200;
                 }
+            }
+            if(isset($device['ip']) && $device['ip'])
+            {
+                $params['custom_fields']['ip'] = $device['ip'];
             }
             $newdevice = Devices::create($params);
 
