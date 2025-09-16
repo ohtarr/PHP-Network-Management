@@ -100,7 +100,6 @@ class BaseModel
         {
             $path = $query->buildUrl();
         }
-        print $path . PHP_EOL;
         return static::getQuery()->patch2($path, $body);
     }
 
