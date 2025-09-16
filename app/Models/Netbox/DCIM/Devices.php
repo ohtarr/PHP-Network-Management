@@ -305,6 +305,6 @@ class Devices extends BaseModel
         {
             return null;
         }
-        return $scope->addReservation($dhcpid, $ip, $this->name);
+        return $scope->addReservation($dhcpid, $ip, 'NETMAN-' . $this->name);
     }
 }

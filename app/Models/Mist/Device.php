@@ -107,7 +107,7 @@ class Device extends BaseModel
 
     public static function findBySerial($serial)
     {
-        return static::where("serial",$serial)->first();
+        return static::where("serial",$serial)->where('vc', 'true')->first();
     }
 
     public static function findByMac($mac)
