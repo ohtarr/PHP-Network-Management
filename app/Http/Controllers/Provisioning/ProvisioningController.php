@@ -810,7 +810,7 @@ class ProvisioningController extends Controller
             }
             //Find existing Mist Device
             $mistdevice = Device::findBySerial($device->serial);
-            if(!isset($mistdevice->serial) && $mistdevice->serial)
+            if(!isset($mistdevice->serial))
             {
                 $this->addLog(0, "NETBOX DEVICE ID {$device->id}: Unable to find matching MIST DEVICE with serial {$device->serial}.");
                 $totalstatus = 0;
@@ -837,7 +837,8 @@ class ProvisioningController extends Controller
             }
             if($assignmatch == 1)
             {
-                $this->addLog(1, "Assigned device to MISTSITE {$mistsite->name} successfully."); 
+                $this->addLog(1, "Assigned device to MISTSITE {$mistsite->name} successfully.");
+                $mistdevice->site_id = $mistsite->id;
             } else {
                 $totalstatus = 0;
                 $this->addLog(0, "FAILED to assign device {$mistdevice->serial} to MISTSITE {$mistsite->name}.");
@@ -849,7 +850,7 @@ class ProvisioningController extends Controller
             try{
                 $mistdevice = $mistdevice->update($params);
             } catch (\Exception $e) {
-                $this->addLog(1, "FAILED to assign devices to MISTSITE {$mistsite->name}.");
+                $this->addLog(1, "FAILED to rename device with serial {$mistdevice->serial}");
             }
             if(isset($mistdevice->name) && $mistdevice->name)
             {
