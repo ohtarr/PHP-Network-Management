@@ -824,7 +824,12 @@ class ProvisioningController extends Controller
                 continue;
             }
             //Assign Mist Device to site.
-            $assignresults = $mistdevice->assignToSite($mistsite->id);
+            try{
+                $assignresults = $mistdevice->assignToSite($mistsite->id);
+            } catch (\Exception $e) {
+                $this->addLog(0, "FAILED to assign device SERIAL:{$mistdevice->serial} to site ID:{$mistsite->id}");
+                continue;
+            }
             //fetch fresh copy of mistdevice
             $assignmatch = 0;
             foreach($assignresults->success as $assignmac)
