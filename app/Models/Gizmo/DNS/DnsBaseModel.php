@@ -33,12 +33,8 @@ class DnsBaseModel extends BaseModel
         return static::hydrateMany($response);
     }
 
-    public static function findByName($name, $zone = null)
+    public static function findByName($name)
     {
-        if(!$zone)
-        {
-            $zone = static::getZone();
-        }
         $path = static::getPath() . "/" . $name;
         $response = static::request('get', $path);
         return static::hydrateMany($response);
@@ -73,6 +69,7 @@ class DnsBaseModel extends BaseModel
             'zone'          =>  $zone,
         ];
         $params['body'] = json_encode($bodyarray);
+        print json_encode($bodyarray) . PHP_EOL;
         try{
             $response = static::request('POST', static::getPath(), $params);
         } catch (\GuzzleHttp\Exception\ServerException $e) {

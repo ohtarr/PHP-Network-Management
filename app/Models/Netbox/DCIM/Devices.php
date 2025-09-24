@@ -233,8 +233,10 @@ class Devices extends BaseModel
         {
             return $dnsrecords;
         }
+        $newname = str_replace("/","-",$this->name);
+        $newname = str_replace(".","-",$newname);
         $dnsrecords[] = [
-            'hostname'  =>  $this->name,
+            'hostname'  =>  $newname,
             'data'      =>  $ip,
             'type'      =>  'a',
         ];

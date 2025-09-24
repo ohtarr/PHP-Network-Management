@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\VirtualChassis;
+use App\Models\Netbox\VIRTUALIZATION\VirtualMachines;
 use App\Models\Gizmo\DNS\A;
 use App\Models\Gizmo\DNS\Cname;
 
@@ -37,20 +38,24 @@ class syncDns extends Command
     public function handle()
     {
         $this->deleteRecords();
-        $this->checkCurrentRecords();
+        $this->fixRecords();
         $this->addRecords();
+        //print_r($this->recordsToAdd());
+        //$this->recordsToDelete();
+        //$this->recordsToFix();
     }
 
     public function getARecords($fresh = false)
     {
         if($fresh)
         {
-            unset($this->arecords);
+            $this->arecords = null;
         }
         if(!$this->arecords)
         {
             $this->arecords = A::all();
         }
+        print "Fetched " . count($this->arecords) . " A records." . PHP_EOL;
         return $this->arecords;
     }
 
@@ -58,12 +63,13 @@ class syncDns extends Command
     {
         if($fresh)
         {
-            unset($this->cnamerecords);
+            $this->cnamerecords = null;
         }
         if(!$this->cnamerecords)
         {
             $this->cnamerecords = Cname::all();
         }
+        print "Fetched " . count($this->cnamerecords) . " CNAME records." . PHP_EOL;
         return $this->cnamerecords;
     }
 
@@ -95,18 +101,31 @@ class syncDns extends Command
                     $records[] = $record;
                 }
             }
+            $vms = VirtualMachines::where('limit','1000')->get();
+            foreach($vms as $vm)
+            {
+                unset($vmdns);
+                print "Generating DNS for virtual Machine {$vm->name}..." . PHP_EOL;
+                $vmdns = $vm->generateDnsNames();
+                foreach($vmdns as $record)
+                {
+                    $records[] = $record;
+                }
+            }            
             $this->generated = $records;
         }
+        print "Generated " . count($this->generated) . " records from Netbox." . PHP_EOL;
         return $this->generated;
     }
 
     public function recordsToDelete()
     {
+        $delete = [];
         $arecords = $this->getARecords();
         //print "A records : " . $arecords->count() . PHP_EOL;
         $cnames = $this->getCnameRecords();
         //print "CNAME records : " . $cnames->count() . PHP_EOL;
-        $merged = $arecords->merge($cnames);
+        $merged = $cnames->merge($arecords);
         //print "MERGED records : " . $merged->count() . PHP_EOL;
         $generated = $this->generateAllRecords();
         //print "GENERATED records : " . count($generated) . PHP_EOL;
@@ -128,7 +147,7 @@ class syncDns extends Command
                 $delete[] = $record;
             }
         }
-        //print "DELETE records : " . count($delete) . PHP_EOL;
+        print "DELETE records : " . count($delete) . PHP_EOL;
         return $delete;
     }
 
@@ -140,7 +159,7 @@ class syncDns extends Command
         foreach($delete as $record)
         {
             try {
-                print "### deleting record {$record['hostname']}... ###" . PHP_EOL;
+                print "### deleting record {$record->hostName}... ###" . PHP_EOL;
                 $record->delete();
             } catch (\Exception $e) {
                 print "Error occurred: " . $e->getMessage() . PHP_EOL;
@@ -150,9 +169,10 @@ class syncDns extends Command
 
     public function recordsToAdd()
     {
+        $add = [];
         $generated = $this->generateAllRecords();
-        $arecords = $this->getARecords();
-        $cnames = $this->getCnameRecords();
+        $arecords = $this->getARecords(true);
+        $cnames = $this->getCnameRecords(true);
         $merged = $arecords->merge($cnames);
         foreach($generated as $grecord)
         {
@@ -186,7 +206,8 @@ class syncDns extends Command
         print count($add) . " records to add..." . PHP_EOL;
         foreach($add as $record)
         {
-            print "### record {$record['hostname']} ###" . PHP_EOL;
+            $results = null;
+            print "### record {$record['hostname']} {$record['data']} ###" . PHP_EOL;
             $classtype = null;
             foreach($typemap as $key => $value)
             {
@@ -205,16 +226,18 @@ class syncDns extends Command
             
             try {
                 print "Adding record {$record['hostname']} {$record['data']}" . PHP_EOL;
-                $classtype::create($record['hostname'], $record['data']);
+                $results = $classtype::create($record['hostname'], $record['data']);
             } catch (\Exception $e) {
                 print "Error occurred: " . $e->getMessage() . PHP_EOL;
             }
+            //print_r($results);
         }
     }
 
-    public function checkCurrentRecords()
+    public function recordsToFix()
     {
-        print "*** Checking existing DNS records ***" . PHP_EOL;
+        $fix = [];
+        //print "*** Checking existing DNS records ***" . PHP_EOL;
         $generated = $this->generateAllRecords();
         $arecords = $this->getARecords(true);
         $cnames = $this->getCnameRecords(true);
@@ -222,23 +245,36 @@ class syncDns extends Command
 
         foreach($merged as $record)
         {
-            print "Checking host {$record->hostName} data {$record->recordData}..." . PHP_EOL;
+            //print "Checking host {$record->hostName} data {$record->recordData}..." . PHP_EOL;
             foreach($generated as $grecord)
             {
                 if(strtolower($record->hostName) == strtolower($grecord['hostname']))
                 {
-                    print "Found match, checking data..." . PHP_EOL;
+                    //print "Found match, checking data..." . PHP_EOL;
                     if($record->recordData != $grecord['data'])
                     {
-                        print "record data does NOT match, deleting record..." . PHP_EOL;
-                        $record->delete();
+                        //print "record data does NOT match, deleting record..." . PHP_EOL;
+                        $fix[] = $record;
+                        //$record->delete();
                     } else {
-                        print "record data MATCHES, skipping..." . PHP_EOL;
+                        //print "record data MATCHES, skipping..." . PHP_EOL;
                     }
                     break;
                 }
             }
         }
+        print "FIX records : " . count($fix) . PHP_EOL;
+        return $fix;
+    }
 
+    public function fixRecords()
+    {
+        $records = $this->recordsToFix();
+        print "*** Checking existing DNS records ***" . PHP_EOL;
+        foreach($records as $record)
+        {
+            print "deleting record {$record->hostName} data {$record->recordData}..." . PHP_EOL;
+            $record->delete();
+        }
     }
 }

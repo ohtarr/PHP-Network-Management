@@ -71,7 +71,7 @@ class BaseModel
         ]);
     }
 
-    public static function all($zone = null)
+/*     public static function all($zone = null)
     {
         if(!$zone)
         {
@@ -100,6 +100,6 @@ class BaseModel
         $url = static::getBaseUrl() . static::$path;
         $response = static::request('post', $url, $params);
         return static::hydrateMany($response);
-    }
+    } */
 
 }
