@@ -37,19 +37,9 @@ class syncLibreNMS extends Command
 
     public function handle()
     {
-        //print_r($this->findLibreDeviceByName("khonesdcagg01"));
-        //print_r($this->getLibreDevices());
-        //print_r($this->getNetboxDevices());
-        //print count($this->getNetboxDevices()) . PHP_EOL;
-        //print count($this->getLibreDevices()) . PHP_EOL;
-        //print count($this->getNetboxSites()) . PHP_EOL;
-        //print count($this->getLibreNMSSiteGroups()) . PHP_EOL;
-        //print count($this->LibreDevicesToAdd()) . PHP_EOL;
-        print count($this->LibreDevicesToRemove()) . PHP_EOL;
-        //print_r($this->addLibreDevice('khoneldcswa0101'));
-        //var_dump($this->deleteLibreDevice('10.251.7.102'));
-        //$this->addLibreDevices();
-        //$this->removeLibreDevices();
+        $this->removeLibreDevices();
+        $this->addLibreDevices();
+
     }
 
     public function getNetboxDevices()

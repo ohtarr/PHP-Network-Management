@@ -78,7 +78,7 @@ class syncDns extends Command
         if(!$this->generated)
         {
             //$devices = Devices::all();
-            $devices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','1000')->get();
+            $devices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
             foreach($devices as $device)
             {
                 unset($devicedns);

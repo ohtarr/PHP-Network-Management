@@ -93,7 +93,7 @@ class BaseModel
         return static::getQuery()->patch($this->id, $params);
     }
 
-    public function update2($body, $path = null)
+    public static function update2($body, $path = null)
     {
         $query = static::getQuery();
         if(!$path)

@@ -294,7 +294,7 @@ class Dhcp extends Gizmo
 		return $array;
 	}
 
-    public function deleteReservation($ip)
+    public static function deleteReservation($ip)
 	{
 		$body = [
             "IPAddress"     =>  $ip,
@@ -307,7 +307,7 @@ class Dhcp extends Gizmo
 			'headers'   =>  [
 				'Content-Type'  => 'application/json',
 				'Accept'        => 'application/json',
-		        'Authorization'   => 'Bearer ' . $this->getToken(),
+		        'Authorization'   => 'Bearer ' . static::getToken(),
 			],
 			'body'  =>  json_encode($body),
 		];
@@ -441,6 +441,32 @@ class Dhcp extends Gizmo
             }
         }
         return collect($overlaps);
+    }
+
+	public static function netmaskToBitmask($netmask)
+	{
+		$bits = 0;
+		$netmask = explode(".", $netmask);
+
+		foreach($netmask as $octect)
+			$bits += strlen(str_replace("0", "", decbin($octect)));
+		return $bits;
+	}
+
+    public static function findScopeByIp($ip)
+    {
+        $scopes = self::all();
+
+        foreach($scopes as $scope){
+            unset($bitmask);
+            unset($ipcalc);
+            $bitmask = static::netmaskToBitmask($scope->subnetMask);
+            $ipcalc = new SubnetCalculator($scope->scopeID, $bitmask);
+            if($ipcalc->isIPAddressInSubnet($ip))
+            {
+                return $scope;
+            }
+        }
     }
 
     public function findOption($optionid)

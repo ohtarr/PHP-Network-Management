@@ -259,7 +259,10 @@ class Devices extends BaseModel
                 return $mistdevice->getDhcpId();
             }
         }
-
+        if(!$this->name)
+        {
+            return null;
+        }
         //convert device name to hex and return it.
         $hex = bin2hex($this->name);
         $formattedHex = chunk_split($hex, 2, '-');
@@ -284,9 +287,13 @@ class Devices extends BaseModel
         }
     }
 
-    public function createDhcpReservation()
+    public function generateDhcpReservation()
     {
-
+        $vc = $this->getVirtualChassis();
+        if($vc)
+        {
+            return $vc->generateDhcpReservation();
+        }
         $dhcpid = $this->generateDhcpId();
         if(!(isset($dhcpid) && $dhcpid))
         {
@@ -297,16 +304,28 @@ class Devices extends BaseModel
         {
             return null;
         }
-        $prefix = Prefixes::getActivePrefixContainingIp($ip);
-        if(!(isset($prefix) && $prefix))
-        {
-            return null;
-        }
-        $scope = $prefix->getDhcpScope();
+        $scope = Dhcp::findScopeByIp($ip);
         if(!(isset($scope) && $scope))
         {
             return null;
         }
-        return $scope->addReservation($dhcpid, $ip, 'NETMAN-' . $this->name);
+        return [
+            'scopeId'   =>  $scope->scopeID,
+            'clientId'  =>  $dhcpid,
+            'ipAddress' =>  $ip,
+            'description'   =>  "NETMAN-" . $this->name,
+        ];
+        //return $scope->addReservation($dhcpid, $ip, 'NETMAN-' . $this->name);
+    }
+
+    public function createDhcpReservation()
+    {
+        $params = $this->generateDhcpReservation();
+        $scope = Dhcp::find($params['scopeId']);
+        if(!(isset($scope) && $scope))
+        {
+            return null;
+        }
+        return $scope->addReservation($params['clientId'], $params['ipAddress'], $params['description']);
     }
 }

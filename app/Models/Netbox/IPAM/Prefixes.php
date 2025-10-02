@@ -154,6 +154,6 @@ class Prefixes extends BaseModel
 
     public static function getActivePrefixContainingIp($ip)
     {
-        return static::where('contains', $ip)->where('status','active')->first();
+        return static::where('contains', $ip)->where('status','active')->get()->first();
     }
 }

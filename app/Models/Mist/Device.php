@@ -133,12 +133,57 @@ class Device extends BaseModel
 
     public function getVcMaster()
     {
-        return static::findByMac($this->vc_mac);
+        if(isset($this->vc_mac))
+        {
+            return static::findByMac($this->vc_mac);
+        }
     }
 
     public function getVcMembers()
     {
-        return static::where('vc', true)->where('vc_mac', $this->vc_mac)->get();
+        if(isset($this->vc_mac))
+        {
+            return static::where('vc', true)->where('vc_mac', $this->vc_mac)->get();
+        }
+    }
+
+    public function getVirtualChassis()
+    {
+        $vc = $this->getVcMaster();
+        if(!$vc)
+        {
+            return null;
+        }
+        $details = $vc->getSiteDeviceStats();
+        $members = $this->getVcMembers();
+        if(!isset($details->module_stat))
+        {
+            return null;
+        }
+
+        $switch['id'] = $vc->id;
+        $switch['name'] = $vc->name;
+        $switch['mac'] = $vc->mac;
+        $switch['serial'] = $vc->serial;
+        $switch['site_id'] = $vc->site_id;
+        $switch['connected'] = $vc->connected;
+        if(isset($details->ip_stat->ip))
+        {
+            $switch['ip'] = $details->ip_stat->ip;
+        }
+        foreach($details->module_stat as $FPC)
+        {
+            $invmember = $members->where('mac', $FPC->mac)->first();
+            $switch['members'][$FPC->fpc_idx]['member_id'] = $FPC->fpc_idx;            
+            $switch['members'][$FPC->fpc_idx]['mac'] = $FPC->mac;
+            $switch['members'][$FPC->fpc_idx]['serial'] = $FPC->serial;
+            $switch['members'][$FPC->fpc_idx]['vc_role'] = $FPC->vc_role;
+            $switch['members'][$FPC->fpc_idx]['model'] = $invmember->model;
+            $switch['members'][$FPC->fpc_idx]['magic'] = $invmember->magic;
+            $switch['members'][$FPC->fpc_idx]['id'] = $invmember->id;
+            $switch['members'][$FPC->fpc_idx]['version'] = $invmember->version;
+        }
+        return $switch;
     }
 
     public static function claim($magic)
@@ -235,7 +280,8 @@ class Device extends BaseModel
         {
             $path = "sites/" . $this->site_id . "/stats/devices/" . $this->id;
             $device = Device::get($path)->first();
-            foreach($device as $key=>$value)
+            $array = $device->toArray();
+            foreach($array as $key=>$value)
             {
                 $this->$key = $value;
             }
@@ -660,12 +706,19 @@ class Device extends BaseModel
 
     public function getDhcpId()
     {
-        if(isset($this->mac))
+        if(isset($this->vc_mac))
         {
-            $hex = bin2hex($this->mac . "-0");
-            $formattedHex = chunk_split($hex, 2, '-');
-            return rtrim($formattedHex, '-');
+            $mac = $this->vc_mac;
+        } elseif(isset($this->mac)) {
+            $mac = $this->mac;
         }
+        if(!isset($mac))
+        {
+            return null;
+        }
+        $hex = bin2hex($mac . "-0");
+        $formattedHex = chunk_split($hex, 2, '-');
+        return rtrim($formattedHex, '-');
     }
 
 }
