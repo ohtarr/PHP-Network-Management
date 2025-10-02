@@ -11,70 +11,67 @@ class Device extends BaseModel
 
     public static function all()
     {
-        return static::get();
+        return static::hydrateMany(static::getQuery()->get(static::getPath())->devices);
     }
 
-    public static function find($id, $path = null)
+    public static function find($id)
     {
-        if(!$path)
-        {
-            $path = static::getPath() . "/" . $id;
-        }
-        $response = static::getQuery($path)->get();
-        return static::hydrateOne($response->devices[0]);
+        return static::hydrateOne(static::getQuery()->get(static::getPath() . "/" . $id)->devices[0]);
     }
 
-    public static function get($path = null, $search = null)
+    public static function get(array $query = [])
     {
-        $query = static::getQuery($path, $search);
-        $response = $query->get();
+        $qb = static::getQuery();
+        $response = $qb->get(static::getPath(), $query);
         return static::hydrateMany($response->devices);
     }
 
-    public static function create(array $params, $path = null)
+    public static function create(array $body)
     {
-        $query = static::getQuery($path);
-        $response = $query->post($params);
+        $query = static::getQuery();
+        $response = $query->post(static::getPath(), $body);
         return static::hydrateOne($response->devices[0]);
     }
 
-    public function delete($path = null)
+    public function update(array $body)
     {
-        if(!$path)
+        $query = static::getQuery();
+        $response = $query->patch(static::getPath() . "/" . $this->device_id, $body);
+        if($response->status == "ok")
         {
-            $path = static::getPath() . "/" . $this->device_id;
+            return true;
+        } else {
+            return false;
         }
-        $query = static::getQuery($path);
-        return $query->delete();
+    }
+
+    public function delete()
+    {
+        if(isset($this->device_id) && $this->device_id)
+        {
+            $query = static::getQuery();
+            $response = $query->delete(static::getPath() . "/" . $this->device_id);
+            if($response->status == "ok")
+            {
+                return true;
+            } else {
+                return false;
+            }
+        }
     }
 
     public static function addByHostname($hostname)
     {
         $device = null;
-        $params = [
+        $body = [
             'hostname'  =>  $hostname,
         ];
         try {
-            $device = static::create($params);
+            $device = static::create($body);
         } catch (\Exception $e) {
             //print $e->getMessage()."\n";
         }
         return $device;
-    }
-
-    public function changeIp($newip, $path = null)
-    {
-        if(!$path)
-        {
-            $path = static::getPath() . "/" . $this->device_id;
-        }
-        $params = [
-            'field' =>  'hostname',
-            'data'  =>  $newip,
-        ];
-        $query = static::getQuery($path);
-        $response = $query->patch($params);
-        return $response;
     }
 
     public function discover()
@@ -82,9 +79,39 @@ class Device extends BaseModel
 
     }
 
-    public function findByHostname($hostname)
+    public function disableAlerting()
     {
-
+        $body = [
+            'field' =>  "ignore",
+            'data'  =>  1,
+        ];
+        return $this->update($body);
     }
 
+    public function enableAlerting()
+    {
+        $body = [
+            'field' =>  "ignore",
+            'data'  =>  0,
+        ];
+        return $this->update($body);
+    }
+
+    public function enablePolling()
+    {
+        $body = [
+            'field' =>  "disabled",
+            'data'  =>  0,
+        ];
+        return $this->update($body);
+    }
+
+    public function disablePolling()
+    {
+        $body = [
+            'field' =>  "disabled",
+            'data'  =>  1,
+        ];
+        return $this->update($body);
+    }
 }

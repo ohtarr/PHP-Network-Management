@@ -9,9 +9,6 @@ class QueryBuilder
 {
     protected $token;
     protected $baseurl;
-    public $search;
-    public $model;
-    public $path;
 
     public function __construct()
     {
@@ -31,72 +28,41 @@ class QueryBuilder
         ]);
     }
 
-    public function get()
+    public function get(string $path, array $query = [])
     {
         $client = $this->getGuzzleClient();
-        $response = $client->request('get', $this->path, ['query' =>  $this->search]);
+        $response = $client->request('get', $path, ['query' =>  $query]);
         $body = $response->getBody()->getContents();
         $decoded = json_decode($body);
         return $decoded;
     }
 
-    public function get2()
+    public function post(string $path, array $body = [])
     {
+        $jsonbody = json_encode($body);
         $client = $this->getGuzzleClient();
-        $response = $client->request('get', $this->path, ['query' =>  $this->search]);
-        $body = $response->getBody()->getContents();
-        $decoded = json_decode($body);
-        return $decoded;
-    }
-
-    public function first()
-    {
-        return $this->get($this->path)->first();
-    }
-
-    public function where($column, $value)
-    {
-        $this->search[$column] = $value;
-        return $this;
-    }
-
-    public function post($body)
-    {
-        $client = $this->getGuzzleClient();
-        $response = $client->request('post', $this->path, ['body' => json_encode($body)]);
+        $response = $client->request('post', $path, ['body' => $jsonbody]);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
         return $object;
     }
 
-    public function put($body)
+    public function patch(string $path, array $body = [])
     {
+        $jsonbody = json_encode($body);
         $client = $this->getGuzzleClient();
-        $response = $client->request('put', $this->path, ['body' => json_encode($body)]);
+        $response = $client->request('patch', $path, ['body' => $jsonbody]);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
         return $object;
     }
 
-    public function patch($body)
+    public function delete(string $path)
     {
         $client = $this->getGuzzleClient();
-        $response = $client->request('patch', $this->path, ['body' => json_encode($body)]);
+        $response = $client->request('delete', $path);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
         return $object;
-    }
-
-    public function delete()
-    {
-        $client = $this->getGuzzleClient();
-        $response = $client->request('delete', $this->path);
-        $responsecode = $response->getStatusCode();
-        if($responsecode == 200)
-        {
-            return true;
-        } else {
-            return false;
-        }
     }
 }

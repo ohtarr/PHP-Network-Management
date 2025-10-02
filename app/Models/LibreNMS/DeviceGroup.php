@@ -8,35 +8,27 @@ use App\Models\LibreNMS\BaseModel;
 class DeviceGroup extends BaseModel
 {
     protected static $model = "devicegroups";
-
+    
     public static function all()
     {
-        return static::get();
+        return static::hydrateMany(static::getQuery()->get(static::getPath())->groups);
     }
 
-    public static function find($id, $path = null)
+    public static function find($id)
     {
-        $groups = static::get();
-        foreach($groups as $group)
-        {
-            if($group->id == $id)
-            {
-                return static::hydrateOne($group);
-            }
-        }
+        $groups = static::all();
+        return $groups->where('id', $id)->first();
     }
 
-    public static function get($path = null, $search = null)
+    public static function get()
     {
-        $query = static::getQuery($path, $search);
-        $response = $query->get();
-        return static::hydrateMany($response->groups);
+        return static::all();
     }
 
-    public static function create(array $params, $path = null)
+    public static function create(array $body)
     {
-        $query = static::getQuery($path);
-        $response = $query->post($params);
+        $query = static::getQuery();
+        $response = $query->post(static::getPath(), $body);
         if(isset($response->id))
         {
             return static::find($response->id);
@@ -55,14 +47,19 @@ class DeviceGroup extends BaseModel
         return static::create($params);
     }
 
-    public function delete($path = null)
+    public function delete()
     {
-        if(!$path)
+        if(isset($this->id) && $this->id)
         {
-            $path = static::getPath() . "/" . $this->id;
+            $query = static::getQuery();
+            $response = $query->delete(static::getPath() . "/" . $this->id);
+            if($response->status == "ok")
+            {
+                return true;
+            } else {
+                return false;
+            }
         }
-        $query = static::getQuery($path);
-        return $query->delete();
     }
 
 }

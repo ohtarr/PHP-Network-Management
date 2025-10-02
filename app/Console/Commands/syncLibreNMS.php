@@ -37,6 +37,11 @@ class syncLibreNMS extends Command
 
     public function handle()
     {
+        //print count($this->LibreDevicesToAdd()) . PHP_EOL;
+        //print count($this->getNetboxDevices()) . PHP_EOL;
+        //print count($this->getLibreDevices()) . PHP_EOL;
+        //print count($this->LibreDevicesToRemove()) . PHP_EOL;
+        //print_r($this->getLibreDeviceByHostname('khonesdcper01'));
         $this->removeLibreDevices();
         $this->addLibreDevices();
 
@@ -46,13 +51,14 @@ class syncLibreNMS extends Command
     {
         if(!$this->netboxdevices)
         {
-            $devices = Devices::where('cf_POLLING', 'true')->where('limit','1000')->get();
+            print "Fetching Netbox Devices!" . PHP_EOL;
+            $devices = Devices::where('cf_POLLING', 'true')->where('name__empty','false')->where('limit','9999')->get();
             foreach($devices as $device)
             {
-                if($device->getIpAddress())
-                {
+                //if($device->getIpAddress())
+                //{
                     $toadd[] = $device;
-                }
+                //}
             }
             $this->netboxdevices = collect($toadd);
         }
@@ -63,6 +69,7 @@ class syncLibreNMS extends Command
     {
         if(!$this->libredevices)
         {
+            print "Fetching LibreNMS Devices!" . PHP_EOL;
             $this->libredevices = Device::all();
         }
         return $this->libredevices;
@@ -72,6 +79,7 @@ class syncLibreNMS extends Command
     {
         if(!$this->netboxsites)
         {
+            print "Fetching Netbox Sites!" . PHP_EOL;
             $this->netboxsites = Sites::all();
         }
         return $this->netboxsites;
@@ -81,6 +89,7 @@ class syncLibreNMS extends Command
     {
         if(!$this->libresitegroups)
         {
+            print "Fetching LibreNMS Device Groups!" . PHP_EOL;
             $this->libresitegroups = DeviceGroup::all();
         }
         return $this->libresitegroups;
@@ -91,19 +100,24 @@ class syncLibreNMS extends Command
         return $this->getNetboxDevices()->where('hostname', $name)->first();
     }
 
-    public function findLibreDeviceBySysname($name)
+/*     public function findLibreDeviceBySysname($name)
     {
         return $this->getLibreDevices()->where('sysName', $name)->first();
+    } */
+
+    public function getLibreDeviceByHostname($name)
+    {
+        return Device::find($name);
     }
 
-    public function findLibreDeviceByHostname($name)
+    public function getLibreDeviceByHostnameFromCache($name)
     {
         return $this->getLibreDevices()->where('hostname', $name)->first();
     }
 
     public function deleteLibreDevice($hostname)
     {
-        $device = $this->findLibreDeviceByHostname($hostname);
+        $device = $this->getLibreDeviceByHostname($hostname);
         if(!isset($device->device_id))
         {
             return true;
@@ -113,7 +127,7 @@ class syncLibreNMS extends Command
         } catch (\Exception $e) {
             //print $e->getMessage()."\n";
         }
-        $confirm = $this->findLibreDeviceByHostname($hostname);
+        $confirm = $this->getLibreDeviceByHostname($hostname);
         if(!isset($confirm->device_id))
         {
             return true;
@@ -127,25 +141,29 @@ class syncLibreNMS extends Command
         foreach($this->getNetboxDevices() as $nbdevice)
         {
             unset($libredevice);
-            $vc = $nbdevice->getVirtualChassis();
-            if(isset($vc->id))
+            if(isset($nbdevice->virtual_chassis->master->id))
             {
-                $name = $vc->name;
+                if($nbdevice->virtual_chassis->master->id != $nbdevice->id)
+                {
+                    continue;
+                }
+                $name = $nbdevice->virtual_chassis->name;
             } else {
                 $name = $nbdevice->name;
             }
-            //unset($ip);
-            //$ip = $nbdevice->getIpAddress();
-            $libredevice = $this->findLibreDeviceByHostname($name);
+            $libredevice = $this->getLibreDeviceByHostnameFromCache($name);
             if(!$libredevice)
             {
-                $toadd[] = $name;
+                if($nbdevice->getIpAddress())
+                {
+                    $toadd[] = $name;
+                }
             }
         }
         return $toadd;
     }
 
-    public function addLibreDevice($hostname)
+/*     public function addLibreDevice($hostname)
     {
         try{
             $device = Device::addByHostname($hostname);
@@ -157,7 +175,7 @@ class syncLibreNMS extends Command
         {
             return $device;
         }
-    }
+    } */
 
     public function addLibreDevices()
     {
@@ -192,6 +210,7 @@ class syncLibreNMS extends Command
 
     public function LibreDevicesToRemove()
     {
+        $todelete = [];
         $libredevices = $this->getLibreDevices();
         foreach($libredevices as $libredevice)
         {
@@ -200,15 +219,14 @@ class syncLibreNMS extends Command
             $match = null;
             foreach($this->getNetboxDevices() as $nbdevice)
             {
-                //print_r($nbdevice);
-                $vc = $nbdevice->getVirtualChassis();
-                if(isset($vc->id))
+                $name = null;
+                if(isset($nbdevice->virtual_chassis->name))
                 {
-                    $name = $vc->name;
+                    $name = $nbdevice->virtual_chassis->name;
                 } else {
                     $name = $nbdevice->name;
                 }
-                //print strtolower($name) . " =? " . strtolower($libredevice->hostname) . PHP_EOL;
+                //print "^" . strtolower($name) . "^ =? ^" . strtolower($libredevice->hostname) . "^" . PHP_EOL;
                 if(strtolower($name) == strtolower($libredevice->hostname))
                 {
                     $match = $nbdevice;
@@ -220,6 +238,12 @@ class syncLibreNMS extends Command
             {
                 print "NO MATCH FOUND, ADDING TO DELETE PILE!" . PHP_EOL;
                 $todelete[] = $libredevice;
+            } else {
+                if(!$match->getIpAddress())
+                {
+                    print "MATCH FOUND, but NO IP ADDRESS FOUND in Netbox, ADDING TO DELETE PILE!" . PHP_EOL;
+                    $todelete[] = $libredevice;
+                }
             }
         }
         return collect($todelete);
@@ -237,14 +261,6 @@ class syncLibreNMS extends Command
             } catch (\Exception $e) {
                 //print $e->getMessage()."\n";
             }
-            $confirm = $this->findLibreDeviceByHostname($libredevice->hostname);
-            if(!isset($confirm->device_id))
-            {
-                return true;
-            } else {
-                return false;
-            }
-
         }
     }
 
