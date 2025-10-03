@@ -30,22 +30,23 @@ class VirtualMachines extends BaseModel
         } 
     }
 
+    public function generateDnsName()
+    {
+        $newname = str_replace("/","-",$this->name);
+        $newname = str_replace(".","-",$newname);
+        return $newname;        
+    }
+
     public function generateDnsNames()
     {
         $dnsrecords = [];
-        if(isset($this->virtual_chassis->id))
-        {
-            return $dnsrecords;
-        }
         $ip = $this->getIpAddress();
         if(!$ip)
         {
             return $dnsrecords;
         }
-        $newname = str_replace("/","-",$this->name);
-        $newname = str_replace(".","-",$newname);
         $dnsrecords[] = [
-            'hostname'  =>  $newname,
+            'hostname'  =>  $this->generateDnsName(),
             'data'      =>  $ip,
             'type'      =>  'a',
         ];

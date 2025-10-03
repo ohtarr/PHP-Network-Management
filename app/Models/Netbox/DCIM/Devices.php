@@ -221,6 +221,17 @@ class Devices extends BaseModel
         }
     }
 
+    public function generateDnsName()
+    {
+        if(isset($this->virtual_chassis->id))
+        {
+            return $this->getVirtualChassis()->generateDnsName();
+        }        
+        $newname = str_replace("/","-",$this->name);
+        $newname = str_replace(".","-",$newname);
+        return $newname;
+    }
+
     public function generateDnsNames()
     {
         $dnsrecords = [];

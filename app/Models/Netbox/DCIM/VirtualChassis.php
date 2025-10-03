@@ -35,6 +35,13 @@ class VirtualChassis extends BaseModel
         }
     }
 
+    public function generateDnsName()
+    {
+        $newname = str_replace("/","-",$this->name);
+        $newname = str_replace(".","-",$newname);
+        return $newname;        
+    }
+
     public function generateDnsNames()
     {
         $dnsrecords = [];
@@ -44,7 +51,7 @@ class VirtualChassis extends BaseModel
             return $dnsrecords;
         }
         $dnsrecords[] = [
-            'hostname'  =>  $this->name,
+            'hostname'  =>  $this->generateDnsName(),
             'data'      =>  $ip,
             'type'      =>  'a',
         ];
