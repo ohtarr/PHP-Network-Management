@@ -255,11 +255,11 @@ class syncLibreNMS extends Command
             $match = null;
             foreach($this->getNetboxDevices() as $nbdevicename)
             {
-                print "^" . strtolower($nbdevicename) . "^ =? ^" . strtolower($libredevice->hostname) . "^" . PHP_EOL;
+                //print "^" . strtolower($nbdevicename) . "^ =? ^" . strtolower($libredevice->hostname) . "^" . PHP_EOL;
                 if(strtolower($nbdevicename) == strtolower($libredevice->hostname))
                 {
                     $match = $nbdevicename;
-                    print_r($match);
+                    //print_r($match);
                     break;                    
                 }
             }
