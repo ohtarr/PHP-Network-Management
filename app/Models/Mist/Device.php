@@ -173,15 +173,18 @@ class Device extends BaseModel
         }
         foreach($details->module_stat as $FPC)
         {
-            $invmember = $members->where('mac', $FPC->mac)->first();
             $switch['members'][$FPC->fpc_idx]['member_id'] = $FPC->fpc_idx;            
             $switch['members'][$FPC->fpc_idx]['mac'] = $FPC->mac;
             $switch['members'][$FPC->fpc_idx]['serial'] = $FPC->serial;
             $switch['members'][$FPC->fpc_idx]['vc_role'] = $FPC->vc_role;
-            $switch['members'][$FPC->fpc_idx]['model'] = $invmember->model;
-            $switch['members'][$FPC->fpc_idx]['magic'] = $invmember->magic;
-            $switch['members'][$FPC->fpc_idx]['id'] = $invmember->id;
-            $switch['members'][$FPC->fpc_idx]['version'] = $invmember->version;
+            if(isset($members))
+            {
+                $invmember = $members->where('mac', $FPC->mac)->first();
+                $switch['members'][$FPC->fpc_idx]['model'] = $invmember->model;
+                $switch['members'][$FPC->fpc_idx]['magic'] = $invmember->magic;
+                $switch['members'][$FPC->fpc_idx]['id'] = $invmember->id;
+                $switch['members'][$FPC->fpc_idx]['version'] = $invmember->version;
+            }
         }
         return $switch;
     }
@@ -506,11 +509,14 @@ class Device extends BaseModel
             }
             $tmp->id = $vcmember->fpc_idx;
             //Grab model from getVcMembers() output
-            foreach($vcmembers as $vcm)
+            if(isset($vcmembers) && $vcmembers)
             {
-                if($vcmember->mac == $vcm->mac)
+                foreach($vcmembers as $vcm)
                 {
-                    $tmp->model = $vcm->model;
+                    if($vcmember->mac == $vcm->mac)
+                    {
+                        $tmp->model = $vcm->model;
+                    }
                 }
             }
             //calculate number of ports on each pic
