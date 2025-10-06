@@ -518,6 +518,8 @@ class Device extends BaseModel
                         $tmp->model = $vcm->model;
                     }
                 }
+            } elseif(isset($vcm->model)) {
+                $tmp->model = $vcmember->model;
             }
             //calculate number of ports on each pic
             foreach($vcmember->pics as $pic)
