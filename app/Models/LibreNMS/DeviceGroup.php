@@ -37,10 +37,10 @@ class DeviceGroup extends BaseModel
 
     public static function createSiteGroup($sitecode)
     {
-        $rulestring = "{\"condition\":\"AND\",\"rules\":[{\"id\":\"devices.sysName\",\"field\":\"devices.sysName\",\"type\":\"string\",\"input\":\"text\",\"operator\":\"begins_with\",\"value\":\"{$sitecode}\"}],\"valid\":true,\"joins\":[]}";
+        $rulestring = "{\"condition\":\"AND\",\"rules\":[{\"id\":\"devices.hostname\",\"field\":\"devices.hostname\",\"type\":\"string\",\"input\":\"text\",\"operator\":\"begins_with\",\"value\":\"{$sitecode}\"}],\"valid\":true,\"joins\":[]}";
         $params = [
-            'name'      => $sitecode,
-            'desc'      => $sitecode,
+            'name'      => 'SITE_' . $sitecode,
+            'desc'      => 'SITE_' . $sitecode,
             'type'      => 'dynamic',
             'rules'   => $rulestring,
         ];

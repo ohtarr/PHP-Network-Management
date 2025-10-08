@@ -40,6 +40,12 @@ class syncLibreNMS extends Command
 
     public function handle()
     {
+        //$this->deleteLibreSiteGroups();
+        //$this->addLibreSiteGroups();
+        $this->ignoreLibreDevices();
+        $this->alertLibreDevices();
+        //print count($this->LibreDevicesToIgnore()) . PHP_EOL;
+        //print count($this->LibreDevicesToAlert()) . PHP_EOL;
         //print_r($this->getNetboxDevices2());
         //print count($this->LibreDevicesToAdd()) . PHP_EOL;
         //print_r($this->LibreDevicesToAdd());
@@ -48,8 +54,8 @@ class syncLibreNMS extends Command
         //print count($this->LibreDevicesToRemove()) . PHP_EOL;
         //print_r($this->LibreDevicesToRemove());
         //print_r($this->getLibreDeviceByHostname('khonesdcper01'));
-        $this->removeLibreDevices();
-        $this->addLibreDevices();
+        //$this->removeLibreDevices();
+        //$this->addLibreDevices();
 
     }
 
@@ -83,7 +89,7 @@ class syncLibreNMS extends Command
         return $this->netboxvcs;
     }
 
-    public function getNetboxDevices()
+    public function getNetboxDevice2()
     {
         if(!$this->netboxdevices)
         {
@@ -113,6 +119,36 @@ class syncLibreNMS extends Command
         return $this->netboxdevices;
     }
 
+    public function getNetboxDevices()
+    {
+        if(!$this->netboxdevices)
+        {
+            print "Fetching Netbox Devices!" . PHP_EOL;
+            $nbdevices = [];
+            $devices = Devices::where('cf_POLLING', 'true')->where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
+            foreach($devices as $device)
+            {
+                $nbdevices[] = $device;
+            }
+            $devices = Devices::where('cf_POLLING', 'true')->where('virtual_chassis_member', 'true')->where('name__empty','false')->where('limit','9999')->get();
+            foreach($devices as $device)
+            {
+                if(isset($device->virtual_chassis->master->id) && $device->virtual_chassis->master->id == $device->id)
+                {
+                    $nbdevices[] = $device;
+                }
+            }
+            $vms = VirtualMachines::where('cf_POLLING', 'true')->where('name__empty','false')->where('limit','1000')->get();
+            foreach($vms as $vm)
+            {
+                $nbdevices[] = $vm;
+            }
+            $this->netboxdevices = collect($nbdevices);
+            print "Generated " . count($this->netboxdevices) . " devices from Netbox." . PHP_EOL;
+        }
+        return $this->netboxdevices;
+    }
+
     public function getLibreDevices()
     {
         if(!$this->libredevices)
@@ -133,15 +169,100 @@ class syncLibreNMS extends Command
         return $this->netboxsites;
     }
 
-    public function getLibreNMSSiteGroups()
+    public function getLibreSiteGroups()
     {
+        $sitegroups = [];
         if(!$this->libresitegroups)
         {
             print "Fetching LibreNMS Device Groups!" . PHP_EOL;
-            $this->libresitegroups = DeviceGroup::all();
+            try {
+                $devicegroups = DeviceGroup::all();
+            } catch (\Exception $e) {
+                print $e->getMessage()."\n";
+            }
+            if(!isset($devicegroups))
+            {
+                $this->libresitegroups = collect([]);
+                return $this->libresitegroups;
+            }
+            foreach($devicegroups as $devicegroup)
+            {
+                if(substr($devicegroup->name, 0, 5) == "SITE_")
+                {
+                    $sitegroups[] = $devicegroup;
+                }
+            }
+            $this->libresitegroups = collect($sitegroups);
         }
         return $this->libresitegroups;
     }
+
+    public function libreGroupsToAdd()
+    {
+        $toadd = [];
+        foreach($this->getNetboxSites() as $nbsite)
+        {
+            $match = null;
+            $match = $this->getLibreSiteGroups()->where('name', 'SITE_' . $nbsite->name)->first();
+            if(!$match)
+            {
+                $toadd[] = $nbsite->name;
+            }
+        }
+        return $toadd;
+    }
+
+    public function addLibreSiteGroups()
+    {
+        foreach($this->libreGroupsToAdd() as $sitecode)
+        {
+            print "ADDING SITE_GROUP for site {$sitecode}..." . PHP_EOL;
+            try {
+                DeviceGroup::createSiteGroup($sitecode);
+            } catch (\Exception $e) {
+                print $e->getMessage()."\n";
+                continue;
+            }
+        }
+    }
+
+    public function libreGroupsToDelete()
+    {
+        $todelete = [];
+        foreach($this->getLibreSiteGroups() as $libregroup)
+        {
+            $sitecode = str_replace("SITE_", "", $libregroup->name);
+            $match = null;
+            $match = $this->getNetboxSites()->where('name', $sitecode)->first();
+            if(!$match)
+            {
+                $todelete[] = $libregroup;
+            }
+        }
+        return $todelete;
+    }
+
+    public function deleteLibreSiteGroups()
+    {
+        foreach($this->libreGroupsToDelete() as $libresitegroup)
+        {
+            print "DELETING SITE_GROUP {$libresitegroup->name}..." . PHP_EOL;
+            try {
+                $libresitegroup->delete();
+            } catch (\Exception $e) {
+                print $e->getMessage()."\n";
+                continue;
+            }
+        }
+    }
+
+
+/* {
+	"name":"SITE_KHONELDC",
+	"desc":"KHONELDC",
+	"type":"dynamic",
+  "rules": "{\"condition\":\"AND\",\"rules\":[{\"id\":\"devices.sysName\",\"field\":\"devices.sysName\",\"type\":\"string\",\"input\":\"text\",\"operator\":\"begins_with\",\"value\":\"KHONELDC\"}],\"valid\":true,\"joins\":[]}"
+} */
 
     /*
     public function findNetboxDeviceByName($name)
@@ -153,6 +274,27 @@ class syncLibreNMS extends Command
     {
         return $this->getLibreDevices()->where('sysName', $name)->first();
     } */
+
+    public function getNetboxDeviceByName($name)
+    {
+        return $this->getNetboxDevices()->where('name', $name)->first();
+    }
+
+    public function getNetboxDeviceByNameCaseInsensitive($name)
+    {
+        foreach($this->getNetboxDevices() as $nbdevice)
+        {
+            if(!isset($nbdevice->name))
+            {
+                continue;
+            }
+            if(strtolower($nbdevice->name) == strtolower($name))
+            {
+                return $nbdevice;
+            }
+        }
+
+    }
 
     public function getLibreDeviceByHostname($name)
     {
@@ -187,13 +329,17 @@ class syncLibreNMS extends Command
 
     public function LibreDevicesToAdd()
     {
-        foreach($this->getNetboxDevices() as $nbdevicename)
+        foreach($this->getNetboxDevices() as $nbdevice)
         {
             unset($libredevice);
-             $libredevice = $this->getLibreDeviceByHostnameFromCache($nbdevicename);
+            if(!isset($nbdevice->name))
+            {
+                continue;
+            }
+            $libredevice = $this->getLibreDeviceByHostnameFromCache($nbdevice->name);
             if(!$libredevice)
             {
-                $toadd[] = $nbdevicename;
+                $toadd[] = $nbdevice->name;
             }
         }
         return collect($toadd);
@@ -253,14 +399,18 @@ class syncLibreNMS extends Command
             print "*************************************************" . PHP_EOL;
             print "Processing libreNMS Device {$libredevice->hostname}..." . PHP_EOL;
             $match = null;
-            foreach($this->getNetboxDevices() as $nbdevicename)
+            foreach($this->getNetboxDevices() as $nbdevice)
             {
-                //print "^" . strtolower($nbdevicename) . "^ =? ^" . strtolower($libredevice->hostname) . "^" . PHP_EOL;
-                if(strtolower($nbdevicename) == strtolower($libredevice->hostname))
+                if(!isset($nbdevice->name))
                 {
-                    $match = $nbdevicename;
+                    continue;
+                }
+                //print "^" . strtolower($nbdevicename) . "^ =? ^" . strtolower($libredevice->hostname) . "^" . PHP_EOL;
+                if(strtolower($nbdevice->name) == strtolower($libredevice->hostname))
+                {
+                    $match = $nbdevice->name;
                     //print_r($match);
-                    break;                    
+                    break;
                 }
             }
             if(!$match)
@@ -287,13 +437,77 @@ class syncLibreNMS extends Command
         }
     }
 
-    public function LibreSitGroupsToAdd()
+    public function LibreDevicesToIgnore()
     {
-
+        $toignore = [];
+        foreach($this->getLibreDevices() as $libredevice)
+        {
+            //print "*************************************************" . PHP_EOL;
+            //print "Processing libreNMS Device {$libredevice->hostname}..." . PHP_EOL;
+            $match = null;
+            $match = $this->getNetboxDeviceByNameCaseInsensitive($libredevice->hostname);
+            if($match)
+            {
+                if(isset($match->custom_fields->ALERT) && $match->custom_fields->ALERT == false)
+                {
+                    if($libredevice->ignore == 0)
+                    {
+                        $toignore[] = $libredevice;
+                    }
+                }
+            }
+        }
+        return collect($toignore);
     }
 
-    public function LibreSiteGroupsToRemove()
+    public function LibreDevicesToAlert()
     {
+        $toalert = [];
+        foreach($this->getLibreDevices() as $libredevice)
+        {
+            //print "*************************************************" . PHP_EOL;
+            //print "Processing libreNMS Device {$libredevice->hostname}..." . PHP_EOL;
+            $match = null;
+            $match = $this->getNetboxDeviceByNameCaseInsensitive($libredevice->hostname);
+            if($match)
+            {
+                if(isset($match->custom_fields->ALERT) && $match->custom_fields->ALERT == true)
+                {
+                    if($libredevice->ignore == 1)
+                    {
+                        $toalert[] = $libredevice;
+                    }
+                }
+            }
+        }
+        return collect($toalert);
+    }
 
+    public function ignoreLibreDevices()
+    {
+        foreach($this->LibreDevicesToIgnore() as $libredevice)
+        {
+            print "IGNORING device {$libredevice->hostname} ..." . PHP_EOL;
+            try {
+                $libredevice->disableAlerting();
+            } catch (\Exception $e) {
+                print $e->getMessage()."\n";
+                continue;
+            }
+        }
+    }
+
+    public function alertLibreDevices()
+    {
+        foreach($this->LibreDevicesToAlert() as $libredevice)
+        {
+            print "Enabling ALERTING on device {$libredevice->hostname} ..." . PHP_EOL;
+            try {
+                $libredevice->enableAlerting();
+            } catch (\Exception $e) {
+                print $e->getMessage()."\n";
+                continue;
+            }
+        }
     }
 }
