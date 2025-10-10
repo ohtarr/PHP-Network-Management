@@ -325,10 +325,10 @@ class syncLibreNMS extends Command
             {
                 continue;
             }
-            $libredevice = $this->getLibreDeviceByHostnameFromCache($nbdevice->name);
+            $libredevice = $this->getLibreDeviceByHostnameFromCache($nbdevice->generateDnsName());
             if(!$libredevice)
             {
-                $toadd[] = $nbdevice->name;
+                $toadd[] = $nbdevice->generateDnsName();
             }
         }
         return collect($toadd);
@@ -395,9 +395,10 @@ class syncLibreNMS extends Command
                     continue;
                 }
                 //print "^" . strtolower($nbdevicename) . "^ =? ^" . strtolower($libredevice->hostname) . "^" . PHP_EOL;
-                if(strtolower($nbdevice->name) == strtolower($libredevice->hostname))
+                $generatedname = $nbdevice->generateDnsName();
+                if(strtolower($generatedname) == strtolower($libredevice->hostname))
                 {
-                    $match = $nbdevice->name;
+                    $match = $generatedname;
                     //print_r($match);
                     break;
                 }
