@@ -32,8 +32,12 @@ class syncLibreNMS extends Command
      * @return int
      */
 
-    protected $netboxdevices;
-    protected $netboxvcs;
+    //protected $netboxdevices;
+    protected $netboxnonvcdevices;
+    //protected $netboxvcs;
+    protected $netboxvcmasters;
+    protected $netboxvms;
+    protected $netboxall;
     protected $libredevices;
     protected $netboxsites;
     protected $libresitegroups;
@@ -48,94 +52,84 @@ class syncLibreNMS extends Command
         $this->addLibreDevices();
     }
 
-    public function getNetboxDevices3()
+    public function getNetboxVcMasterDevices()
     {
-        if(!$this->netboxdevices)
+        $vcmasters = [];
+        if(!$this->netboxvcmasters)
         {
-            print "Fetching Netbox Devices!" . PHP_EOL;
-            $devices = Devices::where('cf_POLLING', 'true')->where('name__empty','false')->where('limit','9999')->get();
-            foreach($devices as $device)
+            print "Fetching Netbox VirtualChassis Masters!" . PHP_EOL;
+            $vcmembers = Devices::where('cf_POLLING', 'true')->where('virtual_chassis_member', 'true')->where('name__empty','false')->where('limit','9999')->get();           
+            foreach($vcmembers as $vcmember)
             {
-                //if($device->getIpAddress())
-                //{
-                    $toadd[] = $device;
-                //}
-            }
-            $this->netboxdevices = collect($toadd);
-        }
-        return $this->netboxdevices;
-    }
-
-    public function getNetboxVcs()
-    {
-        if(!$this->netboxvcs)
-        {
-            print "Fetching Netbox VirtualChassis!" . PHP_EOL;
-            $virtualchassis = [];
-            $vcs = VirtualChassis::where('name__empty','false')->where('limit','1000')->get();
-            $this->netboxvcs = $vcs;
-        }
-        return $this->netboxvcs;
-    }
-
-    public function getNetboxDevice2()
-    {
-        if(!$this->netboxdevices)
-        {
-            print "Fetching Netbox Devices!" . PHP_EOL;
-            $nbdevices = [];
-            $devices = Devices::where('cf_POLLING', 'true')->where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
-            foreach($devices as $device)
-            {
-                $nbdevices[] = $device->generateDnsName();
-            }
-            $devices = Devices::where('cf_POLLING', 'true')->where('virtual_chassis_member', 'true')->where('name__empty','false')->where('limit','9999')->get();
-            foreach($devices as $device)
-            {
-                if(isset($device->virtual_chassis->master->id) && $device->virtual_chassis->master->id == $device->id)
+                if(isset($vcmember->virtual_chassis->master->id) && $vcmember->virtual_chassis->master->id == $vcmember->id)
                 {
-                    $nbdevices[] = $this->getNetboxVcs()->where('id', $device->virtual_chassis->id)->first()->generateDnsName();
+                    $vcmember->generated = $vcmember->generateDnsName();
+                    $vcmasters[] = $vcmember;
+                    continue;
                 }
             }
-            $vms = VirtualMachines::where('cf_POLLING', 'true')->where('name__empty','false')->where('limit','1000')->get();
-            foreach($vms as $vm)
-            {
-                $nbdevices[] = $vm->generateDnsName();
-            }            
-            $this->netboxdevices = collect($nbdevices);
-            print "Generated " . count($this->netboxdevices) . " devices from Netbox." . PHP_EOL;
+            $this->netboxvcmasters = collect($vcmasters);
         }
-        return $this->netboxdevices;
+        return $this->netboxvcmasters;
     }
 
-    public function getNetboxDevices()
+    public function getNetboxNonVcDevices()
     {
-        if(!$this->netboxdevices)
+        $nbnonvcdevices = [];
+        if(!$this->netboxnonvcdevices)
         {
-            print "Fetching Netbox Devices!" . PHP_EOL;
-            $nbdevices = [];
-            $devices = Devices::where('cf_POLLING', 'true')->where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
-            foreach($devices as $device)
+            print "Fetching Netbox NON-Virtual-Chassis Devices!" . PHP_EOL;
+            $nbdevices = Devices::where('cf_POLLING', 'true')->where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
+            foreach($nbdevices as $nbdevice)
             {
-                $nbdevices[] = $device;
+                $nbdevice->generated = $nbdevice->generateDnsName();
+                $nbnonvcdevices[] = $nbdevice;
             }
-            $devices = Devices::where('cf_POLLING', 'true')->where('virtual_chassis_member', 'true')->where('name__empty','false')->where('limit','9999')->get();
-            foreach($devices as $device)
-            {
-                if(isset($device->virtual_chassis->master->id) && $device->virtual_chassis->master->id == $device->id)
-                {
-                    $nbdevices[] = $device;
-                }
-            }
-            $vms = VirtualMachines::where('cf_POLLING', 'true')->where('name__empty','false')->where('limit','1000')->get();
-            foreach($vms as $vm)
-            {
-                $nbdevices[] = $vm;
-            }
-            $this->netboxdevices = collect($nbdevices);
-            print "Generated " . count($this->netboxdevices) . " devices from Netbox." . PHP_EOL;
+            $this->netboxnonvcdevices = collect($nbnonvcdevices);
         }
-        return $this->netboxdevices;
+        return $this->netboxnonvcdevices;
+    }
+
+    public function getNetboxVms()
+    {
+        $netboxvms = [];
+        if(!$this->netboxvms)
+        {
+            print "Fetching Netbox VirtualMachines!" . PHP_EOL;
+            $nbvms = VirtualMachines::where('cf_POLLING', 'true')->where('name__empty','false')->where('limit','1000')->get();
+            foreach($nbvms as $nbvm)
+            {
+                $nbvm->generated = $nbvm->generateDnsName();
+                $netboxvms[] = $nbvm;
+            }
+            $this->netboxvms = collect($netboxvms);
+        }
+        return $this->netboxvms;
+    }
+
+    public function getAllNetbox()
+    {
+        if(!$this->netboxall)
+        {
+            $nball = [];
+            foreach($this->getNetboxNonVcDevices() as $nbdevice)
+            {
+                //$nbdevice->generated = $nbdevice->generateDnsName();
+                $nball[] = $nbdevice;
+            }
+            foreach($this->getNetboxVcMasterDevices() as $nbvcmaster)
+            {
+                //$nbvcmaster->generated = $nbvcmaster->generateDnsName();
+                $nball[] = $nbvcmaster;
+            }
+            foreach($this->getNetboxVms() as $nbvm)
+            {
+                //$nbvm->generated = $nbvm->generateDnsName();
+                $nball[] = $nbvm;
+            }
+            $this->netboxall = collect($nball);
+        }
+        return $this->netboxall;
     }
 
     public function getLibreDevices()
@@ -245,39 +239,15 @@ class syncLibreNMS extends Command
         }
     }
 
-
-/* {
-	"name":"SITE_KHONELDC",
-	"desc":"KHONELDC",
-	"type":"dynamic",
-  "rules": "{\"condition\":\"AND\",\"rules\":[{\"id\":\"devices.sysName\",\"field\":\"devices.sysName\",\"type\":\"string\",\"input\":\"text\",\"operator\":\"begins_with\",\"value\":\"KHONELDC\"}],\"valid\":true,\"joins\":[]}"
-} */
-
-    /*
-    public function findNetboxDeviceByName($name)
-    {
-        return $this->getNetboxDevices()->where('hostname', $name)->first();
-    }
-*/
-/*     public function findLibreDeviceBySysname($name)
-    {
-        return $this->getLibreDevices()->where('sysName', $name)->first();
-    } */
-
-    public function getNetboxDeviceByName($name)
-    {
-        return $this->getNetboxDevices()->where('name', $name)->first();
-    }
-
     public function getNetboxDeviceByNameCaseInsensitive($name)
     {
-        foreach($this->getNetboxDevices() as $nbdevice)
+        foreach($this->getAllNetbox() as $nbdevice)
         {
-            if(!isset($nbdevice->name))
+            if(!isset($nbdevice->generated))
             {
                 continue;
             }
-            if(strtolower($nbdevice->name) == strtolower($name))
+            if(strtolower($nbdevice->generated) == strtolower($name))
             {
                 return $nbdevice;
             }
@@ -318,35 +288,21 @@ class syncLibreNMS extends Command
 
     public function LibreDevicesToAdd()
     {
-        foreach($this->getNetboxDevices() as $nbdevice)
+        foreach($this->getAllNetbox() as $nbdevice)
         {
             unset($libredevice);
-            if(!isset($nbdevice->name))
+            if(!isset($nbdevice->generated))
             {
                 continue;
             }
-            $libredevice = $this->getLibreDeviceByHostnameFromCache($nbdevice->generateDnsName());
+            $libredevice = $this->getLibreDeviceByHostnameFromCache($nbdevice->generated);
             if(!$libredevice)
             {
-                $toadd[] = $nbdevice->generateDnsName();
+                $toadd[] = $nbdevice->generated;
             }
         }
         return collect($toadd);
     }
-
-/*     public function addLibreDevice($hostname)
-    {
-        try{
-            $device = Device::addByHostname($hostname);
-        } catch (\Exception $e) {
-            //print $e->getMessage()."\n";
-        }
-
-        if(isset($device->device_id))
-        {
-            return $device;
-        }
-    } */
 
     public function addLibreDevices()
     {
@@ -385,27 +341,26 @@ class syncLibreNMS extends Command
         $libredevices = $this->getLibreDevices();
         foreach($libredevices as $libredevice)
         {
-            print "*************************************************" . PHP_EOL;
-            print "Processing libreNMS Device {$libredevice->hostname}..." . PHP_EOL;
+            //print "*************************************************" . PHP_EOL;
+            //print "Processing libreNMS Device {$libredevice->hostname}..." . PHP_EOL;
             $match = null;
-            foreach($this->getNetboxDevices() as $nbdevice)
+            foreach($this->getAllNetbox() as $nbdevice)
             {
-                if(!isset($nbdevice->name))
+                if(!isset($nbdevice->generated))
                 {
                     continue;
                 }
                 //print "^" . strtolower($nbdevicename) . "^ =? ^" . strtolower($libredevice->hostname) . "^" . PHP_EOL;
-                $generatedname = $nbdevice->generateDnsName();
-                if(strtolower($generatedname) == strtolower($libredevice->hostname))
+                if(strtolower($nbdevice->generated) == strtolower($libredevice->hostname))
                 {
-                    $match = $generatedname;
+                    $match = $nbdevice->generated;
                     //print_r($match);
                     break;
                 }
             }
             if(!$match)
             {
-                print "NO MATCH FOUND, ADDING TO DELETE PILE!" . PHP_EOL;
+                //print "NO MATCH FOUND, ADDING TO DELETE PILE!" . PHP_EOL;
                 $todelete[] = $libredevice;
             }
         }
