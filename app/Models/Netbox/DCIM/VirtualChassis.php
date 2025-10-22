@@ -6,6 +6,7 @@ use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Gizmo\Dhcp;
+use App\Models\Mist\Device;
 
 #[\AllowDynamicProperties]
 class VirtualChassis extends BaseModel
@@ -58,12 +59,12 @@ class VirtualChassis extends BaseModel
         return $dnsrecords;
     }
 
-    public function generateDhcpId()
+    public function generateDhcpId($irb = 0)
     {
         $master = $this->getMaster();
         if(isset($master) && $master)
         {
-            return $master->generateDhcpId();
+            return $master->generateDhcpId($irb);
         }
     }
 
@@ -96,4 +97,10 @@ class VirtualChassis extends BaseModel
             'description'   =>  "NETMAN-" . $this->name,
         ];
     }
+
+    public function getMistVirtualChassis()
+    {
+        return Device::findByName($this->name);
+    }
+
 }

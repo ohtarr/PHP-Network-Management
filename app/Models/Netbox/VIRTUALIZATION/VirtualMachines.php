@@ -66,7 +66,7 @@ class VirtualMachines extends BaseModel
             $mistdevice = $this->getMistDeviceBySerial();
             if(isset($mistdevice->mac) && $mistdevice->mac)
             {
-                return $mistdevice->getDhcpId();
+                return $mistdevice->generateDhcpId();
             }
         }
 

@@ -256,7 +256,7 @@ class Devices extends BaseModel
         return $dnsrecords;
     }
 
-    public function generateDhcpId()
+    public function generateDhcpId($irb = 0)
     {
         //If dhcp_id is defined on netbox device, return it
         if(isset($this->custom_fields->dhcp_id))
@@ -269,7 +269,7 @@ class Devices extends BaseModel
             $mistdevice = $this->getMistDeviceBySerial();
             if(isset($mistdevice->mac) && $mistdevice->mac)
             {
-                return $mistdevice->getDhcpId();
+                return $mistdevice->generateDhcpId($irb);
             }
         }
         if(!$this->name)

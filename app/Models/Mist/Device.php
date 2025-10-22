@@ -712,7 +712,7 @@ class Device extends BaseModel
         return $device;
     } */
 
-    public function getDhcpId()
+    public function generateDhcpId($irb = 0)
     {
         if(isset($this->vc_mac))
         {
@@ -724,7 +724,7 @@ class Device extends BaseModel
         {
             return null;
         }
-        $hex = bin2hex($mac . "-0");
+        $hex = bin2hex($mac . "-" . $irb);
         $formattedHex = chunk_split($hex, 2, '-');
         return rtrim($formattedHex, '-');
     }

@@ -106,7 +106,7 @@ class ValidationController extends Controller
                     $this->addLog(1, "Netbox PREFIX {$provprefix->prefix} is set to status CONTAINER");
                 }
             } else {
-                $this->addLog(0, "Netbox PREFIX {$provprefix->prefix} is NOT set to status CONTAINER");
+                $this->addLog(0, "Netbox PREFIX is MISSING or NOT set to status CONTAINER");
                 $totalstatus = 0;
             }
 
