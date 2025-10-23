@@ -200,7 +200,7 @@ class Device extends Model
                 //if($this->id)
                 //{
                     $this->credential_id = $credential->id;
-                    //$this->save();
+                    $this->save();
                 //}
                 return $cli;
             }
