@@ -36,7 +36,7 @@ class ManagementController extends Controller
             $this->addLog(0, "Unable to find NETBOX SITE.");
         }
         $this->addLog(1, "Successfully retreived NETBOX SITE.");
-        $nbdevices = Devices::where('site_id',$nbsite->id)->where('name__empty', 'false')->where('exclude','config_context')->get();
+        $nbdevices = Devices::where('site_id', $nbsite->id)->where('name__empty', 'false')->where('exclude','config_context')->get();
 
         $mistsite = $nbsite->getMistSite();
         if(!isset($mistsite->id))
@@ -44,12 +44,11 @@ class ManagementController extends Controller
             $this->addLog(0, "Unable to find MIST SITE.");
         }
         $this->addLog(1, "Successfully retreived MIST SITE.");
-        $mistdevices = Device::where('site_id',$mistsite->id)->where('vc','true')->get();
+        $mistdevices = Device::where('vc', 'true')->get();
         $devices = [];
         foreach($nbdevices as $nbdevice)
         {
             $nbdevice->custom['mistdevice'] = null;
-            $nbdevice->custom['mistdevice2'] = null;
             if(!$nbdevice->serial)
             {
                 continue;
