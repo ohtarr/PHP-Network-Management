@@ -44,22 +44,61 @@ class ManagementController extends Controller
             $this->addLog(0, "Unable to find MIST SITE.");
         }
         $this->addLog(1, "Successfully retreived MIST SITE.");
-        $mistdevices = Device::where('vc', 'true')->get();
+        $allmistdevices = Device::where('vc', 'true')->get();
         $devices = [];
         foreach($nbdevices as $nbdevice)
         {
+            unset($vcmaster);
+            unset($mistdevice);
+            unset($devicecustom);
+            unset($mistdevicesite);
             $nbdevice->custom['mistdevice'] = null;
             if(!$nbdevice->serial)
             {
                 continue;
             }
-            foreach($mistdevices as $mistdevice)
+            $mistdevice = $allmistdevices->where('serial', strtoupper($nbdevice->serial))->first();
+            if(!isset($mistdevice->mac))
             {
-                if(strtolower($mistdevice->serial) == strtolower($nbdevice->serial))
+                $mistdevice = $allmistdevices->where('serial', strtolower($nbdevice->serial))->first();
+            }
+            if(isset($mistdevice->mac))
+            {
+                //$devicecustom['site_id'] = null;
+
+                //$mistdevice->custom = [
+                //    'site_id'   =>  null,
+                //];
+                //$mistdevice->custom['site_id'] = null;
+                
+                
+                
+                
+
+                //$nbdevice->custom['mistdevice']['custom'] = null;
+                //$nbdevice->custom['mistdevice']['custom']['site_id'] = null;
+                if(isset($mistdevice->site_id))
                 {
-                    $nbdevice->custom['mistdevice'] = $mistdevice;
-                    break;
+                    //$devicecustom['site_id'] = $mistdevice->site_id;
+                    $mistdevicesite = $mistdevice->site_id;
+                    //$mistdevice->custom['site_id'] = $mistdevice->site_id;
+                    //$nbdevice->custom['mistdevice']->custom['site_id'] = $mistdevice->site_id;
+                } else {
+                    if(isset($mistdevice->vc_mac))
+                    {
+                        $vcmaster = $allmistdevices->where('mac', $mistdevice->vc_mac)->first();
+                        if(isset($vcmaster->site_id))
+                        {
+                            //$devicecustom['site_id'] = $vcmaster->site_id;
+                            $mistdevicesite = $vcmaster->site_id;
+                            //$mistdevice->custom['site_id'] = $vcmaster->site_id;
+                            //$nbdevice->custom['mistdevice']['custom']['site_id'] = $mistdevice->site_id;
+                        }
+                    }
                 }
+                //$mistdevice->custom = $devicecustom;
+                $nbdevice->custom['mistdevice'] = $mistdevice;
+                $nbdevice->custom['mistdevicesite'] = $mistdevicesite;
             }
             $devices[] = $nbdevice;
         }
