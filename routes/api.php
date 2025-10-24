@@ -77,3 +77,4 @@ Route::delete('deprovisioning/netbox/site/{sitecode}', [App\Http\Controllers\Dep
 Route::get('validation/netboxsite/{sitecode}', [App\Http\Controllers\Validation\ValidationController::class, 'validateNetboxSite']);
 
 Route::get('management/netbox/{sitecode}/devices/', [App\Http\Controllers\Management\ManagementController::class, 'getSiteSummary']);
+Route::get('management/netbox/sites/', [App\Http\Controllers\Management\ManagementController::class, 'getNetboxSites']);

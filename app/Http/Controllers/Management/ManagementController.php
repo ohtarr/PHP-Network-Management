@@ -28,6 +28,11 @@ class ManagementController extends Controller
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . debug_backtrace()[1]['function'] . ": " . $msg);
     }
 
+    public function getNetboxSites()
+    {
+        return Sites::where('brief', 1)->get();
+    }
+
     public function getSiteSummary($sitecode)
     {
         $nbsite = Sites::where('name__ie', $sitecode)->first();
