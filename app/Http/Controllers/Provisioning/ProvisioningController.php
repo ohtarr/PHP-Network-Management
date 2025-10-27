@@ -589,7 +589,7 @@ class ProvisioningController extends Controller
             unset($newdevice);
             unset($basename);
             unset($memberid);
-            //unset($virtualchassis);
+            unset($virtualchassis);
 
             if(!isset($device['name']))
             {
@@ -713,7 +713,7 @@ class ProvisioningController extends Controller
             }
             if(isset($memberid) && $memberid != 0)
             {
-                $newdevice->renameInterfaces2($memberid);
+                //$newdevice->renameInterfaces2($memberid);
             }
             if(isset($memberid) && $memberid == 0)
             {
