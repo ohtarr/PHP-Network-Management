@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\VirtualChassis;
+use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Netbox\VIRTUALIZATION\VirtualMachines;
 use App\Models\Gizmo\DNS\A;
 use App\Models\Gizmo\DNS\Cname;
@@ -37,6 +38,8 @@ class syncDns extends Command
 
     public function handle()
     {
+        //print_r($this->generateAllRecords2());
+        //return null;
         $this->deleteRecords();
         $this->fixRecords();
         $this->addRecords();
@@ -73,7 +76,7 @@ class syncDns extends Command
         return $this->cnamerecords;
     }
 
-    public function generateAllRecords()
+    public function generateAllRecords3()
     {
         if(!$this->generated)
         {
@@ -123,14 +126,14 @@ class syncDns extends Command
         $delete = [];
         $arecords = $this->getARecords();
         //print "A records : " . $arecords->count() . PHP_EOL;
-        $cnames = $this->getCnameRecords();
+        //$cnames = $this->getCnameRecords();
         //print "CNAME records : " . $cnames->count() . PHP_EOL;
-        $merged = $cnames->merge($arecords);
+        //$merged = $cnames->merge($arecords);
         //print "MERGED records : " . $merged->count() . PHP_EOL;
         $generated = $this->generateAllRecords();
         //print "GENERATED records : " . count($generated) . PHP_EOL;
 //        print_r($generated);
-        foreach($merged as $record)
+        foreach($arecords as $record)
         {
             $match = 0;
             foreach($generated as $grecord)
@@ -172,12 +175,12 @@ class syncDns extends Command
         $add = [];
         $generated = $this->generateAllRecords();
         $arecords = $this->getARecords(true);
-        $cnames = $this->getCnameRecords(true);
-        $merged = $arecords->merge($cnames);
+        //$cnames = $this->getCnameRecords(true);
+        //$merged = $arecords->merge($cnames);
         foreach($generated as $grecord)
         {
             $match = 0;
-            foreach($merged as $record)
+            foreach($arecords as $record)
             {
                 if(strtolower($grecord['hostname']) == strtolower($record->hostName) && strtolower($grecord['type']) == strtolower($record->recordType))
                 {
@@ -240,10 +243,10 @@ class syncDns extends Command
         //print "*** Checking existing DNS records ***" . PHP_EOL;
         $generated = $this->generateAllRecords();
         $arecords = $this->getARecords(true);
-        $cnames = $this->getCnameRecords(true);
-        $merged = $arecords->merge($cnames);
+        //$cnames = $this->getCnameRecords(true);
+        //$merged = $arecords->merge($cnames);
 
-        foreach($merged as $record)
+        foreach($arecords as $record)
         {
             //print "Checking host {$record->hostName} data {$record->recordData}..." . PHP_EOL;
             foreach($generated as $grecord)
@@ -277,4 +280,185 @@ class syncDns extends Command
             $record->delete();
         }
     }
+
+    public function generateAllRecords()
+    {
+        if(!$this->generated)
+        {
+            $dns = [];
+            $cidrreg = '/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/';
+            $ipreg = '/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/';
+            $devices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->where('has_primary_ip','true')->get();
+            foreach($devices as $device)
+            {
+                unset($ip);
+                unset($dnsname);
+                if(preg_match($cidrreg, $device->primary_ip->address, $hits))
+                {
+                    $ip = $hits[1];
+                } else {
+                    continue;
+                }
+                $dnsname = $device->generateDnsName();
+                if($dnsname)
+                {
+                    $dns[$dnsname] = $ip;
+                }
+            }
+            $oobdevices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->where('has_oob_ip','true')->get();
+            foreach($oobdevices as $device)
+            {
+                unset($ip);
+                unset($dnsname);
+                if(preg_match($cidrreg, $device->oob_ip->address, $hits))
+                {
+                    $ip = $hits[1];
+                } else {
+                    continue;
+                }
+                $dnsname = $device->generateDnsName();
+                if($dnsname)
+                {
+                    $dns[$dnsname . "-oob"] = $ip;
+                }
+            }
+            $noipdevices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->where('has_primary_ip','false')->get();
+            foreach($noipdevices as $device)
+            {
+                unset($ip);
+                unset($dnsname);
+                if(!isset($device->custom_fields->ip))
+                {
+                    continue;
+                }
+                if(preg_match($ipreg, $device->custom_fields->ip, $hits))
+                {
+                    $ip = $hits[1];
+                } else {
+                    continue;
+                }
+                $dnsname = $device->generateDnsName();
+                if($dnsname)
+                {
+                    $dns[$dnsname] = $ip;
+                }
+            }
+            $vcs = VirtualChassis::where('limit','9999')->get();
+            foreach($vcs as $vc)
+            {
+                unset($ip);
+                unset($dnsname);
+                $device = $vc->getMaster();
+                if(!isset($device->id))
+                {
+                    continue;
+                }
+                if(isset($device->primary_ip->address))
+                {
+                    if(preg_match($cidrreg, $device->primary_ip->address, $hits))
+                    {
+                        $ip = $hits[1];
+                    }
+                } elseif(isset($device->custom_fields->ip)) {
+                    if(preg_match($ipreg, $device->custom_fields->ip, $hits))
+                    {
+                        $ip = $hits[1];
+                    }
+                }
+                if(isset($ip))
+                {
+                    $dnsname = $device->generateDnsName();
+                    if($dnsname)
+                    {
+                        $dns[$dnsname] = $ip;
+                    }
+                }
+
+                unset($ip);
+                if(isset($device->oob_ip->address))
+                {
+                    if(preg_match($cidrreg, $device->oob_ip->address, $hits))
+                    {
+                        $ip = $hits[1];
+                    }
+                }
+                if(isset($ip))
+                {
+                    $dnsname = 'oob.' . $device->generateDnsName();
+                    if($dnsname)
+                    {
+                        $dns[$dnsname] = $ip;
+                    }
+                }
+            }
+
+            $vms = VirtualMachines::where('limit','1000')->where('has_primary_ip','true')->get();
+            foreach($vms as $device)
+            {
+                unset($ip);
+                unset($dnsname);
+                if(preg_match($cidrreg, $device->primary_ip->address, $hits))
+                {
+                    $ip = $hits[1];
+                } else {
+                    continue;
+                }
+                $dnsname = $device->generateDnsName();
+                if($dnsname)
+                {
+                    $dns[$dnsname] = $ip;
+                }
+            }
+            $vms = VirtualMachines::where('limit','1000')->where('has_primary_ip','false')->get();
+            foreach($vms as $device)
+            {
+                unset($ip);
+                unset($dnsname);
+                if(!isset($device->custom_fields->ip))
+                {
+                    continue;
+                }
+                if(preg_match($ipreg, $device->custom_fields->ip, $hits))
+                {
+                    $ip = $hits[1];
+                } else {
+                    continue;
+                }
+                $dnsname = $device->generateDnsName();
+                if($dnsname)
+                {
+                    $dns[$dnsname] = $ip;
+                }
+            }
+            $ips = IpAddresses::where('assigned_to_interface','true')->get();
+            foreach($ips as $ip)
+            {
+                unset($intname);
+                $int = $ip->getInterface();
+                if(!isset($int->id))
+                {
+                    continue;
+                }
+                $intname = $int->generateDnsName();
+                if(isset($intname))
+                {
+                    $dns[$intname] = $ip->cidr()['ip'];
+                }
+            }
+
+            $records = [];
+            foreach($dns as $name => $ip)
+            {
+                unset($tmp);
+                $tmp['hostname']    = $name;
+                $tmp['data']        = $ip;
+                $tmp['type']        = 'a';
+                $records[] = $tmp;
+            }
+            return $records;
+        }
+        print "Generated " . count($this->generated) . " records from Netbox." . PHP_EOL;
+        return $this->generated;
+    }
+
 }

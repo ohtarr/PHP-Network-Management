@@ -170,6 +170,30 @@ class Device extends Model
         return $classcreds->merge($allcreds);
     }
 
+    public function discoverCredentials()
+    {
+        $credentials = $this->getCredentials();
+        if(!$credentials)
+        {
+            return null;
+        }
+        foreach ($credentials as $credential) {
+            //Attemp to connect using phpseclib\Net\SSH2 library.
+            try {
+                $cli = $this->getSSH2($this->getIpAddress(), $credential->username, $credential->passkey, 20);
+            } catch (\Exception $e) {
+                echo $e->getMessage()."\n";
+            }
+
+            if (isset($cli))
+            {
+                $this->credential_id = $credential->id;
+                $this->save();
+                return $credential;
+            }
+        }
+    }
+
     /*
     This method is used to establish a CLI session with a device.
     It will attempt to use Metaclassing\SSH library to work with specific models of devices that do not support ssh2.0 natively.
@@ -197,11 +221,6 @@ class Device extends Model
             }
 
             if (isset($cli)) {
-                //if($this->id)
-                //{
-                    $this->credential_id = $credential->id;
-                    $this->save();
-                //}
                 return $cli;
             }
         }
@@ -411,6 +430,10 @@ class Device extends Model
         {
             $device->netbox_id = $this->netbox_id;
         }
+        if($this->credential_id)
+        {
+            $device->credential_id = $this->credential_id;
+        }        
         //run discover again.
         $device = $device->getTypeObject();
         return $device;
@@ -435,6 +458,16 @@ class Device extends Model
         if($this->netbox_id)
         {
             $device->netbox_id = $this->netbox_id;
+        }
+        if($this->credential_id)
+        {
+            $device->credential_id = $this->credential_id;
+        } else {
+            $cred = $this->discoverCredentials();
+            if($cred)
+            {
+                $device->credential_id = $cred->id;
+            }
         }
         $type = $device->getType();
         if($type)

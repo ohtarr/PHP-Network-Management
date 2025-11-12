@@ -294,7 +294,7 @@ class Sites extends BaseModel
             "status"        => "active",
             "role"          => $this->vlanToRoleMapping()[1],
             "vrf"           => $vrf->id,
-            "start_address" => long2ip($IPV4LONG + 50),
+            "start_address" => long2ip($IPV4LONG + 10),
             "end_address"   => long2ip($IPV4LONG + 1010),
             "gateway"       => long2ip($IPV4LONG + 1),
             "dns1"          => $dns1,

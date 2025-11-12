@@ -231,6 +231,7 @@ class Devices extends BaseModel
         }
         $newname = str_replace("/","-",$name);
         $newname = str_replace(".","-",$newname);
+        $newname = strtolower($newname);
         return $newname;
     }
 
@@ -248,6 +249,7 @@ class Devices extends BaseModel
         }
         $newname = str_replace("/","-",$this->name);
         $newname = str_replace(".","-",$newname);
+        $newname = strtolower($newname);
         $dnsrecords[] = [
             'hostname'  =>  $newname,
             'data'      =>  $ip,

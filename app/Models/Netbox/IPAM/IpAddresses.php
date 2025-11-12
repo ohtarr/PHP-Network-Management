@@ -4,6 +4,7 @@ namespace App\Models\Netbox\IPAM;
 
 use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\IPAM\Prefixes;
+use App\Models\Netbox\DCIM\Interfaces;
 
 #[\AllowDynamicProperties]
 class IpAddresses extends BaseModel
@@ -31,5 +32,22 @@ class IpAddresses extends BaseModel
     public function range()
     {
 
+    }
+
+    public function getInterface()
+    {
+        if(!isset($this->assigned_object_id))
+        {
+            return null;
+        }
+        if($this->assigned_object_type != "dcim.interface")
+        {
+            return null;
+        }
+        $interface = Interfaces::find($this->assigned_object_id);
+        if(isset($interface->id))
+        {
+            return $interface;
+        }
     }
 }

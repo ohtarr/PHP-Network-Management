@@ -40,6 +40,7 @@ class VirtualChassis extends BaseModel
     {
         $newname = str_replace("/","-",$this->name);
         $newname = str_replace(".","-",$newname);
+        $newname = strtolower($newname);
         return $newname;        
     }
 

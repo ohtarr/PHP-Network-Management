@@ -64,4 +64,47 @@ class Interfaces extends BaseModel
         return false;
     }
 
+    public function abbreviateName()
+    {
+        $convert = [
+            'ethernet'                  =>  'eth',
+            'fastethernet'              =>  'fe',
+            'gigabitethernet'           =>  'gi',
+            'tengigabitethernet'        =>  'te',
+            'fortygigabitethernet'      =>  'fo',
+            'hundredgigabitethernet'    =>  'hu',
+            'tengige'                   =>  'te',
+            'HundredGigE'               =>  'hu',
+            'TenGigE'                   =>  'te',
+            'Bundle-Ether'              =>  'be',
+        ];
+        foreach($convert as $long => $short)
+        {
+            $reg = "/^" . $long . "(\S+)/";
+            if(preg_match($reg, strtolower($this->name), $hits))
+            {
+                $new = $short . $hits[1];
+                break;
+            }
+        }
+        if(isset($new))
+        {
+            return $new;
+        } else {
+            return strtolower($this->name);
+        }
+    }
+
+    public function generateDnsName()
+    {
+        $intname = $this->abbreviateName();
+        $intname = str_replace("/","-",$intname);
+        $intname = str_replace(".","-",$intname);
+        $devicename = strtolower($this->device()->name);
+        $devicename = str_replace("/","-",$devicename);
+        $devicename = str_replace(".","-",$devicename);
+        $fullname = $intname . "." . $devicename;
+        return $fullname;
+    }
+
 }
