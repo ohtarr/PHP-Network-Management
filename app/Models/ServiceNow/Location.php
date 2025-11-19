@@ -127,7 +127,7 @@ class Location extends ServiceNowModel
 		{
 			if($nbxkey == 'latitude' || $nbxkey == 'longitude')
 			{
-				if(isset($this->snowkey) && $this->snowkey)
+				if(isset($this->$snowkey) && $this->$snowkey)
 				{
 					$body[$nbxkey] = number_format($this->$snowkey,6);
 				}
@@ -173,15 +173,4 @@ class Location extends ServiceNowModel
         return $nbxsite;
     }
 
-    public function createNetboxSite()
-    {
-        $exists = $this->getNetboxSite();
-        if($exists)
-        {
-            return null;
-        }
-        $params = $this->generateNetboxSiteParams();
-        $nbxsite = Sites::create($params);
-        return $nbxsite;
-    }
 }

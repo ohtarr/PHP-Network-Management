@@ -126,7 +126,25 @@ class ProvisioningController extends Controller
         {
             $this->addLog(1, "Netbox SITE ID {$netboxsite->id} already exists.");
         } else {
-            $netboxsite = $snowloc->createNetboxSite();
+            //$netboxsite = $snowloc->createNetboxSite();
+            $params = $snowloc->generateNetboxSiteParams();
+            if(!$params)
+            {
+                $this->addLog(0, "Unable to generate netbox site params from snow loc {$snowloc->name}.");
+                $totalstatus = 0;
+                $return['status'] = $totalstatus;
+                $return['log'] = $this->logs;
+                return json_encode($return);
+            }
+            if(!isset($params['longitude']) || !isset($params['latitude']))
+            {
+                $this->addLog(0, "Coordinates are missing from snow loc {$snowloc->name}.");
+                $totalstatus = 0;
+                $return['status'] = $totalstatus;
+                $return['log'] = $this->logs;
+                return json_encode($return);
+            }
+            $netboxsite = Sites::create($params);
             if(isset($netboxsite->id))
             {
                 $this->addLog(1, "Created Netbox SITE ID {$netboxsite->id}.");
