@@ -127,7 +127,10 @@ class Location extends ServiceNowModel
 		{
 			if($nbxkey == 'latitude' || $nbxkey == 'longitude')
 			{
-				$body[$nbxkey] = number_format($this->$snowkey,6);
+				if(isset($this->snowkey) && $this->snowkey)
+				{
+					$body[$nbxkey] = number_format($this->$snowkey,6);
+				}
 			} elseif($nbxkey == 'time_zone'){
 				if(!$this->$snowkey)
 				{
