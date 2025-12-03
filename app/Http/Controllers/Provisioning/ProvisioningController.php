@@ -126,7 +126,6 @@ class ProvisioningController extends Controller
         {
             $this->addLog(1, "Netbox SITE ID {$netboxsite->id} already exists.");
         } else {
-            //$netboxsite = $snowloc->createNetboxSite();
             $params = $snowloc->generateNetboxSiteParams();
             if(!$params)
             {
@@ -372,7 +371,7 @@ class ProvisioningController extends Controller
         }
 
         $totalstatus = 1;
-
+/*
         $exists = $prefix->getDhcpScope();
         if(isset($exists->scopeID))
         {
@@ -382,7 +381,7 @@ class ProvisioningController extends Controller
             $return['data'] = null;
             return $return;
         }
-        
+/**/        
         $overlaps = Dhcp::findOverlap($prefix->Network(), $prefix->Length());
         if($overlaps->count() > 0)
         {
@@ -392,11 +391,20 @@ class ProvisioningController extends Controller
                 $overlapsmsg .= $overlap->scopeID . ',';
             }
 
-            $this->addLog(0, "Scope {$prefix->cidr()['network']} has overlapping scopes! {$overlapsmsg}");
+            $this->addLog(0, "Scope {$prefix->cidr()['network']} has existing overlapping scopes! {$overlapsmsg}");
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
             return $return;
+        }
+
+        $range = $prefix->getDhcpIpRange();
+        if(isset($range->id))
+        {
+            $this->addLog(1, "RANGE ID {$range->id} {$range->display} for vlan {$vlan} exists.");
+            $this->addLog(1, "RAW JSON to submit to Gizmo: " . json_encode($range->generateDhcpScopeParams()));
+        } else {
+            $this->addLog(0, "RANGE not found for vlan {$vlan}.");
         }
 
         $scope = null;
