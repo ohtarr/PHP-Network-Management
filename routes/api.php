@@ -78,3 +78,5 @@ Route::get('validation/netboxsite/{sitecode}', [App\Http\Controllers\Validation\
 
 Route::get('management/netbox/{sitecode}/devices/', [App\Http\Controllers\Management\ManagementController::class, 'getSiteSummary']);
 Route::get('management/netbox/sites/', [App\Http\Controllers\Management\ManagementController::class, 'getNetboxSites']);
+
+Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsController::class, 'siteSubnetReport']);
