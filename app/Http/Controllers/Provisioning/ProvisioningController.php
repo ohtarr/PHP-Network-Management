@@ -402,7 +402,6 @@ class ProvisioningController extends Controller
         if(isset($range->id))
         {
             $this->addLog(1, "RANGE ID {$range->id} {$range->display} for vlan {$vlan} exists.");
-            $this->addLog(1, "RAW JSON to submit to Gizmo: " . json_encode($range->generateDhcpScopeParams()));
         } else {
             $this->addLog(0, "RANGE not found for vlan {$vlan}.");
         }
