@@ -31,6 +31,7 @@ class ReportsController extends Controller
                 $sitesubnets[$prefix->scope->name]['networks'][] = $tmp;
             }
         }
+        ksort($sitesubnets);
         return json_encode($sitesubnets);
     }
 
