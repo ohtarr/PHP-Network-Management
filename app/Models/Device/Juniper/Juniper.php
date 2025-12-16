@@ -30,12 +30,6 @@ class Juniper extends \App\Models\Device\Device
         'run_set'		=>	'show configuration | display set',
     ];
 
-    //Use SSH2 for connection
-    public function exec_cmds($cmds, $timeout = null)
-    {
-        return $this->exec_cmds_2($cmds, $timeout);
-    }
-
     /*
     Find the name of this device from DATA.
     Returns string (device name).

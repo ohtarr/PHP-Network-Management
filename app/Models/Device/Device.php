@@ -96,6 +96,7 @@ class Device extends Model
         'set cli screen-length 0',
         'set cli screen-width 1024',
         'no paging',
+        'terminal pager 0',
     ];
 
     public $scan_cmds = [];
@@ -267,7 +268,7 @@ class Device extends Model
 
 	public function exec_cmds($cmds, $timeout = null)
     {
-        return $this->exec_cmds_1($cmds, $timeout);
+        return $this->exec_cmds_netmiko($cmds);
     }
 
 	public function exec_cmds_1($cmds, $timeout = null)
@@ -302,7 +303,7 @@ class Device extends Model
 			}
 		}
 		$cli->disconnect();
-		return $output;		
+		return $output;
 	}
 
 	public function exec_cmds_2($cmds, $timeout = null)
@@ -333,6 +334,68 @@ class Device extends Model
 		$cli->disconnect();
 		return $output;
 	}
+
+    public function exec_cmd_netmiko($cmd)
+    {
+        $ip = $this->getIpAddress();
+        if(!isset($ip))
+        {
+            return null;
+        }
+
+        if(!isset($this->credential))
+        {
+            return null;
+        }
+        $username = $this->credential['username'];
+        $password = $this->credential['passkey'];
+
+        if(!isset($this->data['netmiko_type']))
+        {
+            $this->detectNetmikoType();
+        }
+        if(!isset($this->data['netmiko_type']))
+        {
+            return null;
+        }
+        $type = $this->data['netmiko_type'];
+
+        //$output = shell_exec("python3 bin/runcmd.py '{$ip}' '{$username}' '{$password}' '{$type}' '{$cmd}'");
+        $output = shell_exec("python3 bin/runcmd.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\" --type=\"{$type}\" --cmd=\"$cmd\"");
+        if($output)
+        {
+            $output = trim($output);
+        }
+        return $output;
+    }
+
+    public function exec_cmds_netmiko($cmds)
+    {
+        foreach($cmds as $key => $cmd)
+        {
+            $output[$key] = $this->exec_cmd_netmiko($cmd);
+        }
+        return $output;
+    }
+
+    public function detectNetmikoType()
+    {
+        $ip = $this->getIpAddress();
+        $username = $this->credential['username'];
+        $password = $this->credential['passkey'];
+        //$output = shell_exec("python3 bin/detecttype.py '{$ip}' '{$username}' '{$password}'");
+        $output = shell_exec("python3 bin/detecttype.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\"");
+        $type = trim($output);
+        if(!$type)
+        {
+            return null;
+        }
+        $data = $this->data;
+        $data['netmiko_type'] = $type;
+        $this->data = $data;
+        $this->save();
+        return $this;
+    }
 
     /*
     This method is used to attempt an SSH V2 terminal connection to the device.
@@ -395,6 +458,10 @@ class Device extends Model
 
         foreach($outputs as $output)
         {
+            if(!$output)
+            {
+                continue;
+            }
             foreach ($this->discover_regex as $class => $regs)
             {
                 foreach($regs as $reg)
@@ -426,6 +493,10 @@ class Device extends Model
         {
             $device->id = $this->id;
         }
+        if($this->netbox_type)
+        {
+            $device->netbox_type = $this->netbox_type;
+        }
         if($this->netbox_id)
         {
             $device->netbox_id = $this->netbox_id;
@@ -445,12 +516,12 @@ class Device extends Model
         return $device::class;
     }
 
-    public static function discoverNew($ip)
+/*     public static function discoverNew($ip)
     {
         $device = new self;
         $device->ip = $ip;
         return $device->discover();
-    }
+    } */
 
     public function discover()
     {
@@ -458,6 +529,10 @@ class Device extends Model
         if($this->netbox_id)
         {
             $device->netbox_id = $this->netbox_id;
+        }
+        if($this->netbox_type)
+        {
+            $device->netbox_type = $this->netbox_type;
         }
         if($this->credential_id)
         {
@@ -653,7 +728,8 @@ class Device extends Model
     //NETBOX RELATIONSHIPS
     public function getNetboxDeviceById()
     {
-        $nb = new NetboxDevice;
+        //$nb = new NetboxDevice;
+        $nb = new $this->netbox_type;
         if($this->netbox_id)
         {
             return $nb->where('id',$this->netbox_id)->first();
@@ -662,7 +738,13 @@ class Device extends Model
 
     public function getNetboxDeviceByName()
     {
-        $nb = new NetboxDevice;
+        $name = $this->getName();
+        if(!$name)
+        {
+            return null;
+        }
+        //$nb = new NetboxDevice;
+        $nb = new $this->netbox_type;
         return $nb->where('name__ic',$this->getName())->first();
     }
 
