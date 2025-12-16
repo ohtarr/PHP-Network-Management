@@ -8,6 +8,7 @@ use App\Models\Device\Cisco\IOS\CiscoIOS;
 use App\Models\Device\Cisco\IOSXE\CiscoIOSXE;
 use App\Models\Device\Cisco\IOSXR\CiscoIOSXR;
 use App\Models\Device\Cisco\NXOS\CiscoNXOS;
+use App\Models\Device\Cisco\ASA\CiscoASA;
 
 class Cisco extends Device
 {
@@ -16,6 +17,7 @@ class Cisco extends Device
         CiscoIOSXE::class,
         CiscoIOSXR::class,
         CiscoNXOS::class,
+        CiscoASA::class,
     ];
     protected static $singleTableType = __CLASS__;
 
@@ -23,6 +25,7 @@ class Cisco extends Device
 
     public $precli = [
         'term length 0',
+        'terminal pager 0',
     ];
 
     public static $cli_timeout = 20;
@@ -47,7 +50,10 @@ class Cisco extends Device
         CiscoNXOS::class    => [
             '/Cisco Nexus/i',
             '/nx-os/i',
-        ],       
+        ],
+        CiscoASA::class     => [
+            '/Cisco Adaptive Security Appliance/i',
+        ],
     ];
     //List of commands to run during a scan of this device.
     public $scan_cmds = [
