@@ -156,4 +156,9 @@ class Prefixes extends BaseModel
     {
         return static::where('contains', $ip)->where('status','active')->get()->first();
     }
+
+    public function getDhcpOverlap()
+    {
+        return Dhcp::findOverlap($this->cidr()['network'], $this->cidr()['bitmask']);
+    }
 }

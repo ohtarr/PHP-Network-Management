@@ -180,7 +180,18 @@ class DeprovisioningController extends Controller
             $this->addLog(1, "SITE ID {$netboxsite->id} found.");
         }
 
-        $scopes = $netboxsite->getDhcpScopes();
+        $supernets = $netboxsite->getSupernets();
+        $scopes = [];
+        foreach($supernets as $supernet)
+        {
+            $snscopes = $supernet->getDhcpOverlap();
+            foreach($snscopes as $snscope)
+            {
+                $scopes[] = $snscope;
+            }
+        }
+        $scopes = collect($scopes);
+
         $count = $scopes->count();
         $this->addLog(1, "Found {$count} scopes for site {$netboxsite->name}.");
         
