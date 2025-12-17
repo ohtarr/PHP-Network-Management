@@ -6,6 +6,7 @@ use App\Models\Gizmo\Gizmo;
 use GuzzleHttp\Client as GuzzleHttpClient;
 use App\Models\Azure\Azure;
 use IPv4\SubnetCalculator;
+use App\Models\Gizmo\DhcpCollection as Collection;
 
 class Dhcp extends Gizmo
 {
@@ -18,6 +19,11 @@ class Dhcp extends Gizmo
     public $saveable = [
 
     ];
+
+    public function newCollection(array $models = []): Collection
+    { 
+       return new Collection($models);
+    }
 
     public static function getToken()
     {
@@ -37,8 +43,7 @@ class Dhcp extends Gizmo
         {
             $newarray[] = static::make($item);
         }
-        //print_r($newarray);
-        $collection = collect($newarray);
+        $collection = Collection::make($newarray);
         return $collection;
     }
 
@@ -88,7 +93,7 @@ class Dhcp extends Gizmo
             $newarray[] = static::make($item);
         }
         //print_r($newarray);
-        $collection = collect($newarray);
+        $collection = Collection::make($newarray);
         return $collection;
     }
     
@@ -440,7 +445,7 @@ class Dhcp extends Gizmo
                 $overlaps[] = $scope;
             }
         }
-        return collect($overlaps);
+        return Collection::make($overlaps);
     }
 
 	public static function netmaskToBitmask($netmask)

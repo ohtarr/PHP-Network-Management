@@ -80,3 +80,4 @@ Route::get('management/netbox/{sitecode}/devices/', [App\Http\Controllers\Manage
 Route::get('management/netbox/sites/', [App\Http\Controllers\Management\ManagementController::class, 'getNetboxSites']);
 
 Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsController::class, 'siteSubnetReport']);
+Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsController::class, 'getOrphanedDhcpScopes']);

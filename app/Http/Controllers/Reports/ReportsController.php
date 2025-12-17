@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Roles;
+use App\Models\Netbox\DCIM\Sites;
+use App\Models\Gizmo\Dhcp;
 
 class ReportsController extends Controller
 {
@@ -35,4 +37,23 @@ class ReportsController extends Controller
         return json_encode($sitesubnets);
     }
 
+    public function getOrphanedDhcpScopes()
+    {
+        $scopes = Dhcp::all();
+        $netboxsites = Sites::all();
+        foreach($netboxsites as $netboxsite)
+        {
+            $supernets = $netboxsite->getSupernets();
+
+            foreach($supernets as $supernet)
+            {
+                $supernetscopes = $scopes->findOverlap($supernet->network(), $supernet->length());
+                foreach($supernetscopes as $supernetscope)
+                {
+                    $scopes = $scopes->removeScope($supernetscope->scopeID);
+                }
+            }
+        }
+        return $scopes;
+    }
 }
