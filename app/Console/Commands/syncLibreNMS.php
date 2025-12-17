@@ -6,6 +6,7 @@ use Illuminate\Console\Command;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\Sites;
 use App\Models\Netbox\DCIM\VirtualChassis;
+use App\Models\Netbox\DCIM\Manufacturers;
 use App\Models\Netbox\VIRTUALIZATION\VirtualMachines;
 use App\Models\LibreNMS\Device;
 use App\Models\LibreNMS\DeviceGroup;
@@ -41,9 +42,15 @@ class syncLibreNMS extends Command
     protected $libredevices;
     protected $netboxsites;
     protected $libresitegroups;
+    protected $opengears;
 
     public function handle()
     {
+        //print_r($this->getLibreDeviceByHostnameFromCache(strtoupper("kscfloaorwa01")));
+        //print_r($this->LibreDevicesToAdd());
+        //print_r($this->getNetboxOpengears());
+        //return null;
+        
         $this->deleteLibreSiteGroups();
         $this->addLibreSiteGroups();
         $this->ignoreLibreDevices();
@@ -107,6 +114,29 @@ class syncLibreNMS extends Command
         return $this->netboxvms;
     }
 
+    public function getNetboxOpengears()
+    {
+        if(!$this->opengears)
+        {
+            print "Fetching Netbox Opengear Devices!" . PHP_EOL;
+            $opengears = [];
+            $manufacturer = Manufacturers::where('name','Opengear')->first();
+            if(!isset($manufacturer->id))
+            {
+                return null;
+            }
+            $nbdevices = Devices::where('cf_POLLING', 'true')->where('manufacturer_id', $manufacturer->id)->where('name__empty','false')->where('limit','9999')->get();
+            foreach($nbdevices as $nbdevice)
+            {
+                $nbdevice->generated = $nbdevice->generateDnsName() . "-oob";
+                $nbdevice->icmponly = true;
+                $opengears[] = $nbdevice;
+            }
+            $this->opengears = collect($opengears);
+        }
+        return $this->opengears;
+    }
+
     public function getAllNetbox()
     {
         if(!$this->netboxall)
@@ -126,6 +156,11 @@ class syncLibreNMS extends Command
             {
                 //$nbvm->generated = $nbvm->generateDnsName();
                 $nball[] = $nbvm;
+            }
+            foreach($this->getNetboxOpengears() as $og)
+            {
+                //$nbvm->generated = $nbvm->generateDnsName();
+                $nball[] = $og;
             }
             $this->netboxall = collect($nball);
         }
@@ -262,7 +297,11 @@ class syncLibreNMS extends Command
 
     public function getLibreDeviceByHostnameFromCache($name)
     {
-        return $this->getLibreDevices()->where('hostname', $name)->first();
+        //return $this->getLibreDevices()->where('hostname', $name)->first();
+        $results = $this->getLibreDevices()->filter(function ($item) use ($name){
+            return strtolower($item->hostname) == strtolower($name);
+        });
+        return $results->first();
     }
 
     public function deleteLibreDevice($hostname)
@@ -288,6 +327,7 @@ class syncLibreNMS extends Command
 
     public function LibreDevicesToAdd()
     {
+        $toadd = [];
         foreach($this->getAllNetbox() as $nbdevice)
         {
             unset($libredevice);
@@ -298,7 +338,8 @@ class syncLibreNMS extends Command
             $libredevice = $this->getLibreDeviceByHostnameFromCache($nbdevice->generated);
             if(!$libredevice)
             {
-                $toadd[] = $nbdevice->generated;
+                //$toadd[] = $nbdevice->generated;
+                $toadd[] = $nbdevice;
             }
         }
         return collect($toadd);
@@ -307,12 +348,19 @@ class syncLibreNMS extends Command
     public function addLibreDevices()
     {
         $toadd = $this->LibreDevicesToAdd();
-        foreach($toadd as $name)
+        foreach($toadd as $nbdevice)
         {
-            //unset($ip);
             unset($device);
             print "*************************************************" . PHP_EOL;
-            print "Attempting to add device {$name}" . PHP_EOL;
+            print "Attempting to add device {$nbdevice->generated}" . PHP_EOL;
+            $body = [
+                'hostname'  =>  $nbdevice->generated,
+            ];
+            if(isset($nbdevice->icmponly))
+            {
+                $body['snmp_disable'] = true;
+                $body['force_add'] = true;
+            }
             //$ip = $nbdevice->getIpAddress();
             //if(!$ip)
             //{
@@ -321,7 +369,8 @@ class syncLibreNMS extends Command
             //}
             //print "IP {$ip}" . PHP_EOL;
             try{
-                $device = Device::addByHostname($name);
+                //$device = Device::addByHostname($nbdevice->generated, $icmponly);
+                $device = Device::create($body);
             } catch (\Exception $e) {
                 //print $e->getMessage()."\n";
             }
