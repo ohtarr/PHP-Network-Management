@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Mist\Site;
 use App\Models\Mist\Device;
+use Illuminate\Support\Facades\Log;
 
 class MistController extends Controller
 {
@@ -91,9 +92,12 @@ class MistController extends Controller
         return $device->getSummaryDetails();
     }
 
-    public function claimDevices(Request $request)
+    public function claimDevices(Request $request, $sitecode = null)
     {
-        return Device::claimDevices($request->all());
+        Log::info(auth()->user()->userPrincipalName . " : " . __CLASS__ . " : " . __FUNCTION__ . ": REQUEST: " . $request->getContent());
+        $response = Device::claimDevices($request->all());
+        Log::info(auth()->user()->userPrincipalName . " : " . __CLASS__ . " : " . __FUNCTION__ . ": RESPONSE: " . serialize($response));
+        return $response;
     }
 
 }
