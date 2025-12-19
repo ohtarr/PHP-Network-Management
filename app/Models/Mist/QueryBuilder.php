@@ -118,7 +118,7 @@ class QueryBuilder
     public function request($verb, $path, $body)
     {
         $client = $this->getGuzzleClient();
-        $response = $client->request($verb, $path, ['body' => json_encode($body)]);
+        $response = $client->request($verb, $path, ['query' =>  $this->search, 'body' => json_encode($body)]);
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
         return $object;
