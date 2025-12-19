@@ -35,7 +35,6 @@ Route::apiResource('/devices', App\Models\Device\DeviceController::class);
 Route::apiResource('/servicenow/incidents', App\Models\ServiceNow\IncidentController::class);
 //Route::apiResource('/netbox/devices', App\Models\Netbox\NetboxController::class);
 
-
 //Route::get('/mist/device', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
 //Route::get('/mist/device/{deviceid}/', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
 //Route::get('/mist/device/{deviceid}/sitedevice', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
@@ -49,6 +48,7 @@ Route::get('/mist/site', [App\Models\Mist\MistController::class, 'Sites']);
 Route::get('/mist/site/summary', [App\Models\Mist\MistController::class, 'SitesSummary']);
 Route::get('/mist/site/{siteid}/devicesummary', [App\Models\Mist\MistController::class, 'SiteDeviceSummary']);
 Route::get('/mist/site/{siteid}/device/{deviceid}/details', [App\Models\Mist\MistController::class, 'SiteDeviceSummaryDetails']);
+Route::post('/mist/claim/{sitecode?}', [App\Models\Mist\MistController::class, 'claimDevices']);
 
 Route::get('provisioning/snowlocations', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocations']);
 Route::get('provisioning/snowlocation/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocation']);
@@ -59,19 +59,20 @@ Route::post('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisio
 Route::post('provisioning/netboxsite/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxDevices']);
 Route::get('provisioning/netboxsite/{sitecode}/addresses/{qty?}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getAvailableProvIps']);
 
-
 Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopes']);
+Route::get('provisioning/dhcp/overlap/{network}/{bitmask}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopeOverlap']);
 Route::post('provisioning/dhcp/{sitecode}/vlan/{vlan}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScope']);
 Route::post('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScopes']);
 
 Route::post('provisioning/mist/site/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistSite']);
 Route::post('provisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevices']);
 
-
 Route::get('deprovisioning/snowlocations/{days?}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'getSnowLocations']);
 Route::delete('deprovisioning/mist/site/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteMistSite']);
 Route::delete('deprovisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'unassignMistDevices']);
-Route::delete('deprovisioning/dhcp/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteDhcpScopes']);
+Route::delete('deprovisioning/dhcp/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteSiteDhcpScopes']);
+Route::delete('deprovisioning/dhcp/scope/{scope}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteDhcpScope']);
+
 Route::delete('deprovisioning/netbox/site/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteNetboxSite']);
 
 Route::get('validation/netboxsite/{sitecode}', [App\Http\Controllers\Validation\ValidationController::class, 'validateNetboxSite']);

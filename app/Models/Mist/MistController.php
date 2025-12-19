@@ -91,4 +91,9 @@ class MistController extends Controller
         return $device->getSummaryDetails();
     }
 
+    public function claimDevices(Request $request)
+    {
+        return Device::claimDevices($request->all());
+    }
+
 }

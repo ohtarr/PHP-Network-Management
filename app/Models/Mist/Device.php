@@ -196,6 +196,12 @@ class Device extends BaseModel
         return static::post($path, $params);
     }
 
+    public static function claimDevices(array $magics)
+    {
+        $path = "orgs/" . static::getOrgId() . "/inventory";
+        return static::getQuery()->request("post", $path, $magics);
+    }
+
     public static function assignDevicesToSite(array $devices, $siteid)
     {
         $path = "orgs/" . static::getOrgId() . "/inventory";
