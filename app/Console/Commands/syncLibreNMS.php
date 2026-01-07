@@ -10,6 +10,8 @@ use App\Models\Netbox\DCIM\Manufacturers;
 use App\Models\Netbox\VIRTUALIZATION\VirtualMachines;
 use App\Models\LibreNMS\Device;
 use App\Models\LibreNMS\DeviceGroup;
+use App\Models\LibreNMS\Location;
+use JJG\Ping;
 
 class syncLibreNMS extends Command
 {
@@ -43,21 +45,34 @@ class syncLibreNMS extends Command
     protected $netboxsites;
     protected $libresitegroups;
     protected $opengears;
+    protected $librelocations;
 
     public function handle()
     {
-        //print_r($this->getLibreDeviceByHostnameFromCache(strtoupper("kscfloaorwa01")));
-        //print_r($this->LibreDevicesToAdd());
-        //print_r($this->getNetboxOpengears());
-        //return null;
-        
         $this->deleteLibreSiteGroups();
         $this->addLibreSiteGroups();
         $this->ignoreLibreDevices();
         $this->alertLibreDevices();
         $this->removeLibreDevices();
         $this->addLibreDevices();
+        $this->addLibreLocations();
+        $this->updateLibreLocations();
+        $this->updateDeviceLocations();
+        //$this->deleteLocations();
     }
+
+    public function ping($hostname, $timeout = 5)
+	{
+		$PING = new Ping($hostname);
+        $PING->setTimeout($timeout);
+		$LATENCY = $PING->ping();
+		if (!$LATENCY)
+		{
+			return false;
+		}else{
+			return $LATENCY;
+		}
+	}
 
     public function getNetboxVcMasterDevices()
     {
@@ -274,6 +289,86 @@ class syncLibreNMS extends Command
         }
     }
 
+    public function getLibreLocations()
+    {
+        if(!$this->librelocations)
+        {
+            print "Fetching LibreNMS Locations!" . PHP_EOL;
+            $this->librelocations = Location::all();
+        }
+        return $this->librelocations;
+    }
+
+    public function libreLocationsToAdd()
+    {
+        $toadd = [];
+        foreach($this->getNetboxSites() as $nbsite)
+        {
+            $match = $this->getLibreLocations()->where('location', $nbsite->name)->first();
+            if(!$match)
+            {
+                $toadd[] = $nbsite;
+            }
+        }
+        return $toadd;
+    }
+
+    public function addLibreLocations()
+    {
+        foreach($this->libreLocationsToAdd() as $nbsite)
+        {
+            print "ADDING LibreNMS Location for site {$nbsite->name}..." . PHP_EOL;
+            $params = [
+                'location'  =>  $nbsite->name,
+                'lat'       =>  $nbsite->latitude,
+                'lng'       =>  $nbsite->longitude,
+            ];
+            try {
+                Location::create($params);
+            } catch (\Exception $e) {
+                print $e->getMessage()."\n";
+                continue;
+            }
+        }
+    }
+
+    public function libreLocationsToUpdate()
+    {
+        $toupdate = [];
+        foreach($this->getLibreLocations() as $loc)
+        {
+            $tmp = [];
+            $nbsite = $this->getNetboxSites()->where('name', $loc->location)->first();
+            if($nbsite)
+            {
+                if($nbsite->latitude != $loc->lat || $nbsite->longitude != $loc->lng)
+                {
+                    $tmp['loc'] = $loc;
+                    $tmp['params']['lat'] = $nbsite->latitude;
+                    $tmp['params']['lng'] = $nbsite->longitude;
+                    $toupdate[] = $tmp;
+                }
+            }
+        }
+        return $toupdate;
+    }
+
+    public function updateLibreLocations()
+    {
+        foreach($this->libreLocationsToUpdate() as $update)
+        {
+            unset($updated);
+            print "Updating LibreNMS Location {$update['loc']->location}..." . PHP_EOL;
+            $updated = $update['loc']->update($update['params']);
+            if($update)
+            {
+                print "Successfully updated Location {$update['loc']->location}..." . PHP_EOL;
+            } else {
+                print "Failed to update Location {$update['loc']->location}..." . PHP_EOL;
+            }
+        }
+    }
+
     public function getNetboxDeviceByNameCaseInsensitive($name)
     {
         foreach($this->getAllNetbox() as $nbdevice)
@@ -351,28 +446,32 @@ class syncLibreNMS extends Command
         foreach($toadd as $nbdevice)
         {
             unset($device);
+            unset($ping);
             print "*************************************************" . PHP_EOL;
             print "Attempting to add device {$nbdevice->generated}" . PHP_EOL;
+            $ping = $this->ping($nbdevice->generated);
+            if(!$ping)
+            {
+                print "Device failed to ping, skipping..." . PHP_EOL;
+                continue;
+            }
             $body = [
-                'hostname'  =>  $nbdevice->generated,
+                'hostname'              =>  $nbdevice->generated,
             ];
+            if(isset($nbdevice->site->name))
+            {
+                $body['location'] = $nbdevice->site->name;
+                $body['override_sysLocation'] = 1;                
+            }
             if(isset($nbdevice->icmponly))
             {
                 $body['snmp_disable'] = true;
                 $body['force_add'] = true;
             }
-            //$ip = $nbdevice->getIpAddress();
-            //if(!$ip)
-            //{
-            //    print "NO IP found, skipping..." . PHP_EOL;
-            //    continue;
-            //}
-            //print "IP {$ip}" . PHP_EOL;
             try{
-                //$device = Device::addByHostname($nbdevice->generated, $icmponly);
                 $device = Device::create($body);
             } catch (\Exception $e) {
-                //print $e->getMessage()."\n";
+                print $e->getMessage()."\n";
             }
 
             if(isset($device->device_id))
@@ -502,6 +601,80 @@ class syncLibreNMS extends Command
                 print $e->getMessage()."\n";
                 continue;
             }
+        }
+    }
+
+    public function updateDeviceLocations()
+    {
+        print "Updating Device Locations" . PHP_EOL;
+        $libredevices = $this->getLibreDevices();
+        foreach($libredevices as $libredevice)
+        {
+            unset($loc);
+            unset($nbdevice);
+            print "***********************************" . PHP_EOL;
+            print $libredevice->hostname . PHP_EOL;
+            print "***********************************" . PHP_EOL;
+            $nbdevice = $this->getNetboxDeviceByNameCaseInsensitive($libredevice->hostname);
+            if(!$nbdevice)
+            {
+                print "No Netbox Device found, skipping..." . PHP_EOL;
+                continue;
+            }
+            print "Found Netbox Device {$nbdevice->name} with ID {$nbdevice->id}..." . PHP_EOL;
+            if(isset($nbdevice->site->name))
+            {
+                $loc = $this->getLibreLocations()->where('location', $nbdevice->site->name)->first();
+            }
+            if(!isset($loc->location))
+            {
+                print "No LibreNMS Location found, skipping..." . PHP_EOL;
+                continue;
+            }
+            if($libredevice->location_id != $loc->id)
+            {
+                print "Location needs to be updated!" . PHP_EOL;
+                $params = [
+                    'field' =>  ['location_id', 'override_sysLocation'],
+                    'data'  =>  [$loc->id, 1],
+                ];
+                print_r($params);
+                $libredevice->update($params);
+            } else {
+                print "Location is correct... skipping..." . PHP_EOL;
+            }
+        }
+    }
+
+    public function locationsToDelete()
+    {
+        $delete = [];
+        $libredevices = $this->getLibreDevices();
+        $locs = $this->getLibreLocations();
+        foreach($locs as $loc)
+        {
+            $match = null;
+            foreach($libredevices as $device)
+            {
+                if($device->location_id == $loc->id)
+                {
+                    $match = $device;
+                    break;
+                }
+            }
+            if(!$match)
+            {
+                $delete[] = $loc;
+            }
+        }
+        return $delete;
+    }
+
+    public function deleteLocations()
+    {
+        foreach($this->locationsToDelete() as $loc)
+        {
+            $loc->delete();
         }
     }
 }
