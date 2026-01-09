@@ -41,14 +41,11 @@ class Device extends Model
     protected static $singleTableType = __CLASS__;
 
     protected $fillable = [
-        'id',
         'type',
-        'ip',
+        'netbox_type',
+        'netbox_id',
         'credential_id',
         'data',
-        'deleted_at',
-        'created_at',
-        'updated_at',
       ];
 
     protected $casts = [
@@ -84,6 +81,15 @@ class Device extends Model
                 $return[$key] = $value->first();
             }
             return collect($return);
+        }
+    }
+
+    public function getLastScanTime()
+    {
+        $output = $this->getLatestOutputs()->first();
+        if(isset($output->created_at))
+        {
+            return $output->created_at;
         }
     }
 
@@ -170,7 +176,7 @@ class Device extends Model
         //Return a collection of credentials to attempt.
         return $classcreds->merge($allcreds);
     }
-
+    /*
     public function discoverCredentials()
     {
         $credentials = $this->getCredentials();
@@ -179,7 +185,7 @@ class Device extends Model
             return null;
         }
         foreach ($credentials as $credential) {
-            //Attemp to connect using phpseclib\Net\SSH2 library.
+            //Attempt to connect using phpseclib\Net\SSH2 library.
             try {
                 $cli = $this->getSSH2($this->getIpAddress(), $credential->username, $credential->passkey, 20);
             } catch (\Exception $e) {
@@ -187,6 +193,37 @@ class Device extends Model
             }
 
             if (isset($cli))
+            {
+                $this->credential_id = $credential->id;
+                $this->save();
+                return $credential;
+            }
+        }
+    }
+    /**/
+
+    /*
+    This method is used to attempt to detect usable credentials on the device.  If found, it will add it to the device object and save to DB.
+    */
+    public function discoverCredentials()
+    {
+        $ip = $this->getIpAddress();
+        $credentials = $this->getCredentials();
+        if(!$credentials)
+        {
+            return null;
+        }
+        foreach ($credentials as $credential) {
+            //Attempt to connect using phpseclib\Net\SSH2 library.
+            try {
+                $exe = env('PYTHON_EXE');
+                $cmd = "{$exe} bin/testcreds.py --host=\"{$ip}\" --username=\"{$credential->username}\" --password=\"{$credential->passkey}\"";
+                //print $cmd . PHP_EOL;
+                $output = intval(shell_exec($cmd));
+            } catch (\Exception $e) {
+                echo $e->getMessage()."\n";
+            }
+            if($output)
             {
                 $this->credential_id = $credential->id;
                 $this->save();
@@ -266,11 +303,15 @@ class Device extends Model
         }
     } */
 
+    /*
+    This method is a launch point to different methods of executing commands.
+    This allows overiding capabilities in different dependant models.
+    */
 	public function exec_cmds($cmds, $timeout = null)
     {
         return $this->exec_cmds_netmiko($cmds);
     }
-
+    /*
 	public function exec_cmds_1($cmds, $timeout = null)
 	{
         if(!$timeout)
@@ -334,7 +375,11 @@ class Device extends Model
 		$cli->disconnect();
 		return $output;
 	}
-
+    /**/
+    /*
+    This method connects to a device using python netmiko script, executes a command, returns the output, and disconnects the SSH session.
+    If netmiko_type is unknown, it will run getNetmikoType() to attempt to determine the type.
+    */
     public function exec_cmd_netmiko($cmd)
     {
         $ip = $this->getIpAddress();
@@ -352,16 +397,21 @@ class Device extends Model
 
         if(!isset($this->data['netmiko_type']))
         {
-            $this->detectNetmikoType();
+            $detectedtype = $this->getNetmikoType();
+            if(!$detectedtype)
+            {
+                return null;
+            }
+            $type = $detectedtype;
+        } else {
+            $type = $this->data['netmiko_type'];
         }
-        if(!isset($this->data['netmiko_type']))
-        {
-            return null;
-        }
-        $type = $this->data['netmiko_type'];
 
+        $exe = env('PYTHON_EXE');
         //$output = shell_exec("python3 bin/runcmd.py '{$ip}' '{$username}' '{$password}' '{$type}' '{$cmd}'");
-        $output = shell_exec("python3 bin/runcmd.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\" --type=\"{$type}\" --cmd=\"$cmd\"");
+        $cmd = "{$exe} bin/runcmd.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\" --type=\"{$type}\" --cmd=\"$cmd\"";
+        //print $cmd . PHP_EOL;
+        $output = shell_exec($cmd);
         if($output)
         {
             $output = trim($output);
@@ -369,8 +419,12 @@ class Device extends Model
         return $output;
     }
 
+    /*
+    This method takes an array of commands, executes each of them, and returns the values as a key=>value array.
+    */
     public function exec_cmds_netmiko($cmds)
     {
+        $output = [];
         foreach($cmds as $key => $cmd)
         {
             $output[$key] = $this->exec_cmd_netmiko($cmd);
@@ -378,23 +432,40 @@ class Device extends Model
         return $output;
     }
 
-    public function detectNetmikoType()
+    /*
+    This method will utilize a python script that utilizes netmikos TYPE detection methods.  This returns the netmiko type, but does
+    not modify the device object.
+    */
+    public function getNetmikoType()
     {
         $ip = $this->getIpAddress();
-        $username = $this->credential['username'];
-        $password = $this->credential['passkey'];
-        //$output = shell_exec("python3 bin/detecttype.py '{$ip}' '{$username}' '{$password}'");
-        $output = shell_exec("python3 bin/detecttype.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\"");
-        $type = trim($output);
-        if(!$type)
+        if(!isset($this->credential))
         {
             return null;
         }
-        $data = $this->data;
-        $data['netmiko_type'] = $type;
-        $this->data = $data;
-        $this->save();
-        return $this;
+        $username = $this->credential['username'];
+        $password = $this->credential['passkey'];
+        $exe = env('PYTHON_EXE');
+        $cmd = "{$exe} bin/detecttype.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\"";
+        //print $cmd . PHP_EOL;
+        $output = shell_exec($cmd);
+        $type = trim($output);
+        return $type;
+    }
+
+    /*
+    This method runs the getNetmikoType method, and saves the netmiko_type to the device object for future use.
+    */
+    public function discoverNetmikoType()
+    {
+        $type = $this->getNetmikoType();
+        if($type)
+        {
+            $data = $this->data;
+            $data['netmiko_type'] = $type;
+            $this->data = $data;
+            $this->save();
+        }
     }
 
     /*
@@ -412,7 +483,7 @@ class Device extends Model
 
     /*
     This method is used to determine the TYPE of device this is and recategorize it.
-    Once recategorized, it will perform discover() again.
+    Once recategorized, it will perform discover() again until it no longer has any further options.
     Returns null;
     */
     public function getTypeObject()
@@ -489,6 +560,7 @@ class Device extends Model
 
         //Create a new model instance of type $newtype
         $device = $newtype::make($this->toArray());
+        /*
         if($this->id)
         {
             $device->id = $this->id;
@@ -504,16 +576,23 @@ class Device extends Model
         if($this->credential_id)
         {
             $device->credential_id = $this->credential_id;
-        }        
+        }
+        /**/
         //run discover again.
         $device = $device->getTypeObject();
         return $device;
     }
 
+    /*
+    This method runs the getTypeObject method, and returns the string name of the object type.
+    */
     public function getType()
     {
         $device = $this->getTypeObject();
-        return $device::class;
+        if($device)
+        {
+            return $device::class;
+        }
     }
 
 /*     public static function discoverNew($ip)
@@ -523,8 +602,26 @@ class Device extends Model
         return $device->discover();
     } */
 
+    /*
+    This method is utilizes the getType() method to determine what kind of device this is.  Once determined
+    it updates the device in database.
+    */
     public function discover()
     {
+        if(!$this->ping())
+        {
+            return null;
+        }
+        if(!isset($this->credential))
+        {
+            $this->discoverCredentials();
+        }
+        if(!isset($this->data['netmiko_type']))
+        {
+            $this->discoverNetmikoType();
+        }
+
+        /*
         $device = new self;
         if($this->netbox_id)
         {
@@ -544,6 +641,8 @@ class Device extends Model
                 $device->credential_id = $cred->id;
             }
         }
+        /**/
+        $device = new self($this->toArray());
         $type = $device->getType();
         if($type)
         {
@@ -607,22 +706,31 @@ class Device extends Model
         //return $device;
     } */
 
+    /*
+    This method executes all scan_cmds for a device and returns the values
+    The outputs are NOT saved to the database.
+    */
     public function getScanCmdOutputs()
     {
+        $output = [];
         if($this->scan_cmds)
         {
-            return $this->exec_cmds($this->scan_cmds);
+            $output = $this->exec_cmds($this->scan_cmds);
         }
+        return $output;
     }
 
     /*
-    This method is used to SCAN the device to obtain all of the command line outputs that we care about.
-    This also configures database indexes for NAME, SERIAL, and MODEL.
-    returns null
+    This method utilized the getScanCmdOutputs method to obtain all of the command line outputs for the device and
+    save them to the Outputs table.
     */
     public function scan()
     {
         if(!$this->id)
+        {
+            return null;
+        }
+        if(!$this->ping())
         {
             return null;
         }
@@ -649,13 +757,6 @@ class Device extends Model
         return $this;
     }
 
-    public function scanold()
-    {
-        $device = $this->getOutput();
-        $device->save();
-        return $device;
-    }
-
     public function getName()
     {
     }
@@ -673,6 +774,9 @@ class Device extends Model
 
     }
 
+    /*
+    Perform simple ping of the device.
+    */
     public function ping($timeout = 5)
 	{
 		$PING = new Ping($this->getIpAddress());
@@ -686,6 +790,9 @@ class Device extends Model
 		}
 	}
 
+    /*
+    ping a device by ip.
+    */
     public static function pingIp($ip, $timeout = 5)
     {
 		$PING = new Ping($ip);
@@ -697,6 +804,24 @@ class Device extends Model
 		}else{
 			return $LATENCY;
 		}
+    }
+
+    /*
+    This method attempts to determine a devices public IP by telneting to "telnetmyip.com" and 
+    returning the public ip detected.  This is desgigned to be overwritten on each dependant model
+    for compatibility.
+    */
+    public function detectPublicIp()
+    {
+        $cmds = [
+            'publicip'=>'telnet telnetmyip.com'
+        ];
+        $output = $this->exec_cmds($cmds);
+        $telnetreg = "/\"ip\":\s+\"(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\"/";
+        if(preg_match($telnetreg, $output['publicip'], $hits))
+        {
+            return $hits[1];
+        }
     }
 
     public function parse(){
@@ -729,6 +854,10 @@ class Device extends Model
     public function getNetboxDeviceById()
     {
         //$nb = new NetboxDevice;
+        if(!$this->netbox_type)
+        {
+            return null;
+        }
         $nb = new $this->netbox_type;
         if($this->netbox_id)
         {
@@ -757,7 +886,10 @@ class Device extends Model
         }
         return $nbdevice;
     }
-
+    /*
+    This method is designed to be used all over the place to acquire the IP of this device.
+    This information is retreived from Netbox.
+    */
     public function getIpAddress()
     {
         $nbdevice = $this->getNetboxDevice();

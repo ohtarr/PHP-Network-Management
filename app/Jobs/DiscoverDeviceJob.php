@@ -15,6 +15,7 @@ class DiscoverDeviceJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
+    public $timeout = 300;
     public $options;
 
     /**
@@ -37,14 +38,11 @@ class DiscoverDeviceJob implements ShouldQueue
         if(isset($this->options['id']))
         {
             $device = Device::findOrFail($this->options['id']);
-        } elseif(isset($this->options['ip']))
-        {
-            $device = new Device(['ip' => $this->options['ip']]);
         } else {
-            "No ID or IP found!  Cancelling Job!\n";
+            "No ID found!  Cancelling Job!\n";
         }
-        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'starting', 'ip' => $device->ip]);   // Log device to the log file.
+        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'starting', 'id' => $device->id]);   // Log device to the log file.
         $device->discover();
-        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'complete', 'ip' => $device->ip]);   // Log device to the log file.
+        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'complete', 'id' => $device->id]);   // Log device to the log file.
     }
 }

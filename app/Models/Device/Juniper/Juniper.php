@@ -36,10 +36,10 @@ class Juniper extends \App\Models\Device\Device
     */
     public function getName()
     {
-        $run = $this->getLatestOutputs('run')->data;
-        if(isset($run['configuration']['system']['host-name']))
+        $run = $this->getLatestOutputs('run');
+        if(isset($run->data['configuration']['system']['host-name']))
         {
-            return $run['configuration']['system']['host-name'];
+            return $run->data['configuration']['system']['host-name'];
         }
     }
 

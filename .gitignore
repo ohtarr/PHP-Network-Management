@@ -16,3 +16,4 @@ yarn-error.log
 /.vscode
 /storage/api-docs
 /etc
+/venv

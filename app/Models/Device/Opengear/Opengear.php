@@ -27,36 +27,6 @@ class Opengear extends \App\Models\Device\Device
         'support_report'    => 'cat /etc/config/support_report',
     ];
 
-    //Use SSH2 for connection
-    public function exec_cmds($cmds, $timeout = null)
-    {
-        return $this->exec_cmds_2($cmds, $timeout);
-    }
-
-    /*
-    This method is used to establish a CLI session with a device.
-    It will attempt to use phpseclib\Net\SSH2 library to connect.
-    Returns a phpseclib\Net\SSH2 object.
-    */
-/*     public function getCli($timeout = 20)
-    {
-        $credentials = $this->getCredentials();
-        foreach ($credentials as $credential) {
-            // Attempt to connect using Metaclassing\SSH library.
-            try {
-                $cli = $this->getSSH2($this->ip, $credential->username, $credential->passkey);
-            } catch (\Exception $e) {
-                //If that fails, attempt to connect using phpseclib\Net\SSH2 library.
-            }
-            if ($cli) {
-                $this->credential_id = $credential->id;
-                //$this->save();
-                //$cli->exec("sudo -i");
-                return $cli;
-            }
-        }
-    } */
-
     /*
     Find the name of this device from DATA.
     Returns string (device name).

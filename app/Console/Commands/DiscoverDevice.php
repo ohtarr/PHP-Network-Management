@@ -31,11 +31,11 @@ class DiscoverDevice extends Command
     public function handle()
     {
         $options = $this->options();
-        if(!$options['id'] && !$options['ip'])
+        if(!$options['id'])
         {
-            throw new \Exception('No IP or ID specified!');
+            throw new \Exception('No ID specified!');
         }
-        Log::info('DiscoverDeviceCommand', ['DiscoverDeviceJob' => 'starting', 'device_id' => $options['id'],'device_ip' => $options['ip']]);   // Log device to the log file.
+        Log::info('DiscoverDeviceCommand', ['DiscoverDeviceJob' => 'starting', 'device_id' => $options['id']]);   // Log device to the log file.
         $result = DiscoverDeviceJob::dispatch($options);		// Create a scan job for each device in the database
         //return $result;
         return true;
