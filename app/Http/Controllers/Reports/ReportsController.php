@@ -75,6 +75,7 @@ class ReportsController extends Controller
         {
             $final[strtoupper($device->hostname)]['snmp'] = $device;
         }
+        ksort($final);
         foreach($final as $name => $object)
         {
             unset($tmp);
