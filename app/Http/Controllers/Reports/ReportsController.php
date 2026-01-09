@@ -9,6 +9,7 @@ use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Roles;
 use App\Models\Netbox\DCIM\Sites;
 use App\Models\Gizmo\Dhcp;
+use App\Models\LibreNMS\Device;
 
 class ReportsController extends Controller
 {
@@ -55,5 +56,32 @@ class ReportsController extends Controller
             }
         }
         return $scopes;
+    }
+
+    public function getOpengearStatus()
+    {
+        $final = [];
+        $icmp = Device::get(['type'=>'os', 'query'=>'ping']);
+        $snmp = Device::get(['type'=>'os', 'query'=>'opengear']);
+        $namereg = "/(\S+)-oob/i";
+        foreach($icmp as $device)
+        {
+            if(preg_match($namereg, $device->hostname, $hits))
+            {
+                $final[strtoupper($hits[1])]['icmp'] = $device;
+            }
+        }
+        foreach($snmp as $device)
+        {
+            $final[strtoupper($device->hostname)]['snmp'] = $device;
+        }
+        foreach($final as $name => $object)
+        {
+            unset($tmp);
+            $tmp = $object;
+            $tmp['name'] = $name;
+            $newarray[] = $tmp;
+        }
+        return $newarray;
     }
 }

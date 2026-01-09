@@ -82,3 +82,4 @@ Route::get('management/netbox/sites/', [App\Http\Controllers\Management\Manageme
 
 Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsController::class, 'siteSubnetReport']);
 Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsController::class, 'getOrphanedDhcpScopes']);
+Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsController::class, 'getOpengearStatus']);
