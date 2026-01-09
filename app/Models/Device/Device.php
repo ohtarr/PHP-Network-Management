@@ -893,7 +893,10 @@ class Device extends Model
     public function getIpAddress()
     {
         $nbdevice = $this->getNetboxDevice();
-        return $nbdevice->getIpAddress();
+        if($nbdevice)
+        {
+            return $nbdevice->getIpAddress();
+        }
     }
 
 }
