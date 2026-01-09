@@ -779,7 +779,12 @@ class Device extends Model
     */
     public function ping($timeout = 5)
 	{
-		$PING = new Ping($this->getIpAddress());
+        $ip = $this->getIpAddress();
+        if(!$ip)
+        {
+            return null;
+        }
+		$PING = new Ping($ip);
         $PING->setTimeout($timeout);
 		$LATENCY = $PING->ping();
 		if (!$LATENCY)
