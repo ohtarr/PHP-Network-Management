@@ -459,15 +459,15 @@ class Device extends Model
     public function discoverNetmikoType()
     {
         $type = $this->getNetmikoType();
-        if($type)
+        if(!$type || $type == "None")
         {
-            $data = $this->data;
-            $data['netmiko_type'] = $type;
-            $this->data = $data;
-            $this->save();
-            return $this;
+            return null;
         }
-
+        $data = $this->data;
+        $data['netmiko_type'] = $type;
+        $this->data = $data;
+        $this->save();
+        return $this;
     }
 
     /*
