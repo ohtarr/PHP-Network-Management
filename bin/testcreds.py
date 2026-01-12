@@ -18,5 +18,6 @@ device = {
 try:
         guesser = SSHDetect(**device)
         print(1)
+        guesser.connection.disconnect()
 except (NetMikoAuthenticationException):
         print(0)
