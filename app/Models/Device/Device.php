@@ -52,6 +52,8 @@ class Device extends Model
         'data' => 'array',
     ];
 
+    protected $nbdevice;
+
     public function output()
     {
         return $this->hasMany(Output::class,'device_id');
@@ -886,12 +888,19 @@ class Device extends Model
 
     public function getNetboxDevice()
     {
-        $nbdevice = $this->getNetboxDeviceById();
-        if(!$nbdevice)
+        if(!$this->nbdevice)
         {
-            $nbdevice = $this->getNetboxDeviceByName();
+            $nbdevice = $this->getNetboxDeviceById();
+            if(!$nbdevice)
+            {
+                $nbdevice = $this->getNetboxDeviceByName();
+            }
+            if($nbdevice)
+            {
+                $this->nbdevice = $nbdevice;
+            }
         }
-        return $nbdevice;
+        return $this->nbdevice;
     }
     /*
     This method is designed to be used all over the place to acquire the IP of this device.
