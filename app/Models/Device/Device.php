@@ -465,7 +465,9 @@ class Device extends Model
             $data['netmiko_type'] = $type;
             $this->data = $data;
             $this->save();
+            return $this;
         }
+
     }
 
     /*
