@@ -882,8 +882,12 @@ class Device extends Model
             return null;
         }
         //$nb = new NetboxDevice;
+        if(!$this->netbox_type)
+        {
+            return null;
+        }
         $nb = new $this->netbox_type;
-        return $nb->where('name__ic',$this->getName())->first();
+        return $nb->where('name__ic', $this->getName())->first();
     }
 
     public function getNetboxDevice()

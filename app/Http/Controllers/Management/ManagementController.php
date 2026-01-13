@@ -146,7 +146,12 @@ class ManagementController extends Controller
         {
             unset($tmp);
             unset($ip);
+            unset($device);
             $device = Device::find($id);
+            if(!$device)
+            {
+                continue;
+            }
             $nbdevice = $device->getNetboxDevice();
             if(!$nbdevice)
             {
