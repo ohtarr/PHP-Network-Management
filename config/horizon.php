@@ -188,12 +188,13 @@ return [
             ],
         ],
 
-        'local' => [        
+        'local' => [
             'supervisor-1' => [
                 'connection' => 'queue_redis_default',
                 'queue' => ['high','default'],
                 'balance' => 'auto',
-                'maxProcesses' => env('WORKERS'),
+                'maxProcesses' => env('WORKERS_MAX'),
+                'minProcesses' => env('WORKERS_MIN'),
                 'maxTime' => 0,
                 'maxJobs' => 0,
                 'memory' => 128,
