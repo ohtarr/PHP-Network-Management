@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\Sites;
+use App\Models\Device\Device;
 use App\Models\Mist\Site;
-use App\Models\Mist\Device;
+use App\Models\Mist\Device as MistDevice;
+use App\Models\Device\Output;
 use Illuminate\Support\Facades\Log;
 
 class ManagementController extends Controller
@@ -49,7 +51,7 @@ class ManagementController extends Controller
             $this->addLog(0, "Unable to find MIST SITE.");
         }
         $this->addLog(1, "Successfully retreived MIST SITE.");
-        $allmistdevices = Device::where('vc', 'true')->get();
+        $allmistdevices = MistDevice::where('vc', 'true')->get();
         $devices = [];
         foreach($nbdevices as $nbdevice)
         {
@@ -120,6 +122,66 @@ class ManagementController extends Controller
             ]
 
         ];
+        return $return;
+    }
+
+    public function searchOutputs(Request $request)
+    {
+        $return = [];
+        $submitted = $request->collect();
+        if(!isset($submitted['search']))
+        {
+            return null;
+        }
+        $search = $submitted['search'];
+        $deviceids = [];
+        $array = [];
+        $outputs = Output::where('data', 'like', '%' . $search . '%')->get();
+        foreach($outputs as $output)
+        {
+            //$deviceids[] = $output->device_id;
+            $array[$output->device_id]['outputs'][] = $output;
+        }
+        foreach($array as $id => $value)
+        {
+            unset($tmp);
+            unset($ip);
+            $device = Device::find($id);
+            $nbdevice = $device->getNetboxDevice();
+            if(!$nbdevice)
+            {
+                continue;
+            }
+            $tmp['id'] = $nbdevice->id;
+            $tmp['name'] = $nbdevice->name;
+            if(isset($nbdevice->device_type->model))
+            {
+                $tmp['model'] = $nbdevice->device_type->model;
+            }
+            $tmp['role'] = $nbdevice->role->name;
+            if(isset($nbdevice->site->name))
+            {
+                $tmp['site'] = $nbdevice->site->name;
+            }
+            if(isset($nbdevice->location->name))
+            {
+                $tmp['location'] = $nbdevice->location->name;
+            }
+            $ip = $nbdevice->getIpAddress();
+            if(isset($ip))
+            {
+                $tmp['ip'] = $ip;
+            }
+            foreach($value['outputs'] as $output)
+            {
+                $tmp['outputs'][] = ['type'=>$output->type, 'data'=>$output->data];
+                //$tmp['outputs'][$output->type] = $output->data;
+            }
+            $return[] = $tmp;
+        }
+        usort($return, function($a, $b) {
+            return $a['name'] <=> $b['name'];
+        });
         return $return;
     }
 }
