@@ -343,4 +343,5 @@ class Devices extends BaseModel
         }
         return $scope->addReservation($params['clientId'], $params['ipAddress'], $params['description']);
     }
+    
 }
