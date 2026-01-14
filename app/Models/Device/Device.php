@@ -110,7 +110,7 @@ class Device extends Model
     public $scan_cmds = [];
 
     public $discover_commands = [
-        'sh version',
+        'show version',
         'show inventory',
         'cat /etc/version',
         'cat /etc/board.info',

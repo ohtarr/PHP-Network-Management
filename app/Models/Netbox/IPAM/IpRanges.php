@@ -140,7 +140,14 @@ class IpRanges extends BaseModel
         {
             $optionsparams[] = [
                 'optionId'  =>  "150",
-                'value'     =>  $cm,                
+                'value'     =>  $cm,
+            ];
+        }
+        if(!empty($this->custom_fields->duration))
+        {
+            $optionsparams[] = [
+                'optionId'  =>  "51",
+                'value'     =>  [strval($this->custom_fields->duration)],
             ];
         }
 

@@ -318,6 +318,7 @@ class Sites extends BaseModel
             "gateway"       => long2ip($IPV4LONG + 1),
             "dns1"          => $dns1,
             "dns2"          => $dns2,
+            "duration"      => 28800,
         ];
         if(isset($dns3))
         {
@@ -418,6 +419,10 @@ class Sites extends BaseModel
         {  
             $custom_fields['cm2'] = $provprefix['cm2'];
         }
+        if(isset($provprefix['duration']))
+        {  
+            $custom_fields['duration'] = $provprefix['duration'];
+        }        
         $params = [
             'start_address'     =>  $provprefix['start_address'] . "/" . $provprefix['bitmask'],
             'end_address'       =>  $provprefix['end_address'] . "/" . $provprefix['bitmask'],
