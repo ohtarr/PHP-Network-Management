@@ -382,7 +382,7 @@ class Device extends Model
     This method connects to a device using python netmiko script, executes a command, returns the output, and disconnects the SSH session.
     If netmiko_type is unknown, it will run getNetmikoType() to attempt to determine the type.
     */
-    public function exec_cmd_netmiko($cmd)
+    public function exec_cmd_netmiko($cmd, $timeout=20)
     {
         $ip = $this->getIpAddress();
         if(!isset($ip))
@@ -411,7 +411,7 @@ class Device extends Model
 
         $exe = env('PYTHON_EXE');
         //$output = shell_exec("python3 bin/runcmd.py '{$ip}' '{$username}' '{$password}' '{$type}' '{$cmd}'");
-        $cmd = "{$exe} bin/runcmd.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\" --type=\"{$type}\" --cmd=\"$cmd\"";
+        $cmd = "{$exe} bin/runcmd.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\" --type=\"{$type}\" --cmd=\"$cmd\" --timeout=\"$timeout\"";
         //print $cmd . PHP_EOL;
         $output = shell_exec($cmd);
         if($output)
@@ -714,12 +714,25 @@ class Device extends Model
     This method executes all scan_cmds for a device and returns the values
     The outputs are NOT saved to the database.
     */
-    public function getScanCmdOutputs()
+    public function getScanCmdOutputs($type = null)
     {
         $output = [];
         if($this->scan_cmds)
         {
-            $output = $this->exec_cmds($this->scan_cmds);
+            if($type)
+            {
+                $cmds = [];
+                foreach($this->scan_cmds as $key => $value)
+                {
+                    if(strtolower($key) == strtolower($type))
+                    {
+                        $cmds[$key] = $value;
+                    }
+                }
+                $output = $this->exec_cmds($cmds);
+            } else {
+                $output = $this->exec_cmds($this->scan_cmds);
+            }
         }
         return $output;
     }
@@ -728,7 +741,7 @@ class Device extends Model
     This method utilized the getScanCmdOutputs method to obtain all of the command line outputs for the device and
     save them to the Outputs table.
     */
-    public function scan()
+    public function scan($type = null)
     {
         if(!$this->id)
         {
@@ -738,7 +751,7 @@ class Device extends Model
         {
             return null;
         }
-        $data = $this->getScanCmdOutputs();
+        $data = $this->getScanCmdOutputs($type);
         
         foreach($data as $key => $output)
         {

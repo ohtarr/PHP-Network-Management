@@ -158,7 +158,44 @@ class DeprovisioningController extends Controller
         return $return;
     }
 
-    public function deleteDhcpScopes($sitecode)
+    public function deleteDhcpScope($scope)
+    {
+        $user = auth()->user();
+		if ($user->cant('provision-mist-devices')) {
+			abort(401, 'You are not authorized');
+        }
+
+        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
+        $totalstatus = 1;
+
+        $deletescope = Dhcp::find($scope);
+        if(isset($deletescope->scopeID))
+        {
+            $this->addLog(1, "SCOPE {$scope} found and ready to delete.");
+        } else {
+            $this->addLog(0, "SCOPE {$scope} not found.  nothing to delete!");
+            $totalstatus = 0;
+            $return['status'] = $totalstatus;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+        $deletescope->delete();
+        $checkscope = Dhcp::find($scope);
+        if(isset($checkscope->scopeID))
+        {
+            $this->addLog(0, "SCOPE {$scope} did not delete correctly!");
+            $totalstatus = 0;
+        } else {
+            $this->addLog(1, "SCOPE {$scope} deleted successfully.");
+        }
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = null;
+        return $return;
+    }
+
+    public function deleteSiteDhcpScopes($sitecode)
     {
         $user = auth()->user();
 		if ($user->cant('provision-mist-devices')) {

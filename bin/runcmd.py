@@ -9,7 +9,7 @@ parser.add_argument("--username", help="Username to connect to the device with")
 parser.add_argument("--password", help="Password to connect to the device with")
 parser.add_argument("--type", help="Netmiko device type")
 parser.add_argument("--cmd", help="Command to attempt to run")
-parser.add_argument("--timeout", type=int, default=10, help="Amount of time (in secs) to wait for prompt to come back")
+parser.add_argument("--timeout", type=int, default=20, help="Amount of time (in secs) to wait for prompt to come back")
 args = parser.parse_args()
 
 device = {

@@ -320,6 +320,11 @@ class ProvisioningController extends Controller
         return $return;
     }
 
+    public function getDhcpScopeOverlap($network, $bitmask)
+    {
+        return Dhcp::findOverlap($network, $bitmask);
+    }
+
     public function getDhcpScopes($sitecode)
     {
         Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
