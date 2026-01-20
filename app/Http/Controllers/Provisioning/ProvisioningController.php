@@ -11,6 +11,7 @@ use App\Models\Netbox\IPAM\AsnRanges;
 use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Roles;
+use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Netbox\DCIM\DeviceTypes;
 use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\Netbox\DCIM\Manufacturers;
@@ -620,6 +621,7 @@ class ProvisioningController extends Controller
             unset($basename);
             unset($memberid);
             unset($virtualchassis);
+            $isopengear = false;
 
             if(!isset($device['name']))
             {
@@ -632,6 +634,10 @@ class ProvisioningController extends Controller
                 $this->addLog(0, "Device NAME {$device['name']} contains spaces, not allowed, skipping.");
                 $totalstatus = 0;
                 continue;
+            }
+            if(preg_match('/\S{8}oob\d{2,4}/i', $device['name']))
+            {
+                $isopengear = true;
             }
             if(!isset($device['serial']))
             {
@@ -731,12 +737,11 @@ class ProvisioningController extends Controller
                     $params['vc_priority'] = 200;
                 }
             }
-            if(isset($device['ip']) && $device['ip'])
+            if(isset($device['ip']) && $device['ip'] && !$isopengear)
             {
                 $params['custom_fields']['ip'] = $device['ip'];
             }
             $newdevice = Devices::create($params);
-
             if(isset($newdevice->id))
             {
                 $this->addLog(1, "Successfully added DEVICE {$newdevice->name}.");
@@ -756,6 +761,58 @@ class ProvisioningController extends Controller
                     $this->addLog(1, "Successfully set switch {$newdevice->name} as MASTER on virtual chassis {$virtualchassis->name}.");
                 } else {
                     $this->addLog(0, "FAILED to set switch {$newdevice->name} as MASTER on virtual chassis {$virtualchassis->name}.");
+                }
+            }
+            if($isopengear)
+            {
+                $this->addLog(1, "Detected OPENGEAR device.");
+                $eth = $newdevice->Interfaces()->where('name','eth0')->first();
+                if(isset($eth->id))
+                {
+                    $this->addLog(1, "Found interface {$eth->id} - {$eth->name} on device {$newdevice->name}");
+                    $ethparams = [
+                        'address'               =>  $device['ip'] . "/32",
+                        'vrf'                   =>  2,
+                        'assigned_object_type'  =>  'dcim.interface',
+                        'assigned_object_id'    =>  $eth->id,
+                    ];
+                    $newip = IpAddresses::create($ethparams);
+                } else {
+                    $this->addLog(0, "Failed to find interface eth0 on device {$newdevice->name}");
+                }
+                $wwan = $newdevice->Interfaces()->where('name','wwan0')->first();
+                if(isset($wwan->id))
+                {
+                    $this->addLog(1, "Found interface {$wwan->id} - {$wwan->name} on device {$newdevice->name}");
+                    $wwanparams = [
+                        'address'               =>  $device['oob_ip'] . "/32",
+                        'vrf'                   =>  1,
+                        'assigned_object_type'  =>  'dcim.interface',
+                        'assigned_object_id'    =>  $wwan->id,
+                    ];
+                    $newoobip = IpAddresses::create($wwanparams);
+                } else {
+                    $this->addLog(0, "Failed to find interface wwan0 on device {$newdevice->name}");
+                }
+                $ipparams = [];
+                if(isset($newip->id))
+                {
+                    $this->addLog(1, "Created new IP ADDRESS {$newip->address}");
+                    $ipparams['primary_ip4'] = $newip->id;
+                }
+                if(isset($newoobip->id))
+                {
+                    $this->addLog(1, "Created new IP ADDRESS {$newoobip->address}");
+                    $ipparams['oob_ip'] = $newoobip->id;
+                }
+                $newdevice = $newdevice->update($ipparams);
+                if(isset($newdevice->primary_ip))
+                {
+                    $this->addLog(1, "PRIMARY IP for device {$newdevice->name} set to  {$newdevice->primary_ip->address}");
+                }
+                if(isset($newdevice->oob_ip))
+                {
+                    $this->addLog(1, "OOB IP for device {$newdevice->name} set to  {$newdevice->oob_ip->address}");
                 }
             }
             $newdevices[] = $newdevice;
