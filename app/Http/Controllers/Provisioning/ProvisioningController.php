@@ -995,7 +995,8 @@ class ProvisioningController extends Controller
         }
         $return['status'] = 1;
         $return['log'] = $this->logs;
-        $return['data'] = $ips;
+        $return['data']['routers'][] = $netboxsite->generateRouterIp();
+        $return['data']['switches'] = $ips;
         return $return;
     }
 

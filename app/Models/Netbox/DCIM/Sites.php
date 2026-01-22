@@ -801,4 +801,9 @@ class Sites extends BaseModel
         }
         return $range->getAvailableIps($qty);
     }
- }
+
+    public function generateRouterIp()
+    {
+        return $this->generateSiteNetworks(1)['gateway'];
+    }
+}
