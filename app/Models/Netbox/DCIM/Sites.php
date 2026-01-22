@@ -542,15 +542,28 @@ class Sites extends BaseModel
 		$reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3})\.0/";
 
 		$variables = [
-			'SITE_CODE'		    =>	strtoupper($this->name),
-	        'CORP_WIFI_VLAN'   	=>  5,
-			'GUEST_WIFI_VLAN'   =>  13,
-   			'SITE_AGG_PREFIX'	=>	$supernet->network(),
-			'SITE_AGG_MASK'		=>	$supernet->length(),
-			'INT_WAN_INET_1'	=>	'ge-0/0/0',
-			'INT_WAN_INET_2'	=>	'ge-0/0/15',
-			'INT_WAN_KPN_1'		=>	'ge-0/0/14',
-			'INT_LAN_RANGE'		=>	'ge-0/0/1-13',
+                        'SITE_CODE'             =>      strtoupper($this->name),
+                        'DHCP_1'                =>      '10.252.12.143',
+                        'DHCP_2'                =>      '10.252.12.144',
+                        'DHCP_3'                =>      '10.0.192.130',
+                        'DNS_1'                 =>      '10.251.12.189',
+                        'DNS_2'                 =>      '10.251.12.190',
+                        'NTP_1'                 =>      '10.123.1.123',
+                        'NTP_2'                 =>      '10.123.2.123',
+                        'NTP_3'                 =>      '10.123.3.123',
+                        'PROBE_IP_1'            =>      '8.8.8.8',
+                        'PROBE_IP_2'            =>      '1.1.1.1',
+                        'DNS_SUFFIX_1'          =>      'net.kiewitplaza.com',
+                        'DNS_SUFFIX_2'          =>      'kiewitplaza.com',
+                        'TACACS_PLUS_1'         =>      '10.252.40.75',
+                        'CORP_WIFI_VLAN'        =>      5,
+                        'GUEST_WIFI_VLAN'       =>      13,
+                        'SITE_AGG_PREFIX'       =>      $supernet->network(),
+                        'SITE_AGG_MASK'         =>      $supernet->length(),
+                        'INT_WAN_INET_1'        =>      'ge-0/0/0',
+                        'INT_WAN_INET_2'        =>      'ge-0/0/15',
+                        'INT_WAN_KPN_1'         =>      'ge-0/0/14',
+                        'INT_LAN_RANGE'         =>      'ge-0/0/1-13',
 		];
 
 		foreach($subnets as $vlan => $subnet)
@@ -582,16 +595,28 @@ class Sites extends BaseModel
 				'root_password' =>  env('MIST_LOCAL_ADMIN_PASSWORD'),
 				'app_usage'	=>	1,
 				'auto_signature_update' => [
-					'enable'		=>	false,
+					'enable'	=>	true,
 					'time_of_day'	=>	'02:00',
 					'day_of_week'	=>	'sun',
 				],
 			],
 			'auto_upgrade'  =>  [
-				'enabled'   =>  null,
+				'enabled'   =>  true,
 				'version'   =>  'beta',
 				'time_of_day'   =>  '02:00',
-				'custom_versions'	=>	[],
+				'custom_versions'       =>      [
+					'AP33'          =>      '0.14.29895',
+					'AP43'          =>      '0.14.29895',
+					'AP45'          =>      '0.14.29895',
+					'AP45E'         =>      '0.14.29895',
+					'AP47'          =>      '0.15.33430', 
+					'AP47D'         =>      '0.15.33430',
+					'AP47E'         =>      '0.15.33430',
+					'AP63'          =>      '0.14.29895',
+					'AP63E'         =>      '0.14.29895',
+					'AP36'          =>      '0.15.34098',
+					'AP36M'         =>      '0.15.34098',
+				],
 				'day_of_week'   =>  'sun',
 			],
 			'rogue' => [
@@ -605,9 +630,15 @@ class Sites extends BaseModel
 				'whitelisted_ssids' => [
 						'0' => 'KiewitWLan',
 						'1' => 'KiewitGuest',
-						'2' => 'KiewitTV',
+						'2' => 'Kiewit',
+						'3' => 'KiewitGuest-Secure',
 				],
 			],
+                        'wids'  => [
+                                'repeated_auth_failures'        =>      [
+                                        'threshold'     =>      4,
+                                        'duration'      =>      60
+                        ],
 		];
 
 		//Setup custom Variables for site.
