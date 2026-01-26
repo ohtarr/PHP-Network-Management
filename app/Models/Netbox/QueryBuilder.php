@@ -120,7 +120,7 @@ class QueryBuilder
         $headers = $this->headers;
         $guzzleparams = [
             'verb'      =>  'get',
-            'url'       =>  $this->buildUrl() . $id,
+            'url'       =>  $this->buildUrl() . $id . "/",
             'params'    =>  [
                 'headers'   =>  $headers,
             ],
