@@ -277,7 +277,11 @@ class syncDns extends Command
         foreach($records as $record)
         {
             print "deleting record {$record->hostName} data {$record->recordData}..." . PHP_EOL;
-            $record->delete();
+            try {
+                $record->delete();
+            } catch (\Exception $e) {
+                print "Error occurred: " . $e->getMessage() . PHP_EOL;
+            }
         }
     }
 
