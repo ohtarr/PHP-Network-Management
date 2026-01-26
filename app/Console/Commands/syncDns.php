@@ -434,7 +434,13 @@ class syncDns extends Command
             foreach($ips as $ip)
             {
                 unset($intname);
-                $int = $ip->getInterface();
+                unset($int);
+                try {
+                    $int = $ip->getInterface();
+                } catch (\Exception $e) {
+                    print "Error occurred: " . $e->getMessage() . PHP_EOL;
+                }
+
                 if(!isset($int->id))
                 {
                     continue;
