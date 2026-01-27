@@ -89,19 +89,19 @@ class Location extends ServiceNowModel
         return $region;
 	}
 
-    public function getNetboxSiteGroup()
+public function getNetboxSiteType()
+{
+	$sitegroupname = "JOBSITE";
+	foreach($this->netbox_sitegroup_map as $snowkey => $netboxkey)
 	{
-        $sitegroupname = "JOBSITE";
-        foreach($this->netbox_sitegroup_map as $snowkey => $netboxkey)
-        {
-            if($this->u_site_type == $snowkey)
-            {
-                $sitegroupname = $netboxkey;
-                break;
-            }
-        }
-        return SiteGroups::where('name', $sitegroupname)->first();
+		if($this->u_site_type == $snowkey)
+		{
+			$sitegroupname = $netboxkey;
+			break;
+		}
 	}
+	return $sitegroupname;
+}
 
     public function generateNetboxSiteParams()
 	{
@@ -114,15 +114,6 @@ class Location extends ServiceNowModel
             $body['region'] = $region->id;
         }
 		
-		$group = $this->getNetboxSiteGroup();
-		if(!isset($group->id))
-		{
-			print "No Group found!" . PHP_EOL;
-			return null;
-		} else {
-            $body['group'] = $group->id;
-        }
-
 		foreach($this->netbox_site_map as $snowkey => $nbxkey)
 		{
 			if($nbxkey == 'latitude' || $nbxkey == 'longitude')
@@ -146,6 +137,7 @@ class Location extends ServiceNowModel
 			$body['custom_fields'][$nbxkey] = $this->$snowkey;
 		}
 		$body['slug'] = strtolower($this->name);
+		$body['custom_fields']['SITE_TYPE'] = $this->getNetboxSiteType();
 		return $body;
 	}
 
