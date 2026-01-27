@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\VirtualChassis;
+use App\Models\Netbox\DCIM\Interfaces;
 use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Netbox\VIRTUALIZATION\VirtualMachines;
 use App\Models\Gizmo\DNS\A;
@@ -38,14 +39,9 @@ class syncDns extends Command
 
     public function handle()
     {
-        //print_r($this->generateAllRecords2());
-        //return null;
         $this->deleteRecords();
         $this->fixRecords();
         $this->addRecords();
-        //print_r($this->recordsToAdd());
-        //$this->recordsToDelete();
-        //$this->recordsToFix();
     }
 
     public function getARecords($fresh = false)
@@ -292,8 +288,13 @@ class syncDns extends Command
             $dns = [];
             $cidrreg = '/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/';
             $ipreg = '/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/';
-            $devices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->where('has_primary_ip','true')->get();
-            foreach($devices as $device)
+            //Get all NON virtualchassis devices
+            print "Fetching NON virtualchassis devices..." . PHP_EOL;
+            $nonvcdevices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
+
+            //All non virtualchassis devices with a primary_ip
+            $ipdevices = $nonvcdevices->whereNotNull('primary_ip');
+            foreach($ipdevices as $device)
             {
                 unset($ip);
                 unset($dnsname);
@@ -309,7 +310,8 @@ class syncDns extends Command
                     $dns[$dnsname] = $ip;
                 }
             }
-            $oobdevices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->where('has_oob_ip','true')->get();
+            //All non virtualchassis devices with an oob_ip
+            $oobdevices = $nonvcdevices->whereNotNull('oob_ip');
             foreach($oobdevices as $device)
             {
                 unset($ip);
@@ -326,7 +328,8 @@ class syncDns extends Command
                     $dns[$dnsname . "-oob"] = $ip;
                 }
             }
-            $noipdevices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->where('has_primary_ip','false')->get();
+            //All non virtualchassis devices with NO primary_ip
+            $noipdevices = $nonvcdevices->whereNull('primary_ip');
             foreach($noipdevices as $device)
             {
                 unset($ip);
@@ -347,31 +350,39 @@ class syncDns extends Command
                     $dns[$dnsname] = $ip;
                 }
             }
-            $vcs = VirtualChassis::where('limit','9999')->get();
-            foreach($vcs as $vc)
+            //$vcs = VirtualChassis::where('limit','9999')->get();
+            //$vcmembers = Devices::where('virtual_chassis_member', 'true')->where('limit','9999')->get();
+            //Get all virtualchassis devices;
+            print "Fetching virtualchassis devices..." . PHP_EOL;
+            $vcdevices = Devices::where('virtual_chassis_member', 'true')->where('name__empty','false')->where('limit','9999')->get();
+            $vcmasters = [];
+            foreach($vcdevices as $vcdevice)
+            {
+                if(isset($vcdevice->virtual_chassis->master->id) && $vcdevice->virtual_chassis->master->id == $vcdevice->id)
+                {
+                    $vcmasters[] = $vcdevice;
+                }
+            }
+
+            foreach($vcmasters as $vcmaster)
             {
                 unset($ip);
                 unset($dnsname);
-                $device = $vc->getMaster();
-                if(!isset($device->id))
+                if(isset($vcmaster->primary_ip->address))
                 {
-                    continue;
-                }
-                if(isset($device->primary_ip->address))
-                {
-                    if(preg_match($cidrreg, $device->primary_ip->address, $hits))
+                    if(preg_match($cidrreg, $vcmaster->primary_ip->address, $hits))
                     {
                         $ip = $hits[1];
                     }
-                } elseif(isset($device->custom_fields->ip)) {
-                    if(preg_match($ipreg, $device->custom_fields->ip, $hits))
+                } elseif(isset($vcmaster->custom_fields->ip)) {
+                    if(preg_match($ipreg, $vcmaster->custom_fields->ip, $hits))
                     {
                         $ip = $hits[1];
                     }
                 }
                 if(isset($ip))
                 {
-                    $dnsname = $device->generateDnsName();
+                    $dnsname = $vcmaster->generateDnsName();
                     if($dnsname)
                     {
                         $dns[$dnsname] = $ip;
@@ -379,23 +390,23 @@ class syncDns extends Command
                 }
 
                 unset($ip);
-                if(isset($device->oob_ip->address))
+                if(isset($vcmaster->oob_ip->address))
                 {
-                    if(preg_match($cidrreg, $device->oob_ip->address, $hits))
+                    if(preg_match($cidrreg, $vcmaster->oob_ip->address, $hits))
                     {
                         $ip = $hits[1];
                     }
                 }
                 if(isset($ip))
                 {
-                    $dnsname = 'oob.' . $device->generateDnsName();
+                    $dnsname = 'oob.' . $vcmaster->generateDnsName();
                     if($dnsname)
                     {
                         $dns[$dnsname] = $ip;
                     }
                 }
             }
-
+            print "Fetching virtualmachines..." . PHP_EOL;
             $vms = VirtualMachines::where('limit','1000')->where('has_primary_ip','true')->get();
             foreach($vms as $device)
             {
@@ -413,6 +424,7 @@ class syncDns extends Command
                     $dns[$dnsname] = $ip;
                 }
             }
+            print "Fetching virtualmachines..." . PHP_EOL;
             $vms = VirtualMachines::where('limit','1000')->where('has_primary_ip','false')->get();
             foreach($vms as $device)
             {
@@ -434,26 +446,28 @@ class syncDns extends Command
                     $dns[$dnsname] = $ip;
                 }
             }
-            $ips = IpAddresses::where('assigned_to_interface','true')->get();
+            print "Fetching ipaddresses..." . PHP_EOL;
+            $ips = IpAddresses::where('assigned_to_interface','true')->where('limit','1000')->get();
             foreach($ips as $ip)
             {
                 unset($intname);
-                unset($int);
-                try {
-                    $int = $ip->getInterface();
-                } catch (\Exception $e) {
-                    print "Error occurred: " . $e->getMessage() . PHP_EOL;
-                }
-
-                if(!isset($int->id))
+                if($ip->assigned_object_type != "dcim.interface")
                 {
                     continue;
                 }
-                $intname = $int->generateDnsName();
+                if(!isset($ip->assigned_object->name))
+                {
+                    continue;
+                }
+                if(!isset($ip->assigned_object->device->name))
+                {
+                    continue;
+                }
+                $intname = Interfaces::generateDnsNameStatic($ip->assigned_object->name, $ip->assigned_object->device->name);
                 if(isset($intname))
                 {
                     $dns[$intname] = $ip->cidr()['ip'];
-                }
+                }                
             }
 
             $records = [];
@@ -465,10 +479,9 @@ class syncDns extends Command
                 $tmp['type']        = 'a';
                 $records[] = $tmp;
             }
-            return $records;
+            $this->generated = collect($records);
         }
         print "Generated " . count($this->generated) . " records from Netbox." . PHP_EOL;
         return $this->generated;
     }
-
 }

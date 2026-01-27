@@ -64,7 +64,7 @@ class Interfaces extends BaseModel
         return false;
     }
 
-    public function abbreviateName()
+    public static function abbreviateNameStatic($name)
     {
         $convert = [
             'ethernet'                  =>  'eth',
@@ -77,11 +77,12 @@ class Interfaces extends BaseModel
             'HundredGigE'               =>  'hu',
             'TenGigE'                   =>  'te',
             'Bundle-Ether'              =>  'be',
+            'loopback'                  =>  'lo',
         ];
         foreach($convert as $long => $short)
         {
             $reg = "/^" . $long . "(\S+)/";
-            if(preg_match($reg, strtolower($this->name), $hits))
+            if(preg_match($reg, strtolower($name), $hits))
             {
                 $new = $short . $hits[1];
                 break;
@@ -91,20 +92,29 @@ class Interfaces extends BaseModel
         {
             return $new;
         } else {
-            return strtolower($this->name);
+            return strtolower($name);
         }
     }
 
-    public function generateDnsName()
+    public function abbreviateName()
     {
-        $intname = $this->abbreviateName();
+        return static::abbreviateNameStatic($this->name);
+    }
+
+    public static function generateDnsNameStatic($intname, $devicename)
+    {
+        $intname = self::abbreviateNameStatic($intname);
         $intname = str_replace("/","-",$intname);
         $intname = str_replace(".","-",$intname);
-        $devicename = strtolower($this->device()->name);
+        $devicename = strtolower($devicename);
         $devicename = str_replace("/","-",$devicename);
         $devicename = str_replace(".","-",$devicename);
         $fullname = $intname . "." . $devicename;
         return $fullname;
     }
 
+    public function generateDnsName()
+    {
+        return static::generateDnsNameStatic($this->name, $this->device->name);
+    }
 }
