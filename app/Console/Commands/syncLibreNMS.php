@@ -49,8 +49,6 @@ class syncLibreNMS extends Command
 
     public function handle()
     {
-        $this->deleteLibreSiteGroups();
-        $this->addLibreSiteGroups();
         $this->ignoreLibreDevices();
         $this->alertLibreDevices();
         $this->removeLibreDevices();
