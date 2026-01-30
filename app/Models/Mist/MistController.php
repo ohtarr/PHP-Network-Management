@@ -100,4 +100,22 @@ class MistController extends Controller
         return $response;
     }
 
+    public function getWirelessClientStats($siteid)
+    {
+        $site = Site::find($siteid);
+        if(isset($site->id))
+        {
+            return $site->getWirelessClientStats();
+        }
+    }
+
+    public function getWiredClientStats($siteid)
+    {
+        $site = Site::find($siteid);
+        if(isset($site->id))
+        {
+            return $site->getWiredClientStats();
+        }
+    }
+
 }

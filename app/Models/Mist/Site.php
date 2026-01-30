@@ -217,4 +217,18 @@ class Site extends BaseModel
         }
         return $tmps;
     }
+
+    public function getWirelessClientStats()
+    {
+        $path = "sites/" . $this->id . "/stats/clients";
+        return static::getQuery()->get($path, 1);
+    }
+
+    public function getWiredClientStats()
+    {
+        $path = "sites/" . $this->id . "/wired_clients/search";
+        return static::getQuery()->get($path, 1)->results;
+    }
+
+
 }

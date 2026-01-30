@@ -49,6 +49,8 @@ Route::get('/mist/site/summary', [App\Models\Mist\MistController::class, 'SitesS
 Route::get('/mist/site/{siteid}/devicesummary', [App\Models\Mist\MistController::class, 'SiteDeviceSummary']);
 Route::get('/mist/site/{siteid}/device/{deviceid}/details', [App\Models\Mist\MistController::class, 'SiteDeviceSummaryDetails']);
 Route::post('/mist/claim/{sitecode?}', [App\Models\Mist\MistController::class, 'claimDevices']);
+Route::get('/mist/site/{siteid}/wirelessclientstats', [App\Models\Mist\MistController::class, 'getWirelessClientStats']);
+Route::get('/mist/site/{siteid}/wiredclientstats', [App\Models\Mist\MistController::class, 'getWiredClientStats']);
 
 Route::get('provisioning/snowlocations', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocations']);
 Route::get('provisioning/snowlocation/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocation']);
