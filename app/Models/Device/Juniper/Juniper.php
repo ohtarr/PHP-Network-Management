@@ -28,6 +28,7 @@ class Juniper extends \App\Models\Device\Device
         'interface'		=>	'show interfaces | display json',
         'lldp'			=>	'show lldp neighbors | display json',
         'run_set'		=>	'show configuration | display set',
+        'sessions'      =>  'show security flow statistics | display json',
     ];
 
     /*
