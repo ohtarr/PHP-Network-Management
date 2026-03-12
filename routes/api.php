@@ -61,6 +61,7 @@ Route::post('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisio
 Route::post('provisioning/netboxsite/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxDevices']);
 Route::get('provisioning/netboxsite/{sitecode}/addresses/{qty?}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getAvailableProvIps']);
 
+Route::get('provisioning/dhcp/generate/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'generateSiteDhcpParams']);
 Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopes']);
 Route::get('provisioning/dhcp/overlap/{network}/{bitmask}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopeOverlap']);
 Route::post('provisioning/dhcp/{sitecode}/vlan/{vlan}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScope']);

@@ -1000,4 +1000,29 @@ class ProvisioningController extends Controller
         return $return;
     }
 
+    public function generateSiteDhcpParams($sitecode)
+    {
+        $site = Sites::where('name',$sitecode)->first();
+        if(isset($site->id))
+        {
+            $this->addLog(1, "Found site with ID: {$site->id}");
+        } else {
+            $this->addLog(0, "Unable to find site {$sitecode}");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
+        $ranges = $site->getProvisioningSupernet()->getIpRanges();
+        $scopes = [];
+        foreach($ranges as $range)
+        {
+            $scopes[] = $range->generateDhcpScopeParams();
+            $this->addLog(1, "Generated scope for {$range->display}");
+        }
+        $return['status'] = 1;
+        $return['log'] = $this->logs;
+        $return['data'] = $scopes;
+        return $return;
+    }
 }
