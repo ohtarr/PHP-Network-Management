@@ -10,11 +10,11 @@ class VerifyNetboxWebhook
     /**
      * Handle an incoming request.
      *
-     * Validates the X-Netbox-Signature header sent by Netbox webhooks.
+     * Validates the X-Hook-Signature header sent by Netbox webhooks.
      * Netbox signs the raw request body with HMAC-SHA512 using the shared
      * secret configured in Netbox and stored here as NETBOX_WEBHOOK_SECRET.
      *
-     * Header format from Netbox:  X-Netbox-Signature: sha512=<hex digest>
+     * Header format from Netbox:  X-Hook-Signature: sha512=<hex digest>
      */
     public function handle(Request $request, Closure $next): mixed
     {
@@ -24,10 +24,10 @@ class VerifyNetboxWebhook
             return response()->json(['error' => 'Webhook secret not configured.'], 500);
         }
 
-        $signature = $request->header('X-Netbox-Signature');
+        $signature = $request->header('X-Hook-Signature');
 
         if (!$signature) {
-            return response()->json(['error' => 'Missing X-Netbox-Signature header.'], 403);
+            return response()->json(['error' => 'Missing X-Hook-Signature header.'], 403);
         }
 
         // Netbox sends:  sha512=<hex digest>
