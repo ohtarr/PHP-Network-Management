@@ -29,7 +29,9 @@ class ManagementController extends Controller
             'status'    =>  $status,
             'msg'       =>  $msg,
         ];
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . debug_backtrace()[1]['function'] . ": " . $msg);
+        $user = auth()->user();
+        $username = $user ? $user->userPrincipalName : 'unauthenticated';
+        Log::channel('provisioning')->info($username . " : " . debug_backtrace()[1]['function'] . ": " . $msg);
     }
 
     public function getNetboxSites()
@@ -147,28 +149,36 @@ class ManagementController extends Controller
 
         $netboxDeviceId = (int) $netboxDeviceId;
 
+        $event      = $request->input('event', 'updated');
+        $deviceName = $request->input('data.name');
+
         Log::info('ManagementController@syncNetboxDevice: webhook received', [
-            'event'            => $request->input('event'),
+            'event'            => $event,
             'netbox_device_id' => $netboxDeviceId,
-            'name'             => $request->input('data.name'),
+            'name'             => $deviceName,
         ]);
 
-        $device = Devices::find($netboxDeviceId);
-        if (!isset($device->id)) {
-            return response()->json([
-                'status'  => 0,
-                'message' => "Netbox device ID {$netboxDeviceId} not found.",
-            ], 404);
+        // For deleted events the device is already gone from Netbox — skip the
+        // existence check and rely on the name from the webhook payload instead.
+        if ($event !== 'deleted') {
+            $device = Devices::find($netboxDeviceId);
+            if (!isset($device->id)) {
+                return response()->json([
+                    'status'  => 0,
+                    'message' => "Netbox device ID {$netboxDeviceId} not found.",
+                ], 404);
+            }
         }
 
-        SyncDeviceDnsJob::dispatch($netboxDeviceId);
-        SyncDeviceLibreNMSJob::dispatch($netboxDeviceId);
+        SyncDeviceDnsJob::dispatch($netboxDeviceId, $event, $deviceName);
+        SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName);
 
         return response()->json([
             'status'           => 1,
-            'message'          => "SyncDeviceDnsJob and SyncDeviceLibreNMSJob dispatched for Netbox device ID {$netboxDeviceId}.",
+            'message'          => "SyncDeviceDnsJob and SyncDeviceLibreNMSJob dispatched for Netbox device ID {$netboxDeviceId} (event: {$event}).",
             'netbox_device_id' => $netboxDeviceId,
-            'name'             => $device->name ?? null,
+            'event'            => $event,
+            'name'             => $deviceName ?? null,
         ]);
     }
 

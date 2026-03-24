@@ -9,7 +9,6 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
 use App\Models\Netbox\DCIM\Devices;
-use App\Models\Netbox\DCIM\Manufacturers;
 use App\Models\LibreNMS\Device as LibreDevice;
 use App\Models\LibreNMS\Location as LibreLocation;
 use App\Models\LibreNMS\DeviceGroup;
@@ -28,13 +27,28 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
     public int $netboxDeviceId;
 
     /**
+     * The webhook event type: 'created', 'updated', or 'deleted'.
+     */
+    public string $event;
+
+    /**
+     * The device name at the time of the webhook (used for deleted events
+     * where the device can no longer be fetched from Netbox).
+     */
+    public ?string $deviceName;
+
+    /**
      * Create a new job instance.
      *
-     * @param  int  $netboxDeviceId  The Netbox DCIM device ID
+     * @param  int         $netboxDeviceId  The Netbox DCIM device ID
+     * @param  string      $event           'created', 'updated', or 'deleted'
+     * @param  string|null $deviceName      Device name from webhook payload
      */
-    public function __construct(int $netboxDeviceId)
+    public function __construct(int $netboxDeviceId, string $event = 'updated', ?string $deviceName = null)
     {
         $this->netboxDeviceId = $netboxDeviceId;
+        $this->event          = $event;
+        $this->deviceName     = $deviceName;
     }
 
     /**
@@ -57,8 +71,15 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
     {
         Log::info('SyncDeviceLibreNMSJob', [
             'state'            => 'starting',
+            'event'            => $this->event,
             'netbox_device_id' => $this->netboxDeviceId,
         ]);
+
+        if ($this->event === 'deleted') {
+            $this->handleDeleted();
+            Log::info('SyncDeviceLibreNMSJob', ['state' => 'complete', 'event' => 'deleted', 'netbox_device_id' => $this->netboxDeviceId]);
+            return;
+        }
 
         // ── 1. Fetch the Netbox device ────────────────────────────────────────
         $device = Devices::find($this->netboxDeviceId);
@@ -318,6 +339,75 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
             'name'             => $device->name,
             'hostname'         => $hostname,
         ]);
+    }
+
+    /**
+     * Delete the LibreNMS device entry for a Netbox device that has been deleted.
+     *
+     * Derives the expected LibreNMS hostname from the device name supplied in
+     * the webhook payload (since the device no longer exists in Netbox).
+     */
+    protected function handleDeleted(): void
+    {
+        if (!$this->deviceName) {
+            Log::warning('SyncDeviceLibreNMSJob: deleted event but no device name provided, cannot clean up LibreNMS', [
+                'netbox_device_id' => $this->netboxDeviceId,
+            ]);
+            return;
+        }
+
+        // Derive hostname the same way generateDnsName() does.
+        $hostname = strtolower(str_replace(['.', '/'], '-', $this->deviceName));
+
+        // Also try the -oob variant in case it was an Opengear device.
+        $hostnamesToTry = [
+            $hostname,
+            $hostname . '-oob',
+        ];
+
+        foreach ($hostnamesToTry as $h) {
+            try {
+                $libreDevice = LibreDevice::find($h);
+            } catch (\Exception $e) {
+                Log::warning('SyncDeviceLibreNMSJob: exception looking up hostname in LibreNMS, skipping', [
+                    'hostname' => $h,
+                    'error'    => $e->getMessage(),
+                ]);
+                continue;
+            }
+
+            if (!isset($libreDevice->device_id)) {
+                Log::info('SyncDeviceLibreNMSJob: device not found in LibreNMS, nothing to delete', [
+                    'hostname' => $h,
+                ]);
+                continue;
+            }
+
+            Log::info('SyncDeviceLibreNMSJob: deleting device from LibreNMS', [
+                'hostname'  => $h,
+                'device_id' => $libreDevice->device_id,
+            ]);
+
+            try {
+                $result = $libreDevice->delete();
+                if ($result) {
+                    Log::info('SyncDeviceLibreNMSJob: device deleted from LibreNMS successfully', [
+                        'hostname'  => $h,
+                        'device_id' => $libreDevice->device_id,
+                    ]);
+                } else {
+                    Log::error('SyncDeviceLibreNMSJob: device delete returned failure', [
+                        'hostname'  => $h,
+                        'device_id' => $libreDevice->device_id,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('SyncDeviceLibreNMSJob: exception deleting device from LibreNMS', [
+                    'hostname' => $h,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
+        }
     }
 
     /**
