@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\LibreNMS\Device as LibreDevice;
 use App\Models\LibreNMS\Location as LibreLocation;
-use App\Models\LibreNMS\DeviceGroup;
 use JJG\Ping;
 
 class SyncDeviceLibreNMSJob implements ShouldQueue
@@ -59,11 +58,10 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
      *
      *  1. Fetch the Netbox device and determine its DNS hostname (generated name).
      *  2. Ensure the LibreNMS Location for the device's site exists (create if not).
-     *  3. Ensure a SITE_<sitecode> DeviceGroup exists in LibreNMS (create if not).
-     *  4. If the device is not yet in LibreNMS:
+     *  3. If the device is not yet in LibreNMS:
      *       - Ping the hostname first; skip if unreachable.
      *       - Add it, setting location and SNMP-disable flag for Opengear devices.
-     *  5. If the device is already in LibreNMS:
+     *  4. If the device is already in LibreNMS:
      *       - Sync the ignore/alerting flag from Netbox custom_fields->ALERT.
      *       - Sync the location_id if it has drifted.
      */
@@ -192,33 +190,30 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
             }
         }
 
-        // ── 3. Ensure SITE_ DeviceGroup exists ────────────────────────────────
-        if (isset($device->site->name) && $device->site->name) {
-            $siteName   = $device->site->name;
-            $groupName  = 'SITE_' . $siteName;
-            try {
-                $groups     = DeviceGroup::all();
-                $groupMatch = $groups->where('name', $groupName)->first();
-                if (!$groupMatch) {
-                    Log::info('SyncDeviceLibreNMSJob: creating DeviceGroup', [
-                        'group' => $groupName,
-                    ]);
-                    DeviceGroup::createSiteGroup($siteName);
-                } else {
-                    Log::info('SyncDeviceLibreNMSJob: DeviceGroup already exists', [
-                        'group' => $groupName,
-                    ]);
-                }
-            } catch (\Exception $e) {
-                Log::error('SyncDeviceLibreNMSJob: exception managing DeviceGroup', [
-                    'group' => $groupName,
-                    'error' => $e->getMessage(),
+        // ── 3. Add or update the LibreNMS device entry ───────────────────
+        $libreDevice = null;
+        try {
+            $libreDevice = LibreDevice::find($hostname);
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                Log::info('SyncDeviceLibreNMSJob: device not found in LibreNMS (404)', [
+                    'hostname' => $hostname,
                 ]);
+            } else {
+                Log::error('SyncDeviceLibreNMSJob: unexpected HTTP error looking up device', [
+                    'hostname' => $hostname,
+                    'status'   => $e->getResponse()->getStatusCode(),
+                    'error'    => $e->getMessage(),
+                ]);
+                return;
             }
+        } catch (\Exception $e) {
+            Log::error('SyncDeviceLibreNMSJob: exception looking up device in LibreNMS', [
+                'hostname' => $hostname,
+                'error'    => $e->getMessage(),
+            ]);
+            return;
         }
-
-        // ── 4 & 5. Add or update the LibreNMS device entry ───────────────────
-        $libreDevice = LibreDevice::find($hostname);
 
         if (!isset($libreDevice->device_id)) {
             // ── 4. Device does not exist in LibreNMS — add it ─────────────────
@@ -307,7 +302,21 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
         // ── 5b. Sync location ─────────────────────────────────────────────────
         if (isset($libreLocation->id)) {
             // Re-fetch fresh copy of the LibreNMS device to get current location_id
-            $freshLibreDevice = LibreDevice::find($hostname);
+            $freshLibreDevice = null;
+            try {
+                $freshLibreDevice = LibreDevice::find($hostname);
+            } catch (\GuzzleHttp\Exception\ClientException $e) {
+                Log::warning('SyncDeviceLibreNMSJob: could not re-fetch device for location sync', [
+                    'hostname' => $hostname,
+                    'status'   => $e->getResponse()->getStatusCode(),
+                    'error'    => $e->getMessage(),
+                ]);
+            } catch (\Exception $e) {
+                Log::warning('SyncDeviceLibreNMSJob: exception re-fetching device for location sync', [
+                    'hostname' => $hostname,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
             if (isset($freshLibreDevice->device_id) && $freshLibreDevice->location_id != $libreLocation->id) {
                 Log::info('SyncDeviceLibreNMSJob: updating device location', [
                     'hostname'        => $hostname,
