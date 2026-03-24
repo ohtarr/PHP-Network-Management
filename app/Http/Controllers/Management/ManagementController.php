@@ -10,6 +10,8 @@ use App\Models\Device\Device;
 use App\Models\Mist\Site;
 use App\Models\Mist\Device as MistDevice;
 use App\Models\Device\Output;
+use App\Jobs\SyncDeviceDnsJob;
+use App\Jobs\SyncDeviceLibreNMSJob;
 use Illuminate\Support\Facades\Log;
 
 class ManagementController extends Controller
@@ -18,7 +20,7 @@ class ManagementController extends Controller
     
     public function __construct()
     {
-	    $this->middleware('auth:api');
+        $this->middleware('auth:api')->except(['syncNetboxDevice']);
     }
 
     public function addLog($status, $msg)
@@ -114,7 +116,7 @@ class ManagementController extends Controller
             [
                 'status'    =>  1,
                 'data'  =>  [
-                    'netboxbsite'    =>  $nbsite,
+                    'netboxsite'    =>  $nbsite,
                     'mistsite'  =>  $mistsite,
                     'devices'   =>  $devices,
                 ],
@@ -123,6 +125,51 @@ class ManagementController extends Controller
 
         ];
         return $return;
+    }
+
+    public function syncNetboxDevice(Request $request)
+    {
+        $model = $request->input('model');
+        if ($model !== 'device') {
+            return response()->json([
+                'status'  => 0,
+                'message' => "Webhook model '{$model}' is not 'device', ignoring.",
+            ], 200);
+        }
+
+        $netboxDeviceId = $request->input('data.id');
+        if (!$netboxDeviceId) {
+            return response()->json([
+                'status'  => 0,
+                'message' => 'No device ID found in webhook payload (data.id).',
+            ], 422);
+        }
+
+        $netboxDeviceId = (int) $netboxDeviceId;
+
+        Log::info('ManagementController@syncNetboxDevice: webhook received', [
+            'event'            => $request->input('event'),
+            'netbox_device_id' => $netboxDeviceId,
+            'name'             => $request->input('data.name'),
+        ]);
+
+        $device = Devices::find($netboxDeviceId);
+        if (!isset($device->id)) {
+            return response()->json([
+                'status'  => 0,
+                'message' => "Netbox device ID {$netboxDeviceId} not found.",
+            ], 404);
+        }
+
+        SyncDeviceDnsJob::dispatch($netboxDeviceId);
+        SyncDeviceLibreNMSJob::dispatch($netboxDeviceId);
+
+        return response()->json([
+            'status'           => 1,
+            'message'          => "SyncDeviceDnsJob and SyncDeviceLibreNMSJob dispatched for Netbox device ID {$netboxDeviceId}.",
+            'netbox_device_id' => $netboxDeviceId,
+            'name'             => $device->name ?? null,
+        ]);
     }
 
     public function searchOutputs(Request $request)
