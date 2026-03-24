@@ -30,13 +30,22 @@ class VerifyNetboxWebhook
             return response()->json(['error' => 'Missing X-Hook-Signature header.'], 403);
         }
 
-        // Netbox sends:  sha512=<hex digest>
-        if (!str_starts_with($signature, 'sha512=')) {
-            return response()->json(['error' => 'Invalid signature format.'], 403);
+        // Netbox may send either "sha512=<hex>" or a raw hex digest.
+        if (str_starts_with($signature, 'sha512=')) {
+            $receivedDigest = substr($signature, strlen('sha512='));
+        } else {
+            $receivedDigest = $signature;
         }
 
-        $receivedDigest = substr($signature, strlen('sha512='));
         $expectedDigest = hash_hmac('sha512', $request->getContent(), $secret);
+
+        // DEBUG: temporarily log signature details to diagnose mismatch
+        \Illuminate\Support\Facades\Log::debug('VerifyNetboxWebhook', [
+            'received'  => $receivedDigest,
+            'expected'  => $expectedDigest,
+            'match'     => hash_equals($expectedDigest, $receivedDigest),
+            'body_len'  => strlen($request->getContent()),
+        ]);
 
         if (!hash_equals($expectedDigest, $receivedDigest)) {
             return response()->json(['error' => 'Invalid webhook signature.'], 403);
