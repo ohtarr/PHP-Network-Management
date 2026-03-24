@@ -272,7 +272,11 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
         // ── 5a. Sync alerting / ignore flag ───────────────────────────────────
         $alertEnabled = isset($device->custom_fields->ALERT) && $device->custom_fields->ALERT === true;
 
-        if ($alertEnabled && $libreDevice->ignore == 1) {
+        // $libreDevice may have been freshly created and the API response may not
+        // include the 'ignore' field — fall back to null so comparisons are safe.
+        $currentIgnore = $libreDevice->ignore ?? null;
+
+        if ($alertEnabled && $currentIgnore == 1) {
             Log::info('SyncDeviceLibreNMSJob: enabling alerting', ['hostname' => $hostname]);
             try {
                 $libreDevice->enableAlerting();
@@ -282,7 +286,7 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
                     'error'    => $e->getMessage(),
                 ]);
             }
-        } elseif (!$alertEnabled && $libreDevice->ignore == 0) {
+        } elseif (!$alertEnabled && $currentIgnore == 0) {
             Log::info('SyncDeviceLibreNMSJob: disabling alerting', ['hostname' => $hostname]);
             try {
                 $libreDevice->disableAlerting();
@@ -295,7 +299,7 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
         } else {
             Log::info('SyncDeviceLibreNMSJob: alerting flag already correct', [
                 'hostname' => $hostname,
-                'ignore'   => $libreDevice->ignore,
+                'ignore'   => $currentIgnore,
             ]);
         }
 
