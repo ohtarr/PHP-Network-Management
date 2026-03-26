@@ -9,6 +9,7 @@ use App\Models\Netbox\IPAM\Roles;
 use App\Models\Netbox\IPAM\IpRanges;
 use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\DCIM\Locations;
+use App\Models\Netbox\DCIM\DeviceTypes;
 use App\Models\ServiceNow\Location;
 use IPv4\SubnetCalculator;
 use App\Models\Gizmo\Dhcp;
@@ -543,14 +544,27 @@ class Sites extends BaseModel
 
 		$variables = [
 			'SITE_CODE'		    =>	strtoupper($this->name),
-	        'CORP_WIFI_VLAN'   	=>  5,
-			'GUEST_WIFI_VLAN'   =>  13,
+			'DHCP_1'            =>  env('MIST_DHCP_1'),
+			'DHCP_2'            =>  env('MIST_DHCP_2'),
+			'DHCP_3'            =>  env('MIST_DHCP_3'),
+			'DNS_1'             =>  env('MIST_DNS_1'),
+			'DNS_2'             =>  env('MIST_DNS_2'),
+			'NTP_1'             =>  env('MIST_NTP_1'),
+			'NTP_2'             =>  env('MIST_NTP_2'),
+			'NTP_3'             =>  env('MIST_NTP_3'),
+			'PROBE_IP_1'        =>  env('MIST_PROBE_IP_1'),
+			'PROBE_IP_2'        =>  env('MIST_PROBE_IP_2'),
+			'DNS_SUFFIX_1'      =>  env('MIST_DNS_SUFFIX_1'),
+			'DNS_SUFFIX_2'      =>  env('MIST_DNS_SUFFIX_2'),
+			'TACACS_PLUS_1'     =>  env('MIST_TACACS_PLUS_1'),
+	        'CORP_WIFI_VLAN'   	=>  (int) env('MIST_CORP_WIFI_VLAN'),
+			'GUEST_WIFI_VLAN'   =>  (int) env('MIST_GUEST_WIFI_VLAN'),
    			'SITE_AGG_PREFIX'	=>	$supernet->network(),
 			'SITE_AGG_MASK'		=>	$supernet->length(),
-			'INT_WAN_INET_1'	=>	'ge-0/0/0',
-			'INT_WAN_INET_2'	=>	'ge-0/0/15',
-			'INT_WAN_KPN_1'		=>	'ge-0/0/14',
-			'INT_LAN_RANGE'		=>	'ge-0/0/1-13',
+			'INT_WAN_INET_1'	=>	env('MIST_INT_WAN_INET_1'),
+			'INT_WAN_INET_2'	=>	env('MIST_INT_WAN_INET_2'),
+			'INT_WAN_KPN_1'		=>	env('MIST_INT_WAN_KPN_1'),
+			'INT_LAN_RANGE'		=>	env('MIST_INT_LAN_RANGE'),
 		];
 
 		foreach($subnets as $vlan => $subnet)
@@ -573,6 +587,12 @@ class Sites extends BaseModel
 			throw new \Exception($msg);
 		}
 
+		$customVersions = DeviceTypes::generateMistCustomVersions();
+		if(!is_array($customVersions) || empty($customVersions))
+		{
+			$customVersions = [];
+		}
+
 		$mistsettings = [
 			'persist_config_on_device'  =>  1,
 			'switch_mgmt'   =>  [
@@ -582,16 +602,16 @@ class Sites extends BaseModel
 				'root_password' =>  env('MIST_LOCAL_ADMIN_PASSWORD'),
 				'app_usage'	=>	1,
 				'auto_signature_update' => [
-					'enable'		=>	false,
+					'enable'		=>	true,
 					'time_of_day'	=>	'02:00',
 					'day_of_week'	=>	'sun',
 				],
 			],
 			'auto_upgrade'  =>  [
-				'enabled'   =>  null,
+				'enabled'   =>  true,
 				'version'   =>  'beta',
 				'time_of_day'   =>  '02:00',
-				'custom_versions'	=>	[],
+				'custom_versions'	=>	$customVersions,
 				'day_of_week'   =>  'sun',
 			],
 			'rogue' => [
@@ -603,9 +623,16 @@ class Sites extends BaseModel
 					'0' => null,
 				],
 				'whitelisted_ssids' => [
-						'0' => 'KiewitWLan',
-						'1' => 'KiewitGuest',
-						'2' => 'KiewitTV',
+					'0' => env('MIST_WL_SSID_0'),
+					'1' => env('MIST_WL_SSID_1'),
+					'2' => env('MIST_WL_SSID_2'),
+					'3' => env('MIST_WL_SSID_3'),
+				],
+			],
+			'wids' => [
+				'repeated_auth_failures' => [
+					'threshold' => 4,
+					'duration'  => 60,
 				],
 			],
 		];

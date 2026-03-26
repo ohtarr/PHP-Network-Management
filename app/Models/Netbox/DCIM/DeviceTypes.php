@@ -15,4 +15,18 @@ class DeviceTypes extends BaseModel
     {
         return $this->model2;
     }
+
+    public static function generateMistCustomVersions()
+    {
+        $custom = [];
+        $types = static::where('cf_ADD_MIST_CUSTOM_VERSION', 'true')->get();
+        foreach($types as $type)
+        {
+            if(isset($type->default_platform->name) && $type->default_platform->name)
+            {
+                $custom[$type->model] = $type->default_platform->name;
+            }
+        }
+        return $custom;
+    }
 }
