@@ -10,6 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Device\Device;
 use Illuminate\Support\Facades\Log;
+use App\Models\Log\Log as DbLog;
 
 class ScanDeviceJob implements ShouldQueue
 {
@@ -35,8 +36,8 @@ class ScanDeviceJob implements ShouldQueue
      */
     public function handle()
     {
-        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'starting', 'device_id' => $this->device->id]);   // Log device to the log file.
+        DbLog::log("ScanDeviceJob starting for device ID {$this->device->id}.", true, self::class, 'handle');
         $this->device->scan();
-        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'complete', 'device_id' => $this->device->id]);   // Log device to the log file.
+        DbLog::log("ScanDeviceJob completed for device ID {$this->device->id}.", true, self::class, 'handle');
     }
 }

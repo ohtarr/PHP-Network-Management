@@ -12,6 +12,7 @@ use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\Interfaces;
 use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Gizmo\DNS\A;
+use App\Models\Log\Log as DbLog;
 
 class SyncDeviceDnsJob implements ShouldQueue
 {
@@ -55,11 +56,10 @@ class SyncDeviceDnsJob implements ShouldQueue
      */
     public function handle(): void
     {
-        Log::info('SyncDeviceDnsJob', [
-            'state'            => 'starting',
-            'event'            => $this->event,
-            'netbox_device_id' => $this->netboxDeviceId,
-        ]);
+        DbLog::log(
+            "SyncDeviceDnsJob starting for Netbox device ID {$this->netboxDeviceId} (event: {$this->event}).",
+            true, self::class, 'handle'
+        );
 
         if ($this->event === 'deleted') {
             $this->handleDeleted();
@@ -67,11 +67,10 @@ class SyncDeviceDnsJob implements ShouldQueue
             $this->handleUpsert();
         }
 
-        Log::info('SyncDeviceDnsJob', [
-            'state'            => 'complete',
-            'event'            => $this->event,
-            'netbox_device_id' => $this->netboxDeviceId,
-        ]);
+        DbLog::log(
+            "SyncDeviceDnsJob completed for Netbox device ID {$this->netboxDeviceId} (event: {$this->event}).",
+            true, self::class, 'handle'
+        );
     }
 
     /**

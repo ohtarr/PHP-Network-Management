@@ -10,6 +10,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\Device\Device;
 use Illuminate\Support\Facades\Log;
+use App\Models\Log\Log as DbLog;
 
 class DiscoverDeviceJob implements ShouldQueue
 {
@@ -42,8 +43,8 @@ class DiscoverDeviceJob implements ShouldQueue
         } else {
             "No ID found!  Cancelling Job!\n";
         }
-        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'starting', 'id' => $device->id]);   // Log device to the log file.
+        DbLog::log("DiscoverDeviceJob starting for device ID {$device->id}.", true, self::class, 'handle');
         $device->discover();
-        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'complete', 'id' => $device->id]);   // Log device to the log file.
+        DbLog::log("DiscoverDeviceJob completed for device ID {$device->id}.", true, self::class, 'handle');
     }
 }

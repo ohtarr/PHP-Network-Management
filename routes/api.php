@@ -88,3 +88,6 @@ Route::post('management/netbox/webhook/device', [App\Http\Controllers\Management
 Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsController::class, 'siteSubnetReport']);
 Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsController::class, 'getOrphanedDhcpScopes']);
 Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsController::class, 'getOpengearStatus']);
+
+Route::get('logs', [App\Http\Controllers\Log\LogController::class, 'index']);
+Route::get('logs/{id}', [App\Http\Controllers\Log\LogController::class, 'show']);

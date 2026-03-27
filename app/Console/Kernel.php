@@ -16,6 +16,10 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         // $schedule->command('inspire')->hourly();
+
+        // Prune old log entries daily at midnight.
+        // Retention period is controlled by LOG_RETENTION_DAYS in .env (default: 90 days).
+        $schedule->command('logs:prune')->dailyAt('00:00');
     }
 
     /**
