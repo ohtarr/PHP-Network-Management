@@ -27,11 +27,11 @@ class ManagementController extends Controller
     public function addLog($status, $msg)
     {
         $username = auth()->user()?->userPrincipalName;
-        $msg1 = debug_backtrace()[1]['function'] . ": " . $msg;
-        $msg2 = $username . " : " . $msg1;
+        $class = class_basename($this);
+        $msg1 = $class . ": " . debug_backtrace()[1]['function'] . ": " . $msg;
         $this->logs[] = [
             'status' => $status,
-            'msg'    => $msg2,
+            'msg'    => $msg,
         ];
 
         DbLog::log($msg1, $username, 'provisioning');

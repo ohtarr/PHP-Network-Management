@@ -21,7 +21,7 @@ return new class extends Migration
             $table->boolean('status')->nullable();
             $table->index('controller');
             $table->index('status');
-            $table->timestamps();
+            $table->timestamp('created_at')->useCurrent();
         });
     }
 

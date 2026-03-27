@@ -12,6 +12,9 @@ class Log extends Model
 
     protected $table = 'logs';
 
+    // Only track created_at — logs are immutable, no updated_at needed
+    const UPDATED_AT = null;
+
     protected $fillable = [
         'message',
         'username',
