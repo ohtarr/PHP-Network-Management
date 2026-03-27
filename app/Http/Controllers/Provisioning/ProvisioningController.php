@@ -24,6 +24,7 @@ use App\Models\Mist\NetworkTemplate;
 use App\Models\Mist\RfTemplate;
 use App\Models\Gizmo\Dhcp;
 use Illuminate\Support\Facades\Log;
+use App\Models\Log\Log as DbLog;
 
 class ProvisioningController extends Controller
 {
@@ -37,10 +38,21 @@ class ProvisioningController extends Controller
     public function addLog($status, $msg)
     {
         $this->logs[] = [
-            'status'    =>  $status,
-            'msg'       =>  $msg,
+            'status' => $status,
+            'msg'    => $msg,
         ];
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . debug_backtrace()[1]['function'] . ": " . $msg);
+
+        $caller   = debug_backtrace()[1]['function'];
+        $username = auth()->user()?->userPrincipalName ?? 'unauthenticated';
+
+        DbLog::log(
+            "{$username} : {$caller}: {$msg}",
+            (bool) $status,
+            self::class,
+            $caller,
+            [],
+            'provisioning'
+        );
     }
 
     public function getSnowLocations()

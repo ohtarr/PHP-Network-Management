@@ -55,13 +55,14 @@ class Log extends Model
      *
      * Usage:
      *   Log::log('Device synced successfully.', true, 'SyncDeviceDnsJob', 'handle');
-     *   Log::log('Failed to connect to device.', false, 'DiscoverDeviceJob', 'handle');
+     *   Log::log('Failed to connect.', false, 'DiscoverDeviceJob', 'handle', [], 'provisioning');
      *
      * @param  string       $message     Required log message.
      * @param  bool         $status      true = success, false = failure. Defaults to true.
      * @param  string|null  $controller  The class/controller name originating the log.
      * @param  string|null  $method      The method name originating the log.
      * @param  array        $context     Optional extra context for the file log only.
+     * @param  string|null  $channel     Optional log channel (e.g. 'provisioning'). Defaults to the default channel.
      * @return static
      */
     public static function log(
@@ -69,19 +70,22 @@ class Log extends Model
         bool $status = true,
         ?string $controller = null,
         ?string $method = null,
-        array $context = []
+        array $context = [],
+        ?string $channel = null
     ): static {
-        // Write to file log
+        // Write to file log (on the specified channel, or the default channel)
         $fileContext = array_merge([
             'controller' => $controller,
             'method'     => $method,
             'status'     => $status,
         ], $context);
 
+        $logger = $channel ? FileLog::channel($channel) : FileLog::getFacadeRoot();
+
         if ($status) {
-            FileLog::info($message, $fileContext);
+            $logger->info($message, $fileContext);
         } else {
-            FileLog::error($message, $fileContext);
+            $logger->error($message, $fileContext);
         }
 
         // Write to database log

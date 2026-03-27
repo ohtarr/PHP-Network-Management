@@ -388,6 +388,34 @@ class LogApiTest extends TestCase
         Log::log('Context test', true, 'TestController', 'testMethod', ['device_id' => 42]);
     }
 
+    /** @test */
+    public function log_helper_uses_specified_channel_for_file_log()
+    {
+        \Illuminate\Support\Facades\Log::shouldReceive('channel')
+            ->once()
+            ->with('provisioning')
+            ->andReturnSelf();
+
+        \Illuminate\Support\Facades\Log::shouldReceive('info')
+            ->once()
+            ->withArgs(fn($msg, $ctx) => $msg === 'Channel test' && $ctx['status'] === true);
+
+        Log::log('Channel test', true, 'TestController', 'testMethod', [], 'provisioning');
+    }
+
+    /** @test */
+    public function log_helper_with_channel_still_persists_to_database()
+    {
+        Log::log('Channel DB test', true, 'TestController', 'testMethod', [], 'provisioning');
+
+        $this->assertDatabaseHas('logs', [
+            'controller' => 'TestController',
+            'method'     => 'testMethod',
+            'message'    => 'Channel DB test',
+            'status'     => true,
+        ]);
+    }
+
     // -------------------------------------------------------------------------
     // Log::createEntry() helper
     // -------------------------------------------------------------------------
