@@ -26,14 +26,15 @@ class ManagementController extends Controller
 
     public function addLog($status, $msg)
     {
+        $username = auth()->user()?->userPrincipalName;
+        $msg1 = debug_backtrace()[1]['function'] . ": " . $msg;
+        $msg2 = $username . " : " . $msg1;
         $this->logs[] = [
             'status' => $status,
-            'msg'    => $msg,
+            'msg'    => $msg2,
         ];
 
-        $username = auth()->user()?->userPrincipalName;
-
-        DbLog::log($msg, $username, 'provisioning');
+        DbLog::log($msg1, $username, 'provisioning');
     }
 
     public function getNetboxSites()
