@@ -16,7 +16,7 @@ use App\Models\Mist\Site;
 use App\Models\Mist\Device;
 use App\Models\Gizmo\Dhcp;
 use \Carbon\Carbon;
-use Illuminate\Support\Facades\Log;
+use App\Models\Log\Log as DbLog;
 
 class DeprovisioningController extends Controller
 {
@@ -30,16 +30,18 @@ class DeprovisioningController extends Controller
     public function addLog($status, $msg)
     {
         $this->logs[] = [
-            'status'    =>  $status,
-            'msg'       =>  $msg,
+            'status' => $status,
+            'msg'    => $msg,
         ];
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . debug_backtrace()[1]['function'] . ": " . $msg);
+
+        $username = auth()->user()?->userPrincipalName;
+
+        DbLog::log($msg, $username, 'provisioning');
     }
 
     public function getSnowLocations($days = 90)
     {
         $netboxsites = Sites::all();
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $locs = Location::where('companyISNOTEMPTY')->where('u_network_mob_dateISNOTEMPTY')->where('u_network_demob_date', '>=', Carbon::now()->subDays($days)->toDateString())->get();
         if(!$locs)
@@ -79,7 +81,6 @@ class DeprovisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
 
         $mistsite = Site::findByName($sitecode);
@@ -115,7 +116,6 @@ class DeprovisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
 
         $mistsite = Site::findByName($sitecode);
@@ -165,7 +165,6 @@ class DeprovisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
 
         $deletescope = Dhcp::find($scope);
@@ -202,7 +201,6 @@ class DeprovisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
 
         $netboxsite = Sites::where('name__ic',$sitecode)->first();
@@ -257,7 +255,6 @@ class DeprovisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
 
         $netboxsite = Sites::where('name__ic',$sitecode)->first();

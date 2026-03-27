@@ -23,7 +23,6 @@ use App\Models\Mist\GatewayTemplate;
 use App\Models\Mist\NetworkTemplate;
 use App\Models\Mist\RfTemplate;
 use App\Models\Gizmo\Dhcp;
-use Illuminate\Support\Facades\Log;
 use App\Models\Log\Log as DbLog;
 
 class ProvisioningController extends Controller
@@ -42,22 +41,13 @@ class ProvisioningController extends Controller
             'msg'    => $msg,
         ];
 
-        $caller   = debug_backtrace()[1]['function'];
-        $username = auth()->user()?->userPrincipalName ?? 'unauthenticated';
+        $username = auth()->user()?->userPrincipalName;
 
-        DbLog::log(
-            "{$username} : {$caller}: {$msg}",
-            (bool) $status,
-            self::class,
-            $caller,
-            [],
-            'provisioning'
-        );
+        DbLog::log($msg, $username, 'provisioning');
     }
 
     public function getSnowLocations()
     {
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $locs = Location::where('companyISNOTEMPTY')->where('u_network_demob_dateISEMPTY')->get();
         if(!$locs)
@@ -86,7 +76,6 @@ class ProvisioningController extends Controller
 
     public function getSnowLocation($sitecode)
     {
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $loc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->get();
         if($loc)
         {
@@ -115,10 +104,6 @@ class ProvisioningController extends Controller
 		if ($user->cant('provision-netbox-sites')) {
 			abort(401, 'You are not authorized');
         }
-        $logcontext = [
-            'sitecode'  => $sitecode,
-        ];
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__, $logcontext);
         $totalstatus = 1;
         //Attempt to get existing snow location.
         $snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
@@ -340,7 +325,6 @@ class ProvisioningController extends Controller
 
     public function getDhcpScopes($sitecode)
     {
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $site = Sites::where('name__ic', $sitecode)->first();
         if(!isset($site->id))
         {
@@ -356,7 +340,6 @@ class ProvisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $site = Sites::where('name__ic', $sitecode)->first();
         if(!isset($site->id))
         {
@@ -462,7 +445,6 @@ class ProvisioningController extends Controller
         $sitecode = strtoupper($sitecode);
         $submitted = $request->collect();
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $netboxsite = Sites::where('name__ie', $sitecode)->first();
         if(isset($netboxsite->id))
         {
@@ -595,7 +577,6 @@ class ProvisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $newdevices = [];
         $site = Sites::where('name__ic',$sitecode)->first();
@@ -842,7 +823,6 @@ class ProvisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        Log::channel('provisioning')->info(auth()->user()->userPrincipalName . " : " . __FUNCTION__);
         $totalstatus = 1;
         $netboxsite = Sites::where('name__ic',$sitecode)->first();
         if(!isset($netboxsite->id))

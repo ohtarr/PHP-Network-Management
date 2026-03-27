@@ -57,8 +57,7 @@ class SyncDeviceDnsJob implements ShouldQueue
     public function handle(): void
     {
         DbLog::log(
-            "SyncDeviceDnsJob starting for Netbox device ID {$this->netboxDeviceId} (event: {$this->event}).",
-            true, self::class, 'handle'
+            "SyncDeviceDnsJob starting for Netbox device ID {$this->netboxDeviceId} (event: {$this->event})."
         );
 
         if ($this->event === 'deleted') {
@@ -68,8 +67,7 @@ class SyncDeviceDnsJob implements ShouldQueue
         }
 
         DbLog::log(
-            "SyncDeviceDnsJob completed for Netbox device ID {$this->netboxDeviceId} (event: {$this->event}).",
-            true, self::class, 'handle'
+            "SyncDeviceDnsJob completed for Netbox device ID {$this->netboxDeviceId} (event: {$this->event})."
         );
     }
 

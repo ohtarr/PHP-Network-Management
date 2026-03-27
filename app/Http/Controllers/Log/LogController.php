@@ -19,8 +19,7 @@ class LogController extends Controller
      * Optional query parameters:
      *   ?hours=24              — return logs from the last N hours
      *   ?days=7                — return logs from the last N days
-     *   ?controller=Foo        — filter by controller name (partial, case-insensitive)
-     *   ?status=1              — filter by status (1 = success, 0 = failure)
+     *   ?username=jsmith       — filter by username (partial, case-insensitive)
      *   ?per_page=25           — number of results per page (default: 25)
      *
      * @param  \Illuminate\Http\Request  $request
@@ -37,14 +36,9 @@ class LogController extends Controller
             $query->where('created_at', '>=', now()->subDays((int) $request->days));
         }
 
-        // Filter by controller (partial, case-insensitive)
-        if ($request->has('controller')) {
-            $query->where('controller', 'like', '%' . $request->controller . '%');
-        }
-
-        // Filter by status (boolean: 1 = success, 0 = failure)
-        if ($request->has('status')) {
-            $query->where('status', (bool) $request->status);
+        // Filter by username (partial, case-insensitive)
+        if ($request->has('username')) {
+            $query->where('username', 'like', '%' . $request->username . '%');
         }
 
         $perPage = (int) $request->get('per_page', 25);

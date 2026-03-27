@@ -13,6 +13,7 @@ use App\Models\Device\Output;
 use App\Jobs\SyncDeviceDnsJob;
 use App\Jobs\SyncDeviceLibreNMSJob;
 use Illuminate\Support\Facades\Log;
+use App\Models\Log\Log as DbLog;
 
 class ManagementController extends Controller
 {
@@ -26,12 +27,13 @@ class ManagementController extends Controller
     public function addLog($status, $msg)
     {
         $this->logs[] = [
-            'status'    =>  $status,
-            'msg'       =>  $msg,
+            'status' => $status,
+            'msg'    => $msg,
         ];
-        $user = auth()->user();
-        $username = $user ? $user->userPrincipalName : 'unauthenticated';
-        Log::channel('provisioning')->info($username . " : " . debug_backtrace()[1]['function'] . ": " . $msg);
+
+        $username = auth()->user()?->userPrincipalName;
+
+        DbLog::log($msg, $username, 'provisioning');
     }
 
     public function getNetboxSites()

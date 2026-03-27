@@ -16,29 +16,6 @@ class LogFactory extends Factory
      */
     public function definition(): array
     {
-        $controllers = [
-            'ManagementController',
-            'ProvisioningController',
-            'DeprovisioningController',
-            'ValidationController',
-            'SyncDeviceDnsJob',
-            'DiscoverDeviceJob',
-            'SyncDeviceLibreNMSJob',
-        ];
-
-        $methods = [
-            'handle',
-            'index',
-            'store',
-            'show',
-            'update',
-            'destroy',
-            'getSiteSummary',
-            'syncNetboxDevice',
-            'deployNetboxSite',
-            'validateNetboxSite',
-        ];
-
         $messages = [
             'Successfully retrieved NETBOX SITE.',
             'Successfully deployed Mist site.',
@@ -52,27 +29,32 @@ class LogFactory extends Factory
             'Job completed successfully.',
         ];
 
+        $usernames = [
+            'jsmith@kiewit.com',
+            'bjones@kiewit.com',
+            'awilliams@kiewit.com',
+            null, // system/queue processes
+        ];
+
         return [
-            'controller' => $this->faker->randomElement($controllers),
-            'method'     => $this->faker->randomElement($methods),
-            'message'    => $this->faker->randomElement($messages),
-            'status'     => $this->faker->boolean(80), // 80% success rate
+            'message'  => $this->faker->randomElement($messages),
+            'username' => $this->faker->randomElement($usernames),
         ];
     }
 
     /**
-     * Indicate a successful log entry.
+     * Indicate a log entry from an authenticated user.
      */
-    public function success(): static
+    public function withUser(string $username = 'jsmith@kiewit.com'): static
     {
-        return $this->state(['status' => true]);
+        return $this->state(['username' => $username]);
     }
 
     /**
-     * Indicate a failed log entry.
+     * Indicate a system/queue log entry (no authenticated user).
      */
-    public function failure(): static
+    public function system(): static
     {
-        return $this->state(['status' => false]);
+        return $this->state(['username' => null]);
     }
 }

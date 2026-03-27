@@ -12,14 +12,8 @@ class LogApiTest extends TestCase
 {
     use RefreshDatabase;
 
-    /**
-     * Authenticated user for all tests.
-     */
     protected User $user;
 
-    /**
-     * Set up an authenticated user before each test.
-     */
     protected function setUp(): void
     {
         parent::setUp();
@@ -30,9 +24,6 @@ class LogApiTest extends TestCase
     // Helper
     // -------------------------------------------------------------------------
 
-    /**
-     * Make an authenticated GET request to the API as the test user.
-     */
     private function apiGet(string $uri, array $params = [])
     {
         $url = $params ? $uri . '?' . http_build_query($params) : $uri;
@@ -46,8 +37,7 @@ class LogApiTest extends TestCase
     /** @test */
     public function unauthenticated_requests_are_rejected()
     {
-        $response = $this->getJson('/api/logs');
-        $response->assertStatus(401);
+        $this->getJson('/api/logs')->assertStatus(401);
     }
 
     /** @test */
@@ -55,19 +45,17 @@ class LogApiTest extends TestCase
     {
         Log::factory()->count(5)->create();
 
-        $response = $this->apiGet('/api/logs');
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(5, 'data');
+        $this->apiGet('/api/logs')
+             ->assertStatus(200)
+             ->assertJsonCount(5, 'data');
     }
 
     /** @test */
     public function index_returns_empty_array_when_no_logs_exist()
     {
-        $response = $this->apiGet('/api/logs');
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(0, 'data');
+        $this->apiGet('/api/logs')
+             ->assertStatus(200)
+             ->assertJsonCount(0, 'data');
     }
 
     /** @test */
@@ -77,8 +65,8 @@ class LogApiTest extends TestCase
         $new = Log::factory()->create(['created_at' => Carbon::now()]);
 
         $response = $this->apiGet('/api/logs');
-
         $response->assertStatus(200);
+
         $ids = collect($response->json('data'))->pluck('id')->toArray();
         $this->assertEquals([$new->id, $old->id], $ids);
     }
@@ -87,21 +75,16 @@ class LogApiTest extends TestCase
     public function index_response_contains_expected_fields()
     {
         Log::factory()->create([
-            'controller' => 'ManagementController',
-            'method'     => 'getSiteSummary',
-            'message'    => 'Successfully retrieved NETBOX SITE.',
-            'status'     => true,
+            'message'  => 'Successfully deployed Mist site.',
+            'username' => 'jsmith@kiewit.com',
         ]);
 
-        $response = $this->apiGet('/api/logs');
-
-        $response->assertStatus(200)
-                 ->assertJsonFragment([
-                     'controller' => 'ManagementController',
-                     'method'     => 'getSiteSummary',
-                     'message'    => 'Successfully retrieved NETBOX SITE.',
-                     'status'     => true,
-                 ]);
+        $this->apiGet('/api/logs')
+             ->assertStatus(200)
+             ->assertJsonFragment([
+                 'message'  => 'Successfully deployed Mist site.',
+                 'username' => 'jsmith@kiewit.com',
+             ]);
     }
 
     /** @test */
@@ -109,10 +92,9 @@ class LogApiTest extends TestCase
     {
         Log::factory()->count(3)->create();
 
-        $response = $this->apiGet('/api/logs');
-
-        $response->assertStatus(200)
-                 ->assertJsonStructure(['data', 'links', 'current_page', 'per_page', 'total']);
+        $this->apiGet('/api/logs')
+             ->assertStatus(200)
+             ->assertJsonStructure(['data', 'links', 'current_page', 'per_page', 'total']);
     }
 
     /** @test */
@@ -120,12 +102,11 @@ class LogApiTest extends TestCase
     {
         Log::factory()->count(10)->create();
 
-        $response = $this->apiGet('/api/logs', ['per_page' => 3]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(3, 'data')
-                 ->assertJsonPath('per_page', 3)
-                 ->assertJsonPath('total', 10);
+        $this->apiGet('/api/logs', ['per_page' => 3])
+             ->assertStatus(200)
+             ->assertJsonCount(3, 'data')
+             ->assertJsonPath('per_page', 3)
+             ->assertJsonPath('total', 10);
     }
 
     // -------------------------------------------------------------------------
@@ -138,12 +119,11 @@ class LogApiTest extends TestCase
         $recent = Log::factory()->create(['created_at' => Carbon::now()->subHours(2)]);
         $old    = Log::factory()->create(['created_at' => Carbon::now()->subHours(10)]);
 
-        $response = $this->apiGet('/api/logs', ['hours' => 6]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(1, 'data')
-                 ->assertJsonFragment(['id' => $recent->id])
-                 ->assertJsonMissing(['id' => $old->id]);
+        $this->apiGet('/api/logs', ['hours' => 6])
+             ->assertStatus(200)
+             ->assertJsonCount(1, 'data')
+             ->assertJsonFragment(['id' => $recent->id])
+             ->assertJsonMissing(['id' => $old->id]);
     }
 
     /** @test */
@@ -151,10 +131,9 @@ class LogApiTest extends TestCase
     {
         Log::factory()->create(['created_at' => Carbon::now()->subHours(48)]);
 
-        $response = $this->apiGet('/api/logs', ['hours' => 1]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(0, 'data');
+        $this->apiGet('/api/logs', ['hours' => 1])
+             ->assertStatus(200)
+             ->assertJsonCount(0, 'data');
     }
 
     /** @test */
@@ -162,10 +141,9 @@ class LogApiTest extends TestCase
     {
         $boundary = Log::factory()->create(['created_at' => Carbon::now()->subHours(24)->addSecond()]);
 
-        $response = $this->apiGet('/api/logs', ['hours' => 24]);
-
-        $response->assertStatus(200)
-                 ->assertJsonFragment(['id' => $boundary->id]);
+        $this->apiGet('/api/logs', ['hours' => 24])
+             ->assertStatus(200)
+             ->assertJsonFragment(['id' => $boundary->id]);
     }
 
     // -------------------------------------------------------------------------
@@ -178,12 +156,11 @@ class LogApiTest extends TestCase
         $recent = Log::factory()->create(['created_at' => Carbon::now()->subDays(2)]);
         $old    = Log::factory()->create(['created_at' => Carbon::now()->subDays(10)]);
 
-        $response = $this->apiGet('/api/logs', ['days' => 7]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(1, 'data')
-                 ->assertJsonFragment(['id' => $recent->id])
-                 ->assertJsonMissing(['id' => $old->id]);
+        $this->apiGet('/api/logs', ['days' => 7])
+             ->assertStatus(200)
+             ->assertJsonCount(1, 'data')
+             ->assertJsonFragment(['id' => $recent->id])
+             ->assertJsonMissing(['id' => $old->id]);
     }
 
     /** @test */
@@ -191,10 +168,9 @@ class LogApiTest extends TestCase
     {
         Log::factory()->create(['created_at' => Carbon::now()->subDays(30)]);
 
-        $response = $this->apiGet('/api/logs', ['days' => 7]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(0, 'data');
+        $this->apiGet('/api/logs', ['days' => 7])
+             ->assertStatus(200)
+             ->assertJsonCount(0, 'data');
     }
 
     /** @test */
@@ -203,89 +179,50 @@ class LogApiTest extends TestCase
         $recent = Log::factory()->create(['created_at' => Carbon::now()->subHours(3)]);
         $mid    = Log::factory()->create(['created_at' => Carbon::now()->subDays(2)]);
 
-        $response = $this->apiGet('/api/logs', ['hours' => 6, 'days' => 7]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(1, 'data')
-                 ->assertJsonFragment(['id' => $recent->id])
-                 ->assertJsonMissing(['id' => $mid->id]);
+        $this->apiGet('/api/logs', ['hours' => 6, 'days' => 7])
+             ->assertStatus(200)
+             ->assertJsonCount(1, 'data')
+             ->assertJsonFragment(['id' => $recent->id])
+             ->assertJsonMissing(['id' => $mid->id]);
     }
 
     // -------------------------------------------------------------------------
-    // GET /api/logs?controller=X
+    // GET /api/logs?username=X
     // -------------------------------------------------------------------------
 
     /** @test */
-    public function index_filters_logs_by_controller()
+    public function index_filters_logs_by_username()
     {
-        $match   = Log::factory()->create(['controller' => 'ProvisioningController']);
-        $nomatch = Log::factory()->create(['controller' => 'ManagementController']);
+        $match   = Log::factory()->create(['username' => 'jsmith@kiewit.com']);
+        $nomatch = Log::factory()->create(['username' => 'bjones@kiewit.com']);
 
-        $response = $this->apiGet('/api/logs', ['controller' => 'Provisioning']);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(1, 'data')
-                 ->assertJsonFragment(['id' => $match->id])
-                 ->assertJsonMissing(['id' => $nomatch->id]);
+        $this->apiGet('/api/logs', ['username' => 'jsmith'])
+             ->assertStatus(200)
+             ->assertJsonCount(1, 'data')
+             ->assertJsonFragment(['id' => $match->id])
+             ->assertJsonMissing(['id' => $nomatch->id]);
     }
 
     /** @test */
-    public function index_controller_filter_is_case_insensitive_partial_match()
+    public function index_username_filter_is_case_insensitive_partial_match()
     {
-        $match = Log::factory()->create(['controller' => 'ProvisioningController']);
+        $match = Log::factory()->create(['username' => 'jsmith@kiewit.com']);
 
-        $response = $this->apiGet('/api/logs', ['controller' => 'provisioning']);
-
-        $response->assertStatus(200)
-                 ->assertJsonFragment(['id' => $match->id]);
-    }
-
-    // -------------------------------------------------------------------------
-    // GET /api/logs?status=0|1
-    // -------------------------------------------------------------------------
-
-    /** @test */
-    public function index_filters_logs_by_status_success()
-    {
-        $success = Log::factory()->create(['status' => true]);
-        $failure = Log::factory()->create(['status' => false]);
-
-        $response = $this->apiGet('/api/logs', ['status' => 1]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(1, 'data')
-                 ->assertJsonFragment(['id' => $success->id])
-                 ->assertJsonMissing(['id' => $failure->id]);
+        $this->apiGet('/api/logs', ['username' => 'JSMITH'])
+             ->assertStatus(200)
+             ->assertJsonFragment(['id' => $match->id]);
     }
 
     /** @test */
-    public function index_filters_logs_by_status_failure()
+    public function index_username_filter_returns_null_username_entries_when_not_filtered()
     {
-        $success = Log::factory()->create(['status' => true]);
-        $failure = Log::factory()->create(['status' => false]);
+        $system = Log::factory()->create(['username' => null]);
+        $user   = Log::factory()->create(['username' => 'jsmith@kiewit.com']);
 
-        $response = $this->apiGet('/api/logs', ['status' => 0]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(1, 'data')
-                 ->assertJsonFragment(['id' => $failure->id])
-                 ->assertJsonMissing(['id' => $success->id]);
-    }
-
-    /** @test */
-    public function index_can_combine_controller_and_status_filters()
-    {
-        $match   = Log::factory()->create(['controller' => 'SyncDeviceDnsJob', 'status' => false]);
-        $wrong1  = Log::factory()->create(['controller' => 'SyncDeviceDnsJob', 'status' => true]);
-        $wrong2  = Log::factory()->create(['controller' => 'ManagementController', 'status' => false]);
-
-        $response = $this->apiGet('/api/logs', ['controller' => 'SyncDeviceDnsJob', 'status' => 0]);
-
-        $response->assertStatus(200)
-                 ->assertJsonCount(1, 'data')
-                 ->assertJsonFragment(['id' => $match->id])
-                 ->assertJsonMissing(['id' => $wrong1->id])
-                 ->assertJsonMissing(['id' => $wrong2->id]);
+        // No filter — both should appear
+        $this->apiGet('/api/logs')
+             ->assertStatus(200)
+             ->assertJsonCount(2, 'data');
     }
 
     // -------------------------------------------------------------------------
@@ -296,40 +233,30 @@ class LogApiTest extends TestCase
     public function show_returns_a_single_log_entry()
     {
         $log = Log::factory()->create([
-            'controller' => 'ProvisioningController',
-            'method'     => 'deployMistSite',
-            'message'    => 'Successfully deployed Mist site.',
-            'status'     => true,
+            'message'  => 'Successfully deployed Mist site.',
+            'username' => 'jsmith@kiewit.com',
         ]);
 
-        $response = $this->apiGet("/api/logs/{$log->id}");
-
-        $response->assertStatus(200)
-                 ->assertJsonFragment([
-                     'id'         => $log->id,
-                     'controller' => 'ProvisioningController',
-                     'method'     => 'deployMistSite',
-                     'message'    => 'Successfully deployed Mist site.',
-                     'status'     => true,
-                 ]);
+        $this->apiGet("/api/logs/{$log->id}")
+             ->assertStatus(200)
+             ->assertJsonFragment([
+                 'id'       => $log->id,
+                 'message'  => 'Successfully deployed Mist site.',
+                 'username' => 'jsmith@kiewit.com',
+             ]);
     }
 
     /** @test */
     public function show_returns_404_for_nonexistent_log()
     {
-        $response = $this->apiGet('/api/logs/99999');
-
-        $response->assertStatus(404);
+        $this->apiGet('/api/logs/99999')->assertStatus(404);
     }
 
     /** @test */
     public function show_unauthenticated_request_is_rejected()
     {
         $log = Log::factory()->create();
-
-        $response = $this->getJson("/api/logs/{$log->id}");
-
-        $response->assertStatus(401);
+        $this->getJson("/api/logs/{$log->id}")->assertStatus(401);
     }
 
     // -------------------------------------------------------------------------
@@ -339,53 +266,42 @@ class LogApiTest extends TestCase
     /** @test */
     public function log_helper_persists_to_database()
     {
-        Log::log('Dual write test message', true, 'TestController', 'testMethod');
+        Log::log('Dual write test message', 'jsmith@kiewit.com');
 
         $this->assertDatabaseHas('logs', [
-            'controller' => 'TestController',
-            'method'     => 'testMethod',
-            'message'    => 'Dual write test message',
-            'status'     => true,
+            'message'  => 'Dual write test message',
+            'username' => 'jsmith@kiewit.com',
         ]);
     }
 
     /** @test */
-    public function log_helper_writes_to_file_log_on_success()
+    public function log_helper_persists_with_null_username()
     {
-        \Illuminate\Support\Facades\Log::shouldReceive('info')
-            ->once()
-            ->withArgs(fn($msg, $ctx) => $msg === 'Success message' && $ctx['status'] === true);
+        Log::log('System job message');
 
-        Log::log('Success message', true, 'TestController', 'testMethod');
+        $this->assertDatabaseHas('logs', [
+            'message'  => 'System job message',
+            'username' => null,
+        ]);
     }
 
     /** @test */
-    public function log_helper_writes_error_to_file_log_on_failure()
+    public function log_helper_writes_to_file_log()
     {
-        \Illuminate\Support\Facades\Log::shouldReceive('error')
+        \Illuminate\Support\Facades\Log::shouldReceive('info')
             ->once()
-            ->withArgs(fn($msg, $ctx) => $msg === 'Failure message' && $ctx['status'] === false);
+            ->withArgs(fn($msg, $ctx) => $msg === 'File log test' && $ctx['username'] === 'jsmith@kiewit.com');
 
-        Log::log('Failure message', false, 'TestController', 'testMethod');
+        Log::log('File log test', 'jsmith@kiewit.com');
     }
 
     /** @test */
     public function log_helper_returns_a_log_model_instance()
     {
-        $result = Log::log('Returns model test', true, 'TestController', 'testMethod');
+        $result = Log::log('Returns model test', 'jsmith@kiewit.com');
 
         $this->assertInstanceOf(Log::class, $result);
         $this->assertNotNull($result->id);
-    }
-
-    /** @test */
-    public function log_helper_passes_extra_context_to_file_log()
-    {
-        \Illuminate\Support\Facades\Log::shouldReceive('info')
-            ->once()
-            ->withArgs(fn($msg, $ctx) => isset($ctx['device_id']) && $ctx['device_id'] === 42);
-
-        Log::log('Context test', true, 'TestController', 'testMethod', ['device_id' => 42]);
     }
 
     /** @test */
@@ -398,21 +314,19 @@ class LogApiTest extends TestCase
 
         \Illuminate\Support\Facades\Log::shouldReceive('info')
             ->once()
-            ->withArgs(fn($msg, $ctx) => $msg === 'Channel test' && $ctx['status'] === true);
+            ->withArgs(fn($msg, $ctx) => $msg === 'Channel test' && $ctx['username'] === 'jsmith@kiewit.com');
 
-        Log::log('Channel test', true, 'TestController', 'testMethod', [], 'provisioning');
+        Log::log('Channel test', 'jsmith@kiewit.com', 'provisioning');
     }
 
     /** @test */
     public function log_helper_with_channel_still_persists_to_database()
     {
-        Log::log('Channel DB test', true, 'TestController', 'testMethod', [], 'provisioning');
+        Log::log('Channel DB test', 'jsmith@kiewit.com', 'provisioning');
 
         $this->assertDatabaseHas('logs', [
-            'controller' => 'TestController',
-            'method'     => 'testMethod',
-            'message'    => 'Channel DB test',
-            'status'     => true,
+            'message'  => 'Channel DB test',
+            'username' => 'jsmith@kiewit.com',
         ]);
     }
 
@@ -423,49 +337,29 @@ class LogApiTest extends TestCase
     /** @test */
     public function create_entry_helper_persists_a_log_record()
     {
-        $log = Log::createEntry(
-            'Test message',
-            true,
-            'TestController',
-            'testMethod'
-        );
+        $log = Log::createEntry('Test message', 'jsmith@kiewit.com');
 
         $this->assertDatabaseHas('logs', [
-            'id'         => $log->id,
-            'controller' => 'TestController',
-            'method'     => 'testMethod',
-            'message'    => 'Test message',
-            'status'     => true,
+            'id'       => $log->id,
+            'message'  => 'Test message',
+            'username' => 'jsmith@kiewit.com',
         ]);
     }
 
     /** @test */
-    public function create_entry_helper_defaults_status_to_true()
+    public function create_entry_helper_defaults_username_to_null()
     {
-        $log = Log::createEntry('Default status test');
+        $log = Log::createEntry('No username test');
 
-        $this->assertTrue($log->status);
+        $this->assertNull($log->username);
     }
 
     /** @test */
-    public function create_entry_helper_allows_null_controller_and_method()
+    public function create_entry_helper_allows_null_username()
     {
-        $log = Log::createEntry('No controller or method');
+        $log = Log::createEntry('No username', null);
 
-        $this->assertNull($log->controller);
-        $this->assertNull($log->method);
-        $this->assertDatabaseHas('logs', ['id' => $log->id, 'message' => 'No controller or method']);
-    }
-
-    /** @test */
-    public function create_entry_helper_casts_status_as_boolean()
-    {
-        $success = Log::createEntry('Success', true);
-        $failure = Log::createEntry('Failure', false);
-
-        $this->assertIsBool($success->status);
-        $this->assertIsBool($failure->status);
-        $this->assertTrue($success->status);
-        $this->assertFalse($failure->status);
+        $this->assertNull($log->username);
+        $this->assertDatabaseHas('logs', ['id' => $log->id, 'message' => 'No username']);
     }
 }
