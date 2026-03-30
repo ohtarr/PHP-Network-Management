@@ -65,7 +65,7 @@ class ManagementController extends Controller
             unset($vcmaster);
             unset($mistdevice);
             unset($devicecustom);
-            unset($mistdevicesite);
+            $mistdevicesite = null;
             $nbdevice->custom['mistdevice'] = null;
             if(!$nbdevice->serial)
             {
