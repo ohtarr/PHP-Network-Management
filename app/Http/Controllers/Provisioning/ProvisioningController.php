@@ -633,12 +633,6 @@ class ProvisioningController extends Controller
             {
                 $isopengear = true;
             }
-            if(!isset($device['serial']))
-            {
-                $this->addLog(0, "Device SERIAL is missing, skipping.");
-                $totalstatus = 0;
-                continue;
-            }
             if(!isset($device['model']))
             {
                 $this->addLog(0, "Device MODEL is missing, skipping.");
@@ -653,12 +647,15 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
-            $serialexists = Devices::where('serial__ie',$device['serial'])->first();
-            if(isset($serialexists->id))
+            if(!isset($device['serial']))
             {
-                $this->addLog(0, "Device with serial {$serialexists->serial} already exists, skipping.");
-                $totalstatus = 0;
-                continue;
+                $serialexists = Devices::where('serial__ie',$device['serial'])->first();
+                if(isset($serialexists->id))
+                {
+                    $this->addLog(0, "Device with serial {$serialexists->serial} already exists, skipping.");
+                    $totalstatus = 0;
+                    continue;
+                }
             }
             $modelexists = $models->where('model', $device['model'])->first();
             if(!isset($modelexists->id))
@@ -667,17 +664,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
-
-            $rolecode = substr(strtolower($device['name']), 8, 3);
-            foreach(Devices::getRoleMapping() as $key => $value)
-			{
-				if($rolecode == $key)
-				{
-					$roleid = $value;
-					break;
-				}
-			}
-
+            $roleid = $modelexists->DEFAULT_ROLE->id;
             if(!isset($roleid))
             {
                 $this->addLog(0, "Unable to determine ROLE for device type {$rolecode}, skipping.");
@@ -720,8 +707,11 @@ class ProvisioningController extends Controller
                 'device_type'   =>  $modelexists->id,
                 'site'			=>	$site->id,
                 'location'		=>	$location->id,
-                'serial'        =>  trim(strtoupper($device['serial'])),
             ];
+            if(!isset($device['serial']))
+            {
+                $params['serial'] = trim(strtoupper($device['serial']));
+            }
             if(isset($virtualchassis->id))
             {
                 $params['virtual_chassis'] = $virtualchassis->id;

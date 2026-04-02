@@ -19,26 +19,6 @@ class Devices extends BaseModel
     protected $app = "dcim";
     protected $model = "devices";
 
-    public static function getRoleMapping()
-    {
-        return [
-			'rwa'	=>	6,
-			'swa'	=>	1,
-			'swd'	=>	3,
-			'per'	=>	5,
-			'pcr'	=>	5,
-			'rrr'	=>	6,
-			'rfw'	=>	7,
-            'fwc'   =>  7,
-			'agg'	=>	2,
-			'wlc'	=>	17,
-			'wbr'	=>	8,
-            'wap'   =>  20,
-            'owa'   =>  20,
-            'oob'   =>  11,
-		];
-    }
-
     public function location()
     {
         return Locations::find($this->location->id);
