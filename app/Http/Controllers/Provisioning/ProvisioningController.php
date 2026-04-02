@@ -647,7 +647,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
-            if(!isset($device['serial']))
+            if(isset($device['serial']))
             {
                 $serialexists = Devices::where('serial__ie',$device['serial'])->first();
                 if(isset($serialexists->id))
