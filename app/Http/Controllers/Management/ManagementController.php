@@ -175,6 +175,7 @@ class ManagementController extends Controller
 
         SyncDeviceDnsJob::dispatch($netboxDeviceId, $event, $deviceName);
         SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName);
+        SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName)->delay(1800);
 
         return response()->json([
             'status'           => 1,
