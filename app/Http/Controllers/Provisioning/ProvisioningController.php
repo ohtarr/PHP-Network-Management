@@ -664,7 +664,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 continue;
             }
-            $roleid = $modelexists->DEFAULT_ROLE->id;
+            $roleid = $modelexists->custom_fields->DEFAULT_ROLE->id;
             if(!isset($roleid))
             {
                 $this->addLog(0, "Unable to determine ROLE for device type {$rolecode}, skipping.");
