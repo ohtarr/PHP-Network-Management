@@ -8,7 +8,6 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Log;
-use App\Models\Log\Log as DbLog;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\LibreNMS\Device as LibreDevice;
 use App\Models\LibreNMS\Location as LibreLocation;
@@ -68,17 +67,11 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
      */
     public function handle(): void
     {
-        DbLog::log(
-            "SyncDeviceLibreNMSJob starting for Netbox device ID {$this->netboxDeviceId} (event: {$this->event}).",
-            true, self::class, 'handle'
-        );
+        Log::info("SyncDeviceLibreNMSJob starting for Netbox device ID {$this->netboxDeviceId} (event: {$this->event}).");
 
         if ($this->event === 'deleted') {
             $this->handleDeleted();
-            DbLog::log(
-                "SyncDeviceLibreNMSJob completed (deleted) for Netbox device ID {$this->netboxDeviceId}.",
-                true, self::class, 'handle'
-            );
+            Log::info("SyncDeviceLibreNMSJob completed (deleted) for Netbox device ID {$this->netboxDeviceId}.");
             return;
         }
 
@@ -349,10 +342,7 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
             }
         }
 
-        DbLog::log(
-            "SyncDeviceLibreNMSJob completed for Netbox device ID {$this->netboxDeviceId} ({$device->name}).",
-            true, self::class, 'handle'
-        );
+        Log::info("SyncDeviceLibreNMSJob completed for Netbox device ID {$this->netboxDeviceId} ({$device->name}).");
     }
 
     /**
