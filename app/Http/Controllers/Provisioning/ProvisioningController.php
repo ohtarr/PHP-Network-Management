@@ -708,7 +708,7 @@ class ProvisioningController extends Controller
                 'site'			=>	$site->id,
                 'location'		=>	$location->id,
             ];
-            if(!isset($device['serial']))
+            if(isset($device['serial']))
             {
                 $params['serial'] = trim(strtoupper($device['serial']));
             }
