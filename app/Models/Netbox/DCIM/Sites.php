@@ -653,7 +653,6 @@ class Sites extends BaseModel
 		if(!$rftemplate)
 		{
 			$msg = 'RFTEMPLATE does not exist!';
-			print $msg . PHP_EOL;
 			throw new \Exception($msg);
 		}
 
@@ -661,7 +660,6 @@ class Sites extends BaseModel
 		if(!$networktemplate)
 		{
 			$msg = 'NETWORKTEMPLATE does not exist!';
-			print $msg . PHP_EOL;
 			throw new \Exception($msg);
 		}
 
@@ -669,7 +667,6 @@ class Sites extends BaseModel
 		if(!$gatewaytemplate)
 		{
 			$msg = 'GATEWAYTEMPLATE does not exist!';
-			print $msg . PHP_EOL;
 			throw new \Exception($msg);
 		}
 
@@ -677,13 +674,11 @@ class Sites extends BaseModel
 		if(!isset($snowloc->sys_id))
 		{
 			$msg = "No SNOW site found!";
-			print $msg . PHP_EOL;
 			throw new \Exception($msg);
 		}
 		if(!$snowloc->latitude || !$snowloc->longitude)
 		{
 			$msg = "SNOW site missing latitude/longitude!  Please ensure SNOW site has proper coordinates and try again!";
-			print $msg . PHP_EOL;
 			throw new \Exception($msg);
 		}
 		$country_format = [
@@ -700,7 +695,6 @@ class Sites extends BaseModel
 			$countrycode = $country_format[$snowloc->country];			
 		} else {
 			$msg = "Unsupported Country! (" . $snowloc->country . ")";
-			print $msg . PHP_EOL;
 			throw new \Exception($msg);
 		}
 
