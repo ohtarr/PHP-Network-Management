@@ -512,7 +512,15 @@ class ProvisioningController extends Controller
 			}
 		}
 	
-		$mistsiteparams = $netboxsite->generateMistSiteParameters();
+        try{
+    		$mistsiteparams = $netboxsite->generateMistSiteParameters();
+        } catch (\Exception $e) {
+            $this->addLog(0, $e->getMessage());
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        }
 
         if(isset($submitted['gateway_template']))
         {
