@@ -195,6 +195,50 @@ class DeprovisioningController extends Controller
         return $return;
     }
 
+    public function dhcpScopesToDelete($sitecode)
+    {
+        $user = auth()->user();
+		if ($user->cant('provision-mist-devices')) {
+			abort(401, 'You are not authorized');
+        }
+
+        $totalstatus = 1;
+
+        $netboxsite = Sites::where('name__ic',$sitecode)->first();
+        if(!isset($netboxsite->id))
+        {
+            $this->addLog(0, "SITE {$sitecode} not found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "SITE ID {$netboxsite->id} found.");
+        }
+
+        $supernets = $netboxsite->getSupernets();
+        $scopes = [];
+        foreach($supernets as $supernet)
+        {
+            $snscopes = $supernet->getDhcpOverlap();
+            foreach($snscopes as $snscope)
+            {
+                $scopes[] = $snscope;
+            }
+        }
+        $this->addLog(1, "Found " . count($scopes) . " Scopes to delete.");
+
+        foreach($scopes as $scope)
+        {
+            $scopeids[] = (object) ['ScopeId' => $scope['scopeID']];
+        }
+
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = $scopeids;
+        return $return;
+    }
+
     public function deleteSiteDhcpScopes($sitecode)
     {
         $user = auth()->user();

@@ -42,8 +42,8 @@ class DiscoverDeviceJob implements ShouldQueue
         } else {
             "No ID found!  Cancelling Job!\n";
         }
-        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'starting', 'id' => $device->id]);   // Log device to the log file.
+        Log::info("DiscoverDeviceJob starting for device ID {$device->id}.");
         $device->discover();
-        Log::info(__FILE__, ['function' => __FUNCTION__, 'state' => 'complete', 'id' => $device->id]);   // Log device to the log file.
+        Log::info("DiscoverDeviceJob completed for device ID {$device->id}.");
     }
 }
