@@ -609,7 +609,7 @@ class Sites extends BaseModel
 			],
 			'auto_upgrade'  =>  [
 				'enabled'   =>  true,
-				'version'   =>  'beta',
+				'version'   =>  'custom',
 				'time_of_day'   =>  '02:00',
 				'custom_versions'	=>	$customVersions,
 				'day_of_week'   =>  'sun',
