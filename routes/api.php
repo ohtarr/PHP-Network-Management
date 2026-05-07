@@ -92,3 +92,14 @@ Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsContr
 
 Route::get('logs', [App\Http\Controllers\Log\LogController::class, 'index']);
 Route::get('logs/{id}', [App\Http\Controllers\Log\LogController::class, 'show']);
+
+Route::get('snipeit/hardware', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getAssets']);
+Route::get('snipeit/hardware/byserial/{serial}', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getAssetsBySerial']);
+Route::get('snipeit/locations', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getLocations']);
+Route::get('snipeit/categories', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getCategories']);
+Route::get('snipeit/models', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getModels']);
+Route::get('snipeit/statuslabels', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getStatusLabels']);
+Route::post('snipeit/hardware', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'createAsset']);
+Route::post('snipeit/hardware/{serial}/checkout', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'checkoutAssetToLocation']);
+Route::post('snipeit/hardware/{serial}/checkin', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'checkinAsset']);
+Route::patch('snipeit/hardware/{serial}', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'updateAsset']);
