@@ -8,12 +8,13 @@ class BaseModel
 {
     //protected $app;
     //protected $model;
-    protected $snipeitmodel;
-    protected $query;
+    protected static $snipeitmodel;
+    protected $qb;
+    protected $search;
 
-    public function getModel()
+    public static function getModel()
     {
-        return $this->snipeitmodel;
+        return static::$snipeitmodel;
     }
 
     public static function getQuery()
@@ -23,28 +24,93 @@ class BaseModel
         return $qb;
     }
 
-    public static function get($url=null)
+    public function setQueryBuilder($qb)
     {
-        $query = static::getQuery();
-        return $query->get($url);
+        $this->qb = $qb;
+    }
+
+    public function buildUrl()
+    {
+        return env('SNIPEIT_BASE_URL') . $this->getModel();
+    }
+
+    public static function hydrateOne($data)
+    {
+        $object = new static;
+        foreach($data as $key => $value)
+        {
+            $object->$key = $value;
+        }
+        return $object;
+    }
+
+    public static function hydrateMany($response)
+    {
+        $objects = [];
+        foreach($response as $item)
+        {
+            $object = static::hydrateOne($item);
+            $objects[] = $object;
+        }
+        return collect($objects);
+    }
+
+    public function get()
+    {
+        if(!$this->qb)
+        {
+            $this->qb = static::getQuery();
+        }
+        $path = static::getModel();
+        $response = $this->qb->httpGet($path);
+        //return $response;
+        return static::hydrateMany($response->rows);
+    }
+
+    public function getRaw()
+    {
+        if(!$this->qb)
+        {
+            $this->qb = static::getQuery();
+        }
+        $path = static::getModel();
+        $response = $this->qb->httpGet($path);
+        return $response;
     }
 
     public static function all()
     {
-        $query = static::getQuery();
-        return $query->get();
+        $model = new static;
+        try{
+            return $model->get();
+        } catch (\Exception $e) {
+            print $e->getMessage() . PHP_EOL;
+        }
     }
 
     public static function first()
     {
-        $query = static::getQuery();
-        return $query->first();
+        $path = static::getModel();
+        $response = $this->qb->httpGet($path);
+        //return $response;
+        return static::hydrateMany($response->rows)->first();
     }
 
     public static function find($id)
     {
-        $query = static::getQuery();
-        return $query->find($id);
+        $path = static::getModel() . "/" . $id;
+        $response = static::getQuery()->httpGet($path);
+        if(isset($response->id))
+        {
+            return static::hydrateOne($response);
+        } else {
+            return null;
+        }
+    }
+
+    public function fresh()
+    {
+        return static::find($this->id);
     }
 
     public static function where($column, $value)
@@ -64,17 +130,44 @@ class BaseModel
 
     public static function create($params)
     {
-        return static::getQuery()->post($params);
+        $path = static::getModel();
+        $response = static::getQuery()->httpPost($params, $path);
+        if($response->status == "success")
+        {
+            if(isset($response->payload->id))
+            {
+                return static::hydrateOne($response->payload);
+            }
+        } else {
+			throw new \Exception(json_encode($response, JSON_UNESCAPED_SLASHES));
+        }
     }
 
     public function update($params)
     {
-        return static::getQuery()->patch($this->id, $params);
+        $path = $this->getModel() . "/" . $this->id;
+        $response = static::getQuery()->httpPatch($params, $path);
+        if($response->status == "success")
+        {
+            if(isset($response->payload->id))
+            {
+                return static::hydrateOne($response->payload);
+            }
+        } else {
+			throw new \Exception(json_encode($response, JSON_UNESCAPED_SLASHES));
+        }
     }
 
     public function delete()
     {
-        return static::getQuery()->delete($this->id);
+        $path = $this->getModel() . "/" . $this->id;
+        $response = static::getQuery()->httpDelete($path);
+        if($response->status == "success")
+        {
+            return true;
+        } else {
+			throw new \Exception(json_encode($response, JSON_UNESCAPED_SLASHES));
+        }
     }
 
 

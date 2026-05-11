@@ -9,7 +9,7 @@ use App\Models\SnipeIT\Locations;
 #[\AllowDynamicProperties]
 class Assets extends BaseModel
 {
-    protected $snipeitmodel = "hardware";
+    protected static $snipeitmodel = "hardware";
 
     public function isActive()
     {
@@ -50,43 +50,35 @@ class Assets extends BaseModel
             'checkout_to_type'  =>  'location',
             'assigned_location' =>  $loc->id,
         ];
-        return $this->getQuery()->post($params, $path);
+        return $this->getQuery()->httpPost($params, $path);
     }
 
-    public function checkoutToLocationId($locationid)
+    public function checkout($params)
     {
-        $loc = Locations::find($locationid);
-        if(!$loc)
-        {
-            return null;
-        }
-        $label = StatusLabels::where('name','Deployed')->first();
-        if(!$label)
-        {
-            return null;
-        }
         $path = "hardware/{$this->id}/checkout";
-        $params = [
-            'status_id'         =>  $label->id,
-            'checkout_to_type'  =>  'location',
-            'assigned_location' =>  $loc->id,
-        ];
-        return $this->getQuery()->post($params, $path);
+        $response = $this->getQuery()->httpPost($params, $path);
+        if($response->status == "success")
+        {
+            return $this->fresh();
+        } else {
+			throw new \Exception(json_encode($response, JSON_UNESCAPED_SLASHES));
+        }
     }
 
 
-    public function checkin()
+    public function checkin($params)
     {
-        $label = StatusLabels::where('name','Deployed')->first();
-        if(!$label)
-        {
-            return null;
-        }
         $path = "hardware/{$this->id}/checkin";
-        $params = [
+/*         $params = [
             'status_id'         =>  $label->id,
-        ];
-        return $this->getQuery()->post($params, $path);
+        ]; */
+        $response = $this->getQuery()->httpPost($params, $path);
+        if($response->status == "success")
+        {
+            return $this->fresh();
+        } else {
+			throw new \Exception(json_encode($response, JSON_UNESCAPED_SLASHES));
+        }
     }
 
     public function checkinCustom($locationid, $statusid)
@@ -96,26 +88,29 @@ class Assets extends BaseModel
             'status_id'     =>  $statusid,
         ];
         $path = "hardware/{$this->id}/checkin";
-        return static::getQuery()->post($params, $path);
+        return static::getQuery()->httpPost($params, $path);
     }
 
     ///hardware/byserial/:serial
-    public static function getBySerial($serial)
+    public static function findBySerial($serial)
     {
         $path = "hardware/byserial/" . $serial;
-        return static::getQuery()->get($path)->first();
+        $response = static::getQuery()->httpGet($path);
+        return $response;
+        return static::hydrateMany($response->rows)->first();
     }
 
-    public static function create($params)
+    ///hardware/bytag/:tag
+    public static function findByTag($tag)
     {
-        $path = "hardware";
-        return static::getQuery()->post($params, $path);
-    }
+        $path = "hardware/bytag/" . $tag;
+        $response = static::getQuery()->httpGet($path);
+        if(isset($response->id))
+        {
+            return static::hydrateOne($response);
+        } else {
+            return null;
+        }
 
-    public function update($params)
-    {
-        $path = "hardware/" . $serial;
-        return static::getQuery()->patch($this->id, $params, $path);
     }
-
 }

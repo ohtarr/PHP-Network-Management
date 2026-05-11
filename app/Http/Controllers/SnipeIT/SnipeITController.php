@@ -47,7 +47,7 @@ class SnipeITController extends Controller
 
     public function getAssetsBySerial($serial)
     {
-        $results = Assets::getBySerial($serial);
+        $results = Assets::findByTag($serial);
         $return['status'] = 1;
         $return['log'] = $this->logs;
         $return['data'] = $results;
@@ -92,13 +92,15 @@ class SnipeITController extends Controller
 
     public function checkinAsset($serial, Request $request)
     {
+        $return['status'] = 1;
         $submitted = $request->collect();
-        if(isset($submitted['location_id']))
+ /*        if(isset($submitted['location_id']))
         {
             $locationid = $submitted['location_id'];
             $this->addLog(1, "location_id {$locationid} submitted.");
         } else {
             $this->addLog(0, "location_id not found.");
+            $return['status'] = 0;
         }
         if(isset($submitted['status_id']))
         {
@@ -106,90 +108,130 @@ class SnipeITController extends Controller
             $this->addLog(1, "status_id {$statusid} submitted.");
         } else {
             $this->addLog(0, "status_id not found.");
+            $return['status'] = 0;
         }
-        $location = Locations::find($locationid);
+        try{
+            $location = Locations::find($locationid);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Failed to FIND Location: " . $e->getMessage());
+            $return['status'] = 0;
+        }
         if(isset($location->id))
         {
             $this->addLog(1, "location {$location->name} found.");
         } else {
             $this->addLog(0, "location ID {$locationid} not found.");
+            $return['status'] = 0;
         }
-        $status = StatusLabels::find($statusid);
+        try{
+            $status = StatusLabels::find($statusid);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Failed to FIND StatusLabel: " . $e->getMessage());
+            $return['status'] = 0;
+        }
         if(isset($status->id))
         {
             $this->addLog(1, "location {$status->name} found.");
         } else {
             $this->addLog(0, "location ID {$statusid} not found.");
+            $return['status'] = 0;
+        } */
+        try{
+            $asset = Assets::findByTag($serial);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Failed to FIND Asset: " . $e->getMessage());
+            $return['status'] = 0;
         }
-        $asset = Assets::getBySerial($serial);
         if(isset($asset->id))
         {
             $this->addLog(1, "Found asset ID {$asset->id} with serial {$serial}.");
         } else {
             $this->addLog(0, "Unable to find asset with serial {$serial}.");
             $return['status'] = 0;
-            $return['log'] = $this->logs;
-            $return['data'] = null;
-            return json_encode($return);
         }
-        $results = $asset->checkinCustom($locationid, $statusid);
-        $return['status'] = 1;
+        try{
+            $results = $asset->checkin($submitted);
+            //$results = $asset->checkinCustom($locationid, $statusid);
+        } catch (\Exception $e) {
+            $this->addLog(0, $e->getMessage());
+            $return['status'] = 0;
+        }
+        if(isset($results->id))
+        {
+            $this->addLog(1, "Asset ID {$results->id} checked in successfully");
+        }
         $return['log'] = $this->logs;
-        $return['data'] = $results;
+        if(isset($results))
+        {
+            $return['data'] = $results;
+        } else {
+            $return['data'] = null;
+        }
         return json_encode($return);
     }
 
-    public function checkoutAssetToLocation($serial, Request $request)
+    public function checkoutAsset($serial, Request $request)
     {
+        $return['status'] = 1;
         $submitted = $request->collect();
-        if(isset($submitted['location_id']))
-        {
-            $locationid = $submitted['location_id'];
-            $this->addLog(1, "location_id {$locationid} submitted.");
-        } else {
-            $this->addLog(0, "location_id not found.");
+        try{
+            $asset = Assets::findByTag($serial);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Failed to FIND Asset: " . $e->getMessage());
+            $return['status'] = 0;
         }
-        $location = Locations::find($locationid);
-        if(isset($location->id))
-        {
-            $this->addLog(1, "location {$location->name} found.");
-        } else {
-            $this->addLog(0, "location ID {$locationid} not found.");
-        }
-        $asset = Assets::getBySerial($serial);
         if(isset($asset->id))
         {
             $this->addLog(1, "Found asset ID {$asset->id} with serial {$serial}.");
         } else {
             $this->addLog(0, "Unable to find asset with serial {$serial}.");
             $return['status'] = 0;
-            $return['log'] = $this->logs;
-            $return['data'] = null;
-            return json_encode($return);
         }
-        $results = $asset->checkoutToLocationId($locationid);
-        $return['status'] = 1;
+        try{
+            $results = $asset->checkout($submitted);
+        } catch (\Exception $e) {
+            $this->addLog(0, $e->getMessage());
+            $return['status'] = 0;
+        }
+        if(isset($results->id))
+        {
+            $this->addLog(1, "Asset ID {$asset->id} successfully checked out.");
+        }
         $return['log'] = $this->logs;
-        $return['data'] = $results;
+        if(isset($results->id))
+        {
+            $return['data'] = $results;
+        } else {
+            $return['data'] = null;
+        }
         return json_encode($return);
     }
 
     public function updateAsset($serial, Request $request)
     {
+        $return['status'] = 1;
         $submitted = $request->collect();
-        $asset = Assets::getBySerial($serial);
+        try{
+            $asset = Assets::findByTag($serial);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Failed to GET asset: " . $e->getMessage());
+        }
         if(isset($asset->id))
         {
             $this->addLog(1, "Found asset ID {$asset->id} with serial {$serial}.");
+            try{
+                $results = $asset->update($submitted);
+            } catch (\Exception $e) {
+                $this->addLog(0, "Failed to UPDATE asset: " . $e->getMessage());
+            }
+            if(isset($results->id))
+            {
+                $this->addLog(1, "Successfully updated Asset ID {$results->id}");
+            }
         } else {
             $this->addLog(0, "Unable to find asset with serial {$serial}.");
             $return['status'] = 0;
-            $return['log'] = $this->logs;
-            $return['data'] = null;
-            return json_encode($return);
         }
-        $results = $asset->update($submitted);
-        $return['status'] = 1;
         $return['log'] = $this->logs;
         $return['data'] = $results;
         return json_encode($return);
@@ -198,7 +240,12 @@ class SnipeITController extends Controller
     public function createAsset(Request $request)
     {
         $submitted = $request->collect();
-        $results = Assets::create($submitted);
+        try{
+            $results = Assets::create($submitted);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Failed to create Asset:" . $e->getMessage());
+        }
+        $this->addLog(1, "Created Asset ID: {$results->id}");
         $return['status'] = 1;
         $return['log'] = $this->logs;
         $return['data'] = $results;

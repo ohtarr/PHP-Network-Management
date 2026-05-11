@@ -21,71 +21,17 @@ class QueryBuilder
         ]);
     }
 
-    public function buildUrl()
+    public function get()
     {
-        return env('SNIPEIT_BASE_URL') . $this->model->getModel();
-    }
-
-    public function hydrateOne($data)
-    {
-        $object = new $this->model;
-        foreach($data as $key => $value)
-        {
-            $object->$key = $value;
-        }
-        return $object;
-    }
-
-    public function hydrateMany($response)
-    {
-        $objects = [];
-        foreach($response as $item)
-        {
-            $object = $this->hydrateOne($item);
-            $objects[] = $object;
-        }
-        return collect($objects);
-    }
-
-    public function get($custompath = null)
-    {
-        $results = [];
-        $params = [];
-        $client = static::getGuzzleClient();
-        if(!empty($this->search))
-        {
-            $params['query'] = $this->search;
-        }
-        if($custompath)
-        {
-            $path = $custompath;
-        } else {
-            $path = $this->buildUrl();
-        }
-
-        $response = $client->request('GET', $path, $params);
-        $body = $response->getBody()->getContents();
-        $objects = json_decode($body);
-        return $this->hydrateMany($objects->rows);
+        $this->model->setQueryBuilder($this);
+        return $this->model->get();
     }
 
     public function first()
     {
         $this->search['limit'] = 1;
-        return $this->get()->first();
-    }
-
-    public function find($id)
-    {
-        $client = static::getGuzzleClient();
-        $response = $client->request('get', $this->buildUrl() . "/" . $id);
-        $body = $response->getBody()->getContents();
-        $object = json_decode($body);
-        if(!$object)
-        {
-            return null;
-        }
-        return $this->hydrateOne($object);
+        $this->model->setQueryBuilder($this);
+        return $this->model->get()->first();
     }
 
     public function where($column, $value)
@@ -106,85 +52,52 @@ class QueryBuilder
         return $this;
     }
 
-    public function post($body, $custompath = null)
+    public function httpGet($path)
+    {
+        $results = [];
+        $params = [];
+        $client = static::getGuzzleClient();
+        if(!empty($this->search))
+        {
+            $params['query'] = $this->search;
+        }
+        $response = $client->request('GET', $path, $params);
+        $body = $response->getBody()->getContents();
+        return json_decode($body);
+    }
+
+    public static function httpPost($body, $path)
     {
         $params['body'] = json_encode($body);
-        if($custompath)
-        {
-            $path = $custompath;
-        } else {
-            $path = $this->buildUrl();
-        }
         $client = static::getGuzzleClient();
         $response = $client->request('post', $path, $params);
         $body = $response->getBody()->getContents();
-        $object = json_decode($body);
-        if(isset($object->payload))
-        {
-            return $this->hydrateOne($object->payload);
-        } else {
-            return $object;
-        }
+        return json_decode($body);
     }
 
-    public function put($id, $body, $custompath = null)
+    public static function httpPut($body, $path)
     {
         $params['body'] = json_encode($body);
-        if($custompath)
-        {
-            $path = $custompath;
-        } else {
-            $path = $this->buildUrl() . "/" . $id;
-        }
         $client = static::getGuzzleClient();
         $response = $client->request('put', $path, $params);
         $body = $response->getBody()->getContents();
-        $object = json_decode($body);
-        if(isset($object->payload))
-        {
-            return $this->hydrateOne($object->payload);
-        } else {
-            return $object;
-        }
+        return json_decode($body);
     }
 
-    public function patch($id, $body, $custompath = null)
+    public static function httpPatch($body, $path)
     {
         $params['body'] = json_encode($body);
-        if($custompath)
-        {
-            $path = $custompath;
-        } else {
-            $path = $this->buildUrl() . "/" . $id;
-        }
         $client = static::getGuzzleClient();
         $response = $client->request('patch', $path, $params);
         $body = $response->getBody()->getContents();
-        $object = json_decode($body);
-        if(isset($object->payload))
-        {
-            return $this->hydrateOne($object->payload);
-        } else {
-            return $object;
-        }
+        return json_decode($body);
     }
 
-    public function delete($id, $custompath = null)
+    public static function httpDelete($path)
     {
-        if($custompath)
-        {
-            $path = $custompath;
-        } else {
-            $path = $this->buildUrl() . "/" . $id;
-        }
         $client = static::getGuzzleClient();
         $response = $client->request('delete', $path);
-        $responsecode = $response->getStatusCode();
-        if($responsecode == 200)
-        {
-            return true;
-        } else {
-            return false;
-        }
+        $body = $response->getBody()->getContents();
+        return json_decode($body);
     }
 }

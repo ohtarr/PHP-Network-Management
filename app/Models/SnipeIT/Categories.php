@@ -7,6 +7,6 @@ use App\Models\SnipeIT\BaseModel;
 #[\AllowDynamicProperties]
 class Categories extends BaseModel
 {
-    protected $snipeitmodel = "categories";
+    protected static $snipeitmodel = "categories";
 
 }

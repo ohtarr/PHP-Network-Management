@@ -100,6 +100,6 @@ Route::get('snipeit/categories', [App\Http\Controllers\SnipeIT\SnipeITController
 Route::get('snipeit/models', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getModels']);
 Route::get('snipeit/statuslabels', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getStatusLabels']);
 Route::post('snipeit/hardware', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'createAsset']);
-Route::post('snipeit/hardware/{serial}/checkout', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'checkoutAssetToLocation']);
+Route::post('snipeit/hardware/{serial}/checkout', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'checkoutAsset']);
 Route::post('snipeit/hardware/{serial}/checkin', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'checkinAsset']);
 Route::patch('snipeit/hardware/{serial}', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'updateAsset']);
