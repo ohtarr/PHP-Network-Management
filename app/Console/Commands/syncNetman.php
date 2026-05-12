@@ -54,7 +54,7 @@ class syncNetman extends Command
         {
             print "********************************************************************" . PHP_EOL;
             print "Syncing Device " . $nbdevice->id . "-" . $nbdevice->name . "..." . PHP_EOL;
-            $existing = Device::where('netbox_id', $nbdevice->id)->first();
+            $existing = Device::where('netbox_id', $nbdevice->id)->where('netbox_type', get_class($nbdevice))->first();
             if($existing)
             {
                 print "Device already exists!  Skipping..." . PHP_EOL;

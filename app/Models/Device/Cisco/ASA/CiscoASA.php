@@ -26,8 +26,10 @@ class CiscoASA extends Cisco
 
     //List of commands to run during a scan of this device.
     public $scan_cmds = [
-        'run'           => 'sh run',
-        'version'       => 'sh version',
+        'run'           => 'show run',
+        'version'       => 'show version',
+        'conn'          => 'show conn count',
+        'interface'     => 'show interface',
     ];
 
 	public function exec_cmds($cmds, $timeout = null)
