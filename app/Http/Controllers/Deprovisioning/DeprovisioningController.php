@@ -17,6 +17,7 @@ use App\Models\Mist\Device;
 use App\Models\Gizmo\Dhcp;
 use \Carbon\Carbon;
 use App\Models\Log\Log as DbLog;
+use App\Models\Dhcp\SubnetV4;
 
 class DeprovisioningController extends Controller
 {
@@ -168,26 +169,39 @@ class DeprovisioningController extends Controller
 
         $totalstatus = 1;
 
-        $deletescope = Dhcp::find($scope);
-        if(isset($deletescope->scopeID))
+        $deletescope = SubnetV4::findByIp($scope);
+        if(isset($deletescope->subnet))
         {
-            $this->addLog(1, "SCOPE {$scope} found and ready to delete.");
+            $this->addLog(1, "SCOPE {$deletescope->subnet} found in KEA.");
+            $deletescope->delete();
+            $checkscope = SubnetV4::findByIp($scope);
+            if(isset($checkscope->subnet))
+            {
+                $this->addLog(0, "SCOPE {$scope} did not delete correctly in KEA!");
+                $totalstatus = 0;
+            } else {
+                $this->addLog(1, "SCOPE {$scope} deleted successfully in KEA.");
+            }
         } else {
-            $this->addLog(0, "SCOPE {$scope} not found.  nothing to delete!");
-            $totalstatus = 0;
-            $return['status'] = $totalstatus;
-            $return['log'] = $this->logs;
-            $return['data'] = null;
-            return $return;
+            $this->addLog(1, "SCOPE {$scope} not found in KEA.");
         }
-        $deletescope->delete();
-        $checkscope = Dhcp::find($scope);
-        if(isset($checkscope->scopeID))
+
+
+        $deletescope2 = Dhcp::findScopeByIp($scope);
+        if(isset($deletescope2->scopeID))
         {
-            $this->addLog(0, "SCOPE {$scope} did not delete correctly!");
-            $totalstatus = 0;
+            $this->addLog(1, "SCOPE {$deletescope2->scopeID} found in GIZMO and ready to delete.");
+            $deletescope2->delete();
+            $checkscope2 = Dhcp::findScopeByIp($scope);
+            if(isset($checkscope2->scopeID))
+            {
+                $this->addLog(0, "SCOPE {$scope} did not delete correctly in GIZMO!");
+                $totalstatus = 0;
+            } else {
+                $this->addLog(1, "SCOPE {$scope} deleted successfully in GIZMO.");
+            }
         } else {
-            $this->addLog(1, "SCOPE {$scope} deleted successfully.");
+            $this->addLog(1, "SCOPE {$scope} not found in GIZMO.");
         }
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
@@ -216,21 +230,12 @@ class DeprovisioningController extends Controller
             $this->addLog(1, "SITE ID {$netboxsite->id} found.");
         }
 
-        $supernets = $netboxsite->getSupernets();
-        $scopes = [];
-        foreach($supernets as $supernet)
-        {
-            $snscopes = $supernet->getDhcpOverlap();
-            foreach($snscopes as $snscope)
-            {
-                $scopes[] = $snscope;
-            }
-        }
+        $scopes = $netboxsite->getDhcpScopesByPrefixes();
         $this->addLog(1, "Found " . count($scopes) . " Scopes to delete.");
 
         foreach($scopes as $scope)
         {
-            $scopeids[] = (object) ['ScopeId' => $scope['scopeID']];
+            $scopeids[] = (object) ['subnet' => $scope->subnet];
         }
 
         $return['status'] = $totalstatus;
@@ -260,32 +265,55 @@ class DeprovisioningController extends Controller
             $this->addLog(1, "SITE ID {$netboxsite->id} found.");
         }
 
-        $supernets = $netboxsite->getSupernets();
-        $scopes = [];
-        foreach($supernets as $supernet)
-        {
-            $snscopes = $supernet->getDhcpOverlap();
-            foreach($snscopes as $snscope)
-            {
-                $scopes[] = $snscope;
-            }
-        }
-        $scopes = collect($scopes);
+        $prefixes = $netboxsite->getActivePrefixes();
 
-        $count = $scopes->count();
-        $this->addLog(1, "Found {$count} scopes for site {$netboxsite->name}.");
+        $count = $prefixes->count();
+        $this->addLog(1, "Found {$count} Active Prefixes for site {$netboxsite->name}.");
         
-        foreach($scopes as $scope)
+        foreach($prefixes as $prefix)
         {
-            $scope->delete();
-            $confirm = Dhcp::find($scope->scopeID);
-            if(isset($confim->scopeID))
+            $deletescope = SubnetV4::findByIp($prefix->network());
+            if(isset($deletescope->subnet))
             {
-                $this->addLog(0, "FAILED to delete DHCP SCOPE {$scope->scopeID} for site {$netboxsite->name}...");
-                $totalstatus = 0;
+                $this->addLog(1, "SCOPE {$deletescope->subnet} found in KEA.");
+                try{
+                    $deletescope->delete();
+                } catch (\Exception $e) {
+                    $this->addLog(0, "Received error from KEA-DHCP: " . $e->getMessage());
+                }
+                $checkscope = SubnetV4::findByIp($prefix->network());
+                if(isset($checkscope->subnet))
+                {
+                    $this->addLog(0, "SCOPE {$prefix->network()} did not delete correctly in KEA!");
+                    $totalstatus = 0;
+                } else {
+                    $this->addLog(1, "SCOPE {$prefix->network()} deleted successfully in KEA.");
+                }
             } else {
-                $this->addLog(1, "Deleted DHCP SCOPE {$scope->scopeID} for site {$netboxsite->name}...");
+                $this->addLog(1, "SCOPE {$prefix->network()} not found in KEA.");
             }
+
+
+/*             $deletescope2 = Dhcp::findScopeByIp($prefix->network());
+            if(isset($deletescope2->scopeID))
+            {
+                $this->addLog(1, "SCOPE {$deletescope2->scopeID} found in GIZMO and ready to delete.");
+                try{
+                    $deletescope2->delete();
+                } catch (\Exception $e) {
+                    $this->addLog(0, "Received error from GIZMO: " . $e->getMessage());
+                }
+                $checkscope2 = Dhcp::findScopeByIp($prefix->network());
+                if(isset($checkscope2->scopeID))
+                {
+                    $this->addLog(0, "SCOPE {$prefix->network()} did not delete correctly in GIZMO!");
+                    $totalstatus = 0;
+                } else {
+                    $this->addLog(1, "SCOPE {$prefix->network()} deleted successfully in GIZMO.");
+                }
+            } else {
+                $this->addLog(1, "SCOPE {$prefix->network()} not found in GIZMO.");
+            } */
         }
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;

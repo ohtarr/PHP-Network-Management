@@ -466,7 +466,7 @@ class syncDns extends Command
                 $intname = Interfaces::generateDnsNameStatic($ip->assigned_object->name, $ip->assigned_object->device->name);
                 if(isset($intname))
                 {
-                    $dns[$intname] = $ip->cidr()['ip'];
+                    $dns[$intname] = $ip->ip();
                 }                
             }
 

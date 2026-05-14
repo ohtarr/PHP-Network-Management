@@ -225,7 +225,7 @@ class SyncDeviceDnsJob implements ShouldQueue
                 $ip->assigned_object->device->name
             );
             if ($intDnsName) {
-                $desired[$intDnsName] = $ip->cidr()['ip'];
+                $desired[$intDnsName] = $ip->ip();
             }
         }
 

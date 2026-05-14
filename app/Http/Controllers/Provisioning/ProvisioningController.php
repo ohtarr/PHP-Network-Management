@@ -23,6 +23,7 @@ use App\Models\Mist\GatewayTemplate;
 use App\Models\Mist\NetworkTemplate;
 use App\Models\Mist\RfTemplate;
 use App\Models\Gizmo\Dhcp;
+use App\Models\Dhcp\SubnetV4;
 use App\Models\Log\Log as DbLog;
 
 class ProvisioningController extends Controller
@@ -269,23 +270,6 @@ class ProvisioningController extends Controller
                     $this->addLog(0, "Failed to create PREFIX for vlan {$vlan}.");
                 }
             }
-            if(isset($prefix->id))
-            {
-                $range = $prefix->getDhcpIpRange();
-                if(isset($range->id))
-                {
-                    $this->addLog(0, "RANGE ID {$range->id} {$range->display} for vlan {$vlan} already exists.");
-                } else {
-                    $range = $netboxsite->deployIpRange($vlan);
-                    if(isset($range->id))
-                    {
-                        $this->addLog(1, "Created IP RANGE ID {$range->id} : {$range->display} for vlan {$vlan}.");
-                    } else {
-                        $this->addLog(0, "Failed to create IP RANGE for vlan {$vlan}.");
-                    }                    
-                }
-            }
-
         }
 
         $location = $netboxsite->getDefaultLocation();
@@ -319,11 +303,6 @@ class ProvisioningController extends Controller
         return $return;
     }
 
-    public function getDhcpScopeOverlap($network, $bitmask)
-    {
-        return Dhcp::findOverlap($network, $bitmask);
-    }
-
     public function getDhcpScopes($sitecode)
     {
         $site = Sites::where('name__ic', $sitecode)->first();
@@ -331,7 +310,7 @@ class ProvisioningController extends Controller
         {
             return null;
         }
-        return $site->getDhcpScopes();
+        return $site->getDhcpScopesBySupernets();
     }
 
     public function deployDhcpScope($sitecode, $vlan)
@@ -373,18 +352,18 @@ class ProvisioningController extends Controller
         }
 
         $totalstatus = 1;
-/*
-        $exists = $prefix->getDhcpScope();
-        if(isset($exists->scopeID))
+
+        $parent = SubnetV4::findParent($prefix->network());
+        if(isset($parent->id))
         {
-            $this->addLog(0, "Scope {$prefix->cidr()['network']} already exists for {$sitecode}.");
+            $this->addLog(0, "Scope {$prefix->network()} is part of an existing scope! {$parent->subnet}");
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return $return;            
         }
-/**/        
-        $overlaps = Dhcp::findOverlap($prefix->Network(), $prefix->Length());
+
+        $overlaps = SubnetV4::findChildren($prefix->network(), $prefix->length());
         if($overlaps->count() > 0)
         {
             $overlapsmsg = "";
@@ -393,36 +372,27 @@ class ProvisioningController extends Controller
                 $overlapsmsg .= $overlap->scopeID . ',';
             }
 
-            $this->addLog(0, "Scope {$prefix->cidr()['network']} has existing overlapping scopes! {$overlapsmsg}");
+            $this->addLog(0, "Scope {$prefix->network()} has existing overlapping scopes! {$overlapsmsg}");
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
             return $return;
         }
-
-        $range = $prefix->getDhcpIpRange();
-        if(isset($range->id))
-        {
-            $this->addLog(1, "RANGE ID {$range->id} {$range->display} for vlan {$vlan} exists.");
-        } else {
-            $this->addLog(0, "RANGE not found for vlan {$vlan}.");
-        }
-
         $scope = null;
         try{
             $start = microtime(true);
             $scope = $prefix->deployDhcpScope();
             $end = microtime(true);
         } catch (\Exception $e) {
-            
+            $this->addLog(0, "Error from KEA-DHCP-API: " . $e->getMessage());
         }
 
-        if(isset($scope->scopeID))
+        if(isset($scope->subnet))
         {
-            $this->addLog(1, "Deployed DHCP scope {$scope->scopeID} for site {$sitecode} in " . round($end - $start,1) . " seconds.");
+            $this->addLog(1, "Deployed DHCP scope {$scope->subnet} for site {$sitecode} in " . round($end - $start,1) . " seconds.");
         } else {
             $totalstatus = 0;
-            $this->addLog(0, "Failed to deploy DHCP scope {$prefix->cidr()['network']} for vlan {$vlan} for site {$sitecode}.");
+            $this->addLog(0, "Failed to deploy DHCP scope {$prefix->network()} for vlan {$vlan} for site {$sitecode}.");
         }
 
         $return['status'] = $totalstatus;
@@ -762,6 +732,12 @@ class ProvisioningController extends Controller
                 if(isset($eth->id))
                 {
                     $this->addLog(1, "Found interface {$eth->id} - {$eth->name} on device {$newdevice->name}");
+                    $ipexists1 = IpAddresses::where('address', $device['ip']);
+                    if(isset($ipexists1->id))
+                    {
+                        $this->addLog(0, "IP Address " . $device['ip'] . " already exists!  Skipping Device...");
+                        continue;
+                    }
                     $ethparams = [
                         'address'               =>  $device['ip'] . "/32",
                         'vrf'                   =>  2,
@@ -770,12 +746,19 @@ class ProvisioningController extends Controller
                     ];
                     $newip = IpAddresses::create($ethparams);
                 } else {
-                    $this->addLog(0, "Failed to find interface eth0 on device {$newdevice->name}");
+                    $this->addLog(0, "Failed to find interface eth0 on device {$newdevice->name}... Skipping Device...");
+                    continue;
                 }
                 $wwan = $newdevice->Interfaces()->where('name','wwan0')->first();
                 if(isset($wwan->id))
                 {
                     $this->addLog(1, "Found interface {$wwan->id} - {$wwan->name} on device {$newdevice->name}");
+                    $ipexists2 = IpAddresses::where('address',$device['oob_ip']);
+                    if(isset($ipexists2->id))
+                    {
+                        $this->addLog(0, "IP Address " . $device['ip'] . " already exists!  Skipping Device...");
+                        continue;
+                    }
                     $wwanparams = [
                         'address'               =>  $device['oob_ip'] . "/32",
                         'vrf'                   =>  1,
@@ -784,7 +767,8 @@ class ProvisioningController extends Controller
                     ];
                     $newoobip = IpAddresses::create($wwanparams);
                 } else {
-                    $this->addLog(0, "Failed to find interface wwan0 on device {$newdevice->name}");
+                    $this->addLog(0, "Failed to find interface wwan0 on device {$newdevice->name}... Skipping Device...");
+                    continue;
                 }
                 $ipparams = [];
                 if(isset($newip->id))
@@ -1004,6 +988,22 @@ class ProvisioningController extends Controller
             $return['data'] = null;
             return $return;
         }
+
+        $prefixes = $site->getActivePrefixes();
+        $dhcpparams = [];
+        foreach($prefixes as $prefix)
+        {
+            unset($scopeparams);
+            $scopeparams = $prefix->generateKeaDhcpScopeParams();
+            if(isset($scopeparams['subnet']))
+            {
+                $this->addLog(1, "Generated scope for {$scopeparams['subnet']}");
+                $dhcpparams[] = $scopeparams;
+            }
+        }
+        return $dhcpparams;
+
+
         $ranges = $site->getProvisioningSupernet()->getIpRanges();
         $scopes = [];
         foreach($ranges as $range)
@@ -1011,6 +1011,7 @@ class ProvisioningController extends Controller
             $scopes[] = $range->generateDhcpScopeParams();
             $this->addLog(1, "Generated scope for {$range->display}");
         }
+
         $return['status'] = 1;
         $return['log'] = $this->logs;
         $return['data'] = $scopes;

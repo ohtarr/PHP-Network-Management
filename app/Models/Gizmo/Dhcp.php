@@ -5,7 +5,7 @@ namespace App\Models\Gizmo;
 use App\Models\Gizmo\Gizmo;
 use GuzzleHttp\Client as GuzzleHttpClient;
 use App\Models\Azure\Azure;
-use IPv4\SubnetCalculator;
+use IPv4\Subnet as SubnetCalculator;
 use App\Models\Gizmo\DhcpCollection as Collection;
 
 class Dhcp extends Gizmo
@@ -433,10 +433,8 @@ class Dhcp extends Gizmo
     {
         $overlaps = [];
         $ipcalc = new SubnetCalculator($network, $bitmask);
-        $range = $ipcalc->getIPAddressRange();
-
-        $longstart = ip2long($range[0]);
-        $longend = ip2long($range[1]);
+        $longstart = ip2long($ipcalc->networkAddress()->asQuads());
+        $longend = ip2long($ipcalc->broadcastAddress()->asQuads());
 
         $scopes = self::all();
 
@@ -467,7 +465,7 @@ class Dhcp extends Gizmo
             unset($ipcalc);
             $bitmask = static::netmaskToBitmask($scope->subnetMask);
             $ipcalc = new SubnetCalculator($scope->scopeID, $bitmask);
-            if($ipcalc->isIPAddressInSubnet($ip))
+            if($ipcalc->containsIP($ip))
             {
                 return $scope;
             }

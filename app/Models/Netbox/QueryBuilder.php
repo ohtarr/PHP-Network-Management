@@ -68,6 +68,8 @@ class QueryBuilder
                 if(isset($object->results[0]))
                 {
                     return $this->hydrateOne($object->results[0]);
+                } else {
+                    return null;
                 }
             }
         }

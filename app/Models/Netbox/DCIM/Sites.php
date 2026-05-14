@@ -11,13 +11,13 @@ use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\DCIM\Locations;
 use App\Models\Netbox\DCIM\DeviceTypes;
 use App\Models\ServiceNow\Location;
-use IPv4\SubnetCalculator;
 use App\Models\Gizmo\Dhcp;
 use App\Models\Mist\Site;
 use App\Models\Mist\RfTemplate;
 use App\Models\Mist\NetworkTemplate;
 use App\Models\Mist\GatewayTemplate;
 use App\Models\Mist\SiteGroup;
+use App\Models\Dhcp\SubnetV4;
 
 #[\AllowDynamicProperties]
 class Sites extends BaseModel
@@ -286,7 +286,7 @@ class Sites extends BaseModel
             $dns2 = '10.251.12.190';
         }
 
-        $IPV4LONG = ip2long($supernet->cidr()['network']);
+        $IPV4LONG = ip2long($supernet->network());
         $params[1] = [
             "network"		=> long2ip($IPV4LONG),
             "netmask"		=> "255.255.252.0",
@@ -467,18 +467,18 @@ class Sites extends BaseModel
         return $scope;
     }
 
-    public function getDhcpScopesBySitecode()
+    public function getGizmoDhcpScopesBySitecode()
     {
         return Dhcp::getScopesBySitecode($this->name);
     }
 
-    public function getDhcpScopes()
+    public function getGizmoDhcpScopesByPrefixes()
     {
         $dhcp = [];
         $active = $this->getActivePrefixes();
         foreach($active as $prefix)
         {
-            $scope = $prefix->getDhcpScope();
+            $scope = $prefix->getGizmoDhcpScope();
             if(isset($scope->scopeID))
             {
                 $dhcp[] = $scope;
@@ -486,6 +486,57 @@ class Sites extends BaseModel
 
         }
         return collect($dhcp);
+    }
+
+    public function getGizmoDhcpScopesBySupernets()
+    {
+        $supernets = $this->getSupernets();
+        $scopes = [];
+        foreach($supernets as $supernet)
+        {
+            $snscopes = Dhcp::findOverlap($supernet->network(), $supernet->length());
+            foreach($snscopes as $snscope)
+            {
+                $scopes[] = $snscope;
+            }
+        }
+        return collect($scopes);
+    }
+
+    public function getKeaDhcpScopesBySitecode()
+    {
+        return SubnetV4::allBySite($this->name);
+    }
+
+    public function getKeaDhcpScopesByPrefixes()
+    {
+        $dhcp = [];
+        $active = $this->getActivePrefixes();
+        foreach($active as $prefix)
+        {
+            $scope = $prefix->getDhcpScope();
+            if(isset($scope->subnet))
+            {
+                $dhcp[] = $scope;
+            }
+
+        }
+        return collect($dhcp);
+    }
+
+    public function getKeaDhcpScopesBySupernets()
+    {
+        $supernets = $this->getSupernets();
+        $scopes = [];
+        foreach($supernets as $supernet)
+        {
+            $snscopes = SubnetV4::findChildren($supernet->network(), $supernet->length());
+            foreach($snscopes as $snscope)
+            {
+                $scopes[] = $snscope;
+            }
+        }
+        return collect($scopes);
     }
 
     public function locations()
@@ -826,5 +877,16 @@ class Sites extends BaseModel
     public function generateRouterIp()
     {
         return $this->generateSiteNetworks(1)['gateway'];
+    }
+
+    public function generateKeaDhcpScopeParams()
+    {
+        $prefixes = $this->getActivePrefixes();
+        $scopeparams = [];
+        foreach($prefixes as $prefix)
+        {
+            $scopeparams[] = $prefix->generateKeaDhcpScopeParams();
+        }
+        return $scopeparams;
     }
 }

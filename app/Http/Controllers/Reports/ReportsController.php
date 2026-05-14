@@ -26,11 +26,9 @@ class ReportsController extends Controller
         {
             if(isset($prefix->scope->name))
             {
-                unset($cidr);
                 unset($tmp);
-                $cidr = $prefix->cidr();
-                $tmp['network'] = $cidr['network'];
-                $tmp['bitmask'] = $cidr['bitmask'];
+                $tmp['network'] = $prefix->network();
+                $tmp['bitmask'] = $prefix->length();
                 $sitesubnets[$prefix->scope->name]['networks'][] = $tmp;
             }
         }

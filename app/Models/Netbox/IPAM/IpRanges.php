@@ -38,7 +38,7 @@ class IpRanges extends BaseModel
         $end = ip2long($params['end_address']);
         foreach($addresses as $address)
         {
-            $long = ip2long($address->cidr()['ip']);
+            $long = ip2long($address->ip());
             if($long >= $start && $long <= $end)
             {
                 $return[] = $address;
