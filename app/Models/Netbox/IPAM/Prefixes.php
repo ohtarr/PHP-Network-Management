@@ -375,13 +375,13 @@ class Prefixes extends BaseModel
             "endRange"		    => $scopeparams['last_host'],
             "subnetMask"		=> $scopeparams['netmask'],
         ];
-        if(isset($this->custom_fields->name))
+        if(isset($this->description))
         {
-            $params['name'] = $this->custom_fields->name;
+            $params['name'] = $this->description;
         }
-        if(isset($this->custom_fields->description))
+        if(isset($this->description))
         {
-            $params['description'] = $this->custom_fields->description;
+            $params['description'] = $this->description;
         }
         $optionsparams[] = [
             'optionId'  =>  "3",

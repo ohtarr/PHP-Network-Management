@@ -315,6 +315,28 @@ class DeprovisioningController extends Controller
                 $this->addLog(1, "SCOPE {$prefix->network()} not found in GIZMO.");
             } */
         }
+        $checkscopes = $netboxsite->getKeaDhcpScopesBySupernets();
+        if($checkscopes->count() > 0)
+        {
+            $totalstatus = 0;
+            foreach($checkscopes as $checkscope)
+            {
+                $this->addLog(0, "CHILD SCOPE {$checkscope->subnet} still exists, something is wrong!");
+            }
+        } else {
+                $this->addLog(1, "no CHILD SCOPES remain in KEA.  DHCP scopes have been deprovisioned.");
+        }
+        $gizmoscopes = $netboxsite->getGizmoDhcpScopesBySupernets();
+        if($gizmoscopes->count() > 0)
+        {
+            $totalstatus = 0;
+            foreach($gizmoscopes as $gizmoscope)
+            {
+                $this->addLog(0, "CHILD SCOPE {$gizmoscope->scopeID} exists in Gizmo.  Submit ticket to delete.");
+            }
+        } else {
+                $this->addLog(1, "no CHILD SCOPES exist in GIZMO.");
+        }
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = null;

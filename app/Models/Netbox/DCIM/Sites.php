@@ -598,6 +598,7 @@ class Sites extends BaseModel
 			'DHCP_1'            =>  env('MIST_DHCP_1'),
 			'DHCP_2'            =>  env('MIST_DHCP_2'),
 			'DHCP_3'            =>  env('MIST_DHCP_3'),
+            'DHCP_4'            =>  env('MIST_DHCP_4'),
 			'DNS_1'             =>  env('MIST_DNS_1'),
 			'DNS_2'             =>  env('MIST_DNS_2'),
 			'NTP_1'             =>  env('MIST_NTP_1'),
