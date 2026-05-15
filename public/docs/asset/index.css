@@ -1,0 +1,24 @@
+html {
+    box-sizing: border-box;
+    overflow: -moz-scrollbars-vertical;
+    overflow-y: scroll;
+}
+
+*,
+*:before,
+*:after {
+    box-sizing: inherit;
+}
+
+body {
+    margin: 0;
+    background: #fafafa;
+}
+
+/* Hide client_id and client_secret fields in OAuth2 dialog — pre-populated via initOAuth(), user should not need to edit */
+input#client_id,
+label[for="client_id"],
+input#client_secret,
+label[for="client_secret"] {
+    display: none !important;
+}

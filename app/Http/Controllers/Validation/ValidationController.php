@@ -43,6 +43,35 @@ class ValidationController extends Controller
         ];
     }
 
+    /**
+     * @OA\Get(
+     *     path="/validation/netboxsite/{sitecode}",
+     *     summary="Validate a Netbox site configuration against ServiceNow",
+     *     description="Checks that the Netbox site exists, matches the ServiceNow location address, has a provisioning supernet prefix assigned with correct status and role, has active prefixes per VLAN with correct DHCP scopes and options, has an ASN assigned, and has a default location.",
+     *     tags={"Validation"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="sitecode",
+     *         in="path",
+     *         required=true,
+     *         description="The site code to validate",
+     *         @OA\Schema(type="string", example="SITE01")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Validation result with detailed log",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1, description="1 = all checks passed, 0 = one or more checks failed"),
+     *             @OA\Property(property="log", type="array", @OA\Items(
+     *                 @OA\Property(property="status", type="integer", example=1),
+     *                 @OA\Property(property="msg", type="string", example="Netbox SITE ID 42 exists.")
+     *             )),
+     *             @OA\Property(property="data", type="object", description="The Netbox site object if found")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function validateNetboxSite(Request $request, $sitecode)
     {
         //Validate that the snow location exists
@@ -74,7 +103,6 @@ class ValidationController extends Controller
                 $matches = 1;
                 foreach($this->getSnowToNetboxAddressMap() as $snowkey => $netboxkey)
                 {
-                    //$debuglog[] = $snowloc->$snowkey . "=?=" . $netboxsite->custom_fields->$netboxkey;
                     if($snowloc->$snowkey != $netboxsite->custom_fields->$netboxkey)
                     {
                         $matches = 0;
@@ -251,14 +279,6 @@ class ValidationController extends Controller
             'log'     => $this->logs,
             'data'    => $netboxsite,
         ];
-
-        //PREFIX EXISTS
-            //ONLY ONE PREFIX ASSIGNED TO SITE
-            //PREFIX SET TO CONTAINER
-        //ASN EXISTS
-            //ONLY ONE ASN ASSIGNED TO SITE
-        //DEFAULT LOCATION EXISTS
-
     }
 
 }

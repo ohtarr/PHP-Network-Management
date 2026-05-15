@@ -62,10 +62,12 @@ Route::post('provisioning/netboxsite/{sitecode}/devices', [App\Http\Controllers\
 Route::get('provisioning/netboxsite/{sitecode}/addresses/{qty?}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getAvailableProvIps']);
 
 Route::get('provisioning/dhcp/generate/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'generateSiteDhcpParams']);
-Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopes']);
+Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getKeaDhcpScopes']);
 Route::get('provisioning/dhcp/overlap/{network}/{bitmask}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopeOverlap']);
 Route::post('provisioning/dhcp/{sitecode}/vlan/{vlan}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScope']);
 Route::post('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScopes']);
+
+Route::get('provisioning/dhcp/{sitecode}/gizmo', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getGizmoDhcpScopes']);
 
 Route::post('provisioning/mist/site/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistSite']);
 Route::post('provisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevices']);

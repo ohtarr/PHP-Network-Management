@@ -37,11 +37,59 @@ class ManagementController extends Controller
         DbLog::log($msg1, $username, 'provisioning');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/management/netbox/sites/",
+     *     summary="Get all Netbox sites (brief)",
+     *     tags={"Management"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of all Netbox sites in brief format",
+     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getNetboxSites()
     {
-        return Sites::where('brief', 1)->get();
+        $return = Sites::where('brief', 1)->get();
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/management/netbox/{sitecode}/devices/",
+     *     summary="Get a site summary including Netbox devices and their Mist status",
+     *     description="Returns the Netbox site, Mist site, and a list of devices with their corresponding Mist device records and site assignments.",
+     *     tags={"Management"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="sitecode",
+     *         in="path",
+     *         required=true,
+     *         description="The site code to retrieve the summary for",
+     *         @OA\Schema(type="string", example="SITE01")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Site summary with devices",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(
+     *                 @OA\Property(property="status", type="integer", example=1),
+     *                 @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *                 @OA\Property(property="data", type="object",
+     *                     @OA\Property(property="netboxsite", type="object"),
+     *                     @OA\Property(property="mistsite", type="object"),
+     *                     @OA\Property(property="devices", type="array", @OA\Items(type="object"))
+     *                 )
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getSiteSummary($sitecode)
     {
         $nbsite = Sites::where('name__ie', $sitecode)->first();
@@ -78,39 +126,19 @@ class ManagementController extends Controller
             }
             if(isset($mistdevice->mac))
             {
-                //$devicecustom['site_id'] = null;
-
-                //$mistdevice->custom = [
-                //    'site_id'   =>  null,
-                //];
-                //$mistdevice->custom['site_id'] = null;
-                
-                
-                
-                
-
-                //$nbdevice->custom['mistdevice']['custom'] = null;
-                //$nbdevice->custom['mistdevice']['custom']['site_id'] = null;
                 if(isset($mistdevice->site_id))
                 {
-                    //$devicecustom['site_id'] = $mistdevice->site_id;
                     $mistdevicesite = $mistdevice->site_id;
-                    //$mistdevice->custom['site_id'] = $mistdevice->site_id;
-                    //$nbdevice->custom['mistdevice']->custom['site_id'] = $mistdevice->site_id;
                 } else {
                     if(isset($mistdevice->vc_mac))
                     {
                         $vcmaster = $allmistdevices->where('mac', $mistdevice->vc_mac)->first();
                         if(isset($vcmaster->site_id))
                         {
-                            //$devicecustom['site_id'] = $vcmaster->site_id;
                             $mistdevicesite = $vcmaster->site_id;
-                            //$mistdevice->custom['site_id'] = $vcmaster->site_id;
-                            //$nbdevice->custom['mistdevice']['custom']['site_id'] = $mistdevice->site_id;
                         }
                     }
                 }
-                //$mistdevice->custom = $devicecustom;
                 $nbdevice->custom['mistdevice'] = $mistdevice;
                 $nbdevice->custom['mistdevicesite'] = $mistdevicesite;
             }
@@ -129,9 +157,41 @@ class ManagementController extends Controller
             ]
 
         ];
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/management/netbox/webhook/device",
+     *     summary="Receive a Netbox webhook for device changes and dispatch sync jobs",
+     *     description="Accepts a Netbox webhook payload for device create/update/delete events. Dispatches SyncDeviceDnsJob and SyncDeviceLibreNMSJob. This endpoint does not require authentication.",
+     *     tags={"Management"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="model", type="string", example="device", description="Must be 'device' to be processed"),
+     *             @OA\Property(property="event", type="string", example="updated", description="Event type: created, updated, or deleted"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="id", type="integer", example=42, description="Netbox device ID"),
+     *                 @OA\Property(property="name", type="string", example="SITE01-SW-1", description="Device name")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Jobs dispatched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="SyncDeviceDnsJob and SyncDeviceLibreNMSJob dispatched for Netbox device ID 42 (event: updated)."),
+     *             @OA\Property(property="netbox_device_id", type="integer", example=42),
+     *             @OA\Property(property="event", type="string", example="updated"),
+     *             @OA\Property(property="name", type="string", example="SITE01-SW-1")
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Missing device ID in payload"),
+     *     @OA\Response(response=404, description="Netbox device not found")
+     * )
+     */
     public function syncNetboxDevice(Request $request)
     {
         $model = $request->input('model');
@@ -161,8 +221,6 @@ class ManagementController extends Controller
             'name'             => $deviceName,
         ]);
 
-        // For deleted events the device is already gone from Netbox — skip the
-        // existence check and rely on the name from the webhook payload instead.
         if ($event !== 'deleted') {
             $device = Devices::find($netboxDeviceId);
             if (!isset($device->id)) {
@@ -186,6 +244,42 @@ class ManagementController extends Controller
         ]);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/management/search",
+     *     summary="Search device command outputs",
+     *     description="Searches stored device command outputs for a given string and returns matching devices with their output snippets.",
+     *     tags={"Management"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="search",
+     *         in="query",
+     *         required=true,
+     *         description="The string to search for in device outputs",
+     *         @OA\Schema(type="string", example="10.1.1.1")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of matching devices with output snippets, sorted by device name",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(
+     *                 @OA\Property(property="id", type="integer", example=42),
+     *                 @OA\Property(property="name", type="string", example="SITE01-SW-1"),
+     *                 @OA\Property(property="model", type="string", example="EX4300-48P"),
+     *                 @OA\Property(property="role", type="string", example="Access Switch"),
+     *                 @OA\Property(property="site", type="string", example="SITE01"),
+     *                 @OA\Property(property="ip", type="string", example="10.1.1.1"),
+     *                 @OA\Property(property="outputs", type="array", @OA\Items(
+     *                     @OA\Property(property="type", type="string", example="show version"),
+     *                     @OA\Property(property="data", type="string", example="Junos: 21.4R3")
+     *                 ))
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function searchOutputs(Request $request)
     {
         $return = [];
@@ -200,7 +294,6 @@ class ManagementController extends Controller
         $outputs = Output::where('data', 'like', '%' . $search . '%')->get();
         foreach($outputs as $output)
         {
-            //$deviceids[] = $output->device_id;
             $array[$output->device_id]['outputs'][] = $output;
         }
         foreach($array as $id => $value)
@@ -241,13 +334,12 @@ class ManagementController extends Controller
             foreach($value['outputs'] as $output)
             {
                 $tmp['outputs'][] = ['type'=>$output->type, 'data'=>$output->data];
-                //$tmp['outputs'][$output->type] = $output->data;
             }
             $return[] = $tmp;
         }
         usort($return, function($a, $b) {
             return $a['name'] <=> $b['name'];
         });
-        return $return;
+        return response()->json($return);
     }
 }

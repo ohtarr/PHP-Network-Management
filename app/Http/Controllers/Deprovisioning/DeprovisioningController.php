@@ -41,6 +41,32 @@ class DeprovisioningController extends Controller
         DbLog::log($msg1, $username, 'provisioning');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/deprovisioning/snowlocations/{days}",
+     *     summary="Get ServiceNow locations recently decommissioned",
+     *     description="Returns site codes that have a network mob date set and a demob date within the last N days, and also exist as a Netbox site.",
+     *     tags={"Deprovisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="days",
+     *         in="path",
+     *         required=false,
+     *         description="Number of days to look back for decommissioned sites (default: 90)",
+     *         @OA\Schema(type="integer", example=90)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of site codes eligible for deprovisioning",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="string", example="SITE01"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getSnowLocations($days = 90)
     {
         $netboxsites = Sites::all();
@@ -73,9 +99,35 @@ class DeprovisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = $sitecodes;
-        return json_encode($return);
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/deprovisioning/mist/site/{sitecode}/devices",
+     *     summary="Unassign all Mist devices from a site",
+     *     description="Finds all devices assigned to the Mist site and unassigns them.",
+     *     tags={"Deprovisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="sitecode",
+     *         in="path",
+     *         required=true,
+     *         description="The site code whose Mist devices should be unassigned",
+     *         @OA\Schema(type="string", example="SITE01")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Unassignment result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function unassignMistDevices($sitecode)
     {
         $user = auth()->user();
@@ -108,9 +160,35 @@ class DeprovisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = null;
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/deprovisioning/mist/site/{sitecode}",
+     *     summary="Delete a Mist site",
+     *     description="Deletes the Mist site for the given site code. Will fail if devices are still assigned to the site.",
+     *     tags={"Deprovisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="sitecode",
+     *         in="path",
+     *         required=true,
+     *         description="The site code of the Mist site to delete",
+     *         @OA\Schema(type="string", example="SITE01")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Deletion result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deleteMistSite($sitecode)
     {
         $user = auth()->user();
@@ -157,9 +235,35 @@ class DeprovisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = null;
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/deprovisioning/dhcp/scope/{scope}",
+     *     summary="Delete a single DHCP scope by network address",
+     *     description="Deletes the specified DHCP scope from both KEA and Gizmo DHCP systems.",
+     *     tags={"Deprovisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="scope",
+     *         in="path",
+     *         required=true,
+     *         description="The network address of the DHCP scope to delete (e.g. 10.1.1.0)",
+     *         @OA\Schema(type="string", example="10.1.1.0")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Deletion result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deleteDhcpScope($scope)
     {
         $user = auth()->user();
@@ -206,9 +310,37 @@ class DeprovisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = null;
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/deprovisioning/dhcp/{sidecode}/todelete",
+     *     summary="Get DHCP scopes that would be deleted for a site",
+     *     description="Returns the list of DHCP scopes associated with the site's prefixes without actually deleting them.",
+     *     tags={"Deprovisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="sidecode",
+     *         in="path",
+     *         required=true,
+     *         description="The site code to preview DHCP scope deletions for",
+     *         @OA\Schema(type="string", example="SITE01")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of DHCP scopes that would be deleted",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(
+     *                 @OA\Property(property="subnet", type="string", example="10.1.1.0")
+     *             ))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function dhcpScopesToDelete($sitecode)
     {
         $user = auth()->user();
@@ -241,9 +373,35 @@ class DeprovisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = $scopeids;
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/deprovisioning/dhcp/{sitecode}",
+     *     summary="Delete all DHCP scopes for a site",
+     *     description="Deletes all active DHCP scopes associated with the site's Netbox prefixes from KEA DHCP.",
+     *     tags={"Deprovisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="sitecode",
+     *         in="path",
+     *         required=true,
+     *         description="The site code whose DHCP scopes should be deleted",
+     *         @OA\Schema(type="string", example="SITE01")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Deletion result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deleteSiteDhcpScopes($sitecode)
     {
         $user = auth()->user();
@@ -292,28 +450,6 @@ class DeprovisioningController extends Controller
             } else {
                 $this->addLog(1, "SCOPE {$prefix->network()} not found in KEA.");
             }
-
-
-/*             $deletescope2 = Dhcp::findScopeByIp($prefix->network());
-            if(isset($deletescope2->scopeID))
-            {
-                $this->addLog(1, "SCOPE {$deletescope2->scopeID} found in GIZMO and ready to delete.");
-                try{
-                    $deletescope2->delete();
-                } catch (\Exception $e) {
-                    $this->addLog(0, "Received error from GIZMO: " . $e->getMessage());
-                }
-                $checkscope2 = Dhcp::findScopeByIp($prefix->network());
-                if(isset($checkscope2->scopeID))
-                {
-                    $this->addLog(0, "SCOPE {$prefix->network()} did not delete correctly in GIZMO!");
-                    $totalstatus = 0;
-                } else {
-                    $this->addLog(1, "SCOPE {$prefix->network()} deleted successfully in GIZMO.");
-                }
-            } else {
-                $this->addLog(1, "SCOPE {$prefix->network()} not found in GIZMO.");
-            } */
         }
         $checkscopes = $netboxsite->getKeaDhcpScopesBySupernets();
         if($checkscopes->count() > 0)
@@ -340,9 +476,35 @@ class DeprovisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = null;
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Delete(
+     *     path="/deprovisioning/netbox/site/{sitecode}",
+     *     summary="Delete a Netbox site and all associated resources",
+     *     description="Fully deprovisions a Netbox site by deleting all devices (and their virtual chassis), IP addresses, IP ranges, active prefixes, ASNs, locations, and the site itself. Will refuse if DHCP scopes or a Mist site still exist.",
+     *     tags={"Deprovisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="sitecode",
+     *         in="path",
+     *         required=true,
+     *         description="The site code of the Netbox site to delete",
+     *         @OA\Schema(type="string", example="SITE01")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Deletion result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", nullable=true)
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deleteNetboxSite($sitecode)
     {
         $user = auth()->user();
@@ -460,7 +622,7 @@ class DeprovisioningController extends Controller
         $return['status'] = 1;
         $return['log'] = $this->logs;
         $return['data'] = null;
-        return $return;
+        return response()->json($return);
     }
 
 }

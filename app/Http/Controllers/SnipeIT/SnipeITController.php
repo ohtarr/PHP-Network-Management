@@ -36,6 +36,24 @@ class SnipeITController extends Controller
         DbLog::log($msg1, $username, 'provisioning');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/snipeit/hardware",
+     *     summary="Get all SnipeIT hardware assets",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of all hardware assets",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getAssets()
     {
         $results = Assets::all();
@@ -45,6 +63,31 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/snipeit/hardware/byserial/{serial}",
+     *     summary="Get a SnipeIT hardware asset by serial number",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="serial",
+     *         in="path",
+     *         required=true,
+     *         description="The serial number (asset tag) to look up",
+     *         @OA\Schema(type="string", example="AB1234567890")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Asset matching the serial number",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getAssetsBySerial($serial)
     {
         $results = Assets::findByTag($serial);
@@ -54,6 +97,24 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/snipeit/locations",
+     *     summary="Get all SnipeIT locations",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of all SnipeIT locations",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getLocations()
     {
         $results = Locations::all();
@@ -63,6 +124,24 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/snipeit/categories",
+     *     summary="Get all SnipeIT asset categories",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of all SnipeIT categories",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getCategories()
     {
         $results = Categories::all();
@@ -72,6 +151,24 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/snipeit/models",
+     *     summary="Get all SnipeIT asset models",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of all SnipeIT models",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getModels()
     {
         $results = Models::all();
@@ -81,6 +178,24 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/snipeit/statuslabels",
+     *     summary="Get all SnipeIT status labels",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of all SnipeIT status labels",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="object"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getStatusLabels()
     {
         $results = StatusLabels::all();
@@ -90,52 +205,39 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/snipeit/hardware/{serial}/checkin",
+     *     summary="Check in a SnipeIT hardware asset by serial number",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="serial",
+     *         in="path",
+     *         required=true,
+     *         description="The serial number (asset tag) of the asset to check in",
+     *         @OA\Schema(type="string", example="AB1234567890")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(type="object", description="Optional check-in parameters (e.g. location_id, status_id)")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Check-in result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function checkinAsset($serial, Request $request)
     {
         $return['status'] = 1;
         $submitted = $request->collect();
- /*        if(isset($submitted['location_id']))
-        {
-            $locationid = $submitted['location_id'];
-            $this->addLog(1, "location_id {$locationid} submitted.");
-        } else {
-            $this->addLog(0, "location_id not found.");
-            $return['status'] = 0;
-        }
-        if(isset($submitted['status_id']))
-        {
-            $statusid = $submitted['status_id'];
-            $this->addLog(1, "status_id {$statusid} submitted.");
-        } else {
-            $this->addLog(0, "status_id not found.");
-            $return['status'] = 0;
-        }
-        try{
-            $location = Locations::find($locationid);
-        } catch (\Exception $e) {
-            $this->addLog(0, "Failed to FIND Location: " . $e->getMessage());
-            $return['status'] = 0;
-        }
-        if(isset($location->id))
-        {
-            $this->addLog(1, "location {$location->name} found.");
-        } else {
-            $this->addLog(0, "location ID {$locationid} not found.");
-            $return['status'] = 0;
-        }
-        try{
-            $status = StatusLabels::find($statusid);
-        } catch (\Exception $e) {
-            $this->addLog(0, "Failed to FIND StatusLabel: " . $e->getMessage());
-            $return['status'] = 0;
-        }
-        if(isset($status->id))
-        {
-            $this->addLog(1, "location {$status->name} found.");
-        } else {
-            $this->addLog(0, "location ID {$statusid} not found.");
-            $return['status'] = 0;
-        } */
         try{
             $asset = Assets::findByTag($serial);
         } catch (\Exception $e) {
@@ -151,7 +253,6 @@ class SnipeITController extends Controller
         }
         try{
             $results = $asset->checkin($submitted);
-            //$results = $asset->checkinCustom($locationid, $statusid);
         } catch (\Exception $e) {
             $this->addLog(0, $e->getMessage());
             $return['status'] = 0;
@@ -170,6 +271,35 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/snipeit/hardware/{serial}/checkout",
+     *     summary="Check out a SnipeIT hardware asset by serial number",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="serial",
+     *         in="path",
+     *         required=true,
+     *         description="The serial number (asset tag) of the asset to check out",
+     *         @OA\Schema(type="string", example="AB1234567890")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=false,
+     *         @OA\JsonContent(type="object", description="Optional checkout parameters (e.g. assigned_to, checkout_to_type)")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Checkout result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function checkoutAsset($serial, Request $request)
     {
         $return['status'] = 1;
@@ -207,6 +337,35 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Patch(
+     *     path="/snipeit/hardware/{serial}",
+     *     summary="Update a SnipeIT hardware asset by serial number",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="serial",
+     *         in="path",
+     *         required=true,
+     *         description="The serial number (asset tag) of the asset to update",
+     *         @OA\Schema(type="string", example="AB1234567890")
+     *     ),
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(type="object", description="Fields to update on the asset")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Update result",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function updateAsset($serial, Request $request)
     {
         $return['status'] = 1;
@@ -237,6 +396,35 @@ class SnipeITController extends Controller
         return json_encode($return);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/snipeit/hardware",
+     *     summary="Create a new SnipeIT hardware asset",
+     *     tags={"SnipeIT"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             type="object",
+     *             description="Asset fields to create",
+     *             @OA\Property(property="asset_tag", type="string", example="AB1234567890"),
+     *             @OA\Property(property="model_id", type="integer", example=5),
+     *             @OA\Property(property="status_id", type="integer", example=1),
+     *             @OA\Property(property="name", type="string", example="SITE01-SW-1")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Created asset",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="object")
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function createAsset(Request $request)
     {
         $submitted = $request->collect();

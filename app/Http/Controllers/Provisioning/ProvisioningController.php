@@ -48,10 +48,30 @@ class ProvisioningController extends Controller
         DbLog::log($msg1, $username, 'provisioning');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/provisioning/snowlocations",
+     *     summary="Get all active ServiceNow locations eligible for provisioning",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of site codes from ServiceNow",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(type="string", example="SITE01"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getSnowLocations()
     {
         $totalstatus = 1;
+        $start = microtime(true);
         $locs = Location::where('companyISNOTEMPTY')->where('u_network_demob_dateISEMPTY')->get();
+        $end = microtime(true);
         if(!$locs)
         {
             $this->addLog(0, "Unable to find valid SNOW location.");
@@ -59,7 +79,7 @@ class ProvisioningController extends Controller
 
             $return['status'] = $totalstatus;
             $return['log'] = $this->logs;
-            return json_encode($return);
+            return response()->json($return);
         }
         foreach($locs as $loc)
         {
@@ -69,37 +89,77 @@ class ProvisioningController extends Controller
             }
         }
         sort($sitecodes);
-        $this->addLog(1, "SNOW LOCATIONS successfully retreived.");
+        $this->addLog(1, "SNOW LOCATIONS successfully retreived in " . round($end - $start,1) . " seconds.");
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = $sitecodes;
-        return json_encode($return);
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/provisioning/snowlocation/{sitecode}",
+     *     summary="Get a single ServiceNow location by site code",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Response(response=200, description="ServiceNow location details",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="data", type="object"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getSnowLocation($sitecode)
     {
+        $start = microtime(true);
         $loc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->get();
+        $end = microtime(true);
         if($loc)
         {
-            $this->addLog(1, "SNOW LOCATION successfully retreived.");
+            $this->addLog(1, "SNOW LOCATION successfully retreived in " . round($end - $start,1) . " seconds.");
             $return['status'] = 1;
             $return['log'] = $this->logs;
             $return['data'] = $loc;
-            return json_encode($return);
+            return response()->json($return);
         } else {
             $this->addLog(0, "SNOW LOCATION was not found.");
             $return['status'] = 0;
             $return['log'] = $this->logs;
-            return json_encode($return);
+            return response()->json($return);
         }
     }
 
+    /**
+     * @OA\Get(
+     *     path="/provisioning/netboxsite/{sitecode}",
+     *     summary="Get a Netbox site by site code",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Response(response=200, description="Netbox site object", @OA\JsonContent(type="object")),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getNetboxSite($sitecode)
     {
         $site = Sites::where('name__ie', $sitecode)->first();
-        return json_encode($site);
+        return response()->json($site);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/provisioning/netboxsite/{sitecode}",
+     *     summary="Deploy (provision) a Netbox site for the given site code",
+     *     description="Creates the Netbox site, assigns an ASN, allocates a provisioning supernet, deploys active prefixes per VLAN, and creates a default location.",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Response(response=200, description="Provisioning result",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deployNetboxSite(Request $request, $sitecode)
     {
         $user = auth()->user();
@@ -108,16 +168,18 @@ class ProvisioningController extends Controller
         }
         $totalstatus = 1;
         //Attempt to get existing snow location.
+        $start = microtime(true);
         $snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
+        $end = microtime(true);
         if(!$snowloc)
         {
             $totalstatus = 0;
             $return['status'] = $totalstatus;
             $this->addLog(0, "Unable to find valid SNOW location.");
             $return['log'] = $this->logs;
-            return json_encode($return);
+            return response()->json($return);
         } else {
-            $this->addLog(1, "Found SNOW location ID {$snowloc->sys_id}.");
+            $this->addLog(1, "Found SNOW location ID {$snowloc->sys_id} in" . round($end - $start,1) . "seconds.");
         }
 
         //Attempt to get existing netbox site.
@@ -133,7 +195,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 $return['status'] = $totalstatus;
                 $return['log'] = $this->logs;
-                return json_encode($return);
+            return response()->json($return);
             }
             if(!isset($params['longitude']) || !isset($params['latitude']))
             {
@@ -141,7 +203,7 @@ class ProvisioningController extends Controller
                 $totalstatus = 0;
                 $return['status'] = $totalstatus;
                 $return['log'] = $this->logs;
-                return json_encode($return);
+                return response()->json($return);
             }
             $netboxsite = Sites::create($params);
             if(isset($netboxsite->id))
@@ -152,7 +214,7 @@ class ProvisioningController extends Controller
                 $this->addLog(0, "Failed to create new Netbox SITE.");
                 $return['status'] = $totalstatus;
                 $return['log'] = $this->logs;
-                return json_encode($return);
+                return response()->json($return);
             }
         }
 
@@ -190,14 +252,14 @@ class ProvisioningController extends Controller
                             $this->addLog(0, "Failed to assign ASN ID {$asn->id} to site.");
                             $return['status'] = $totalstatus;
                             $return['log'] = $this->logs;
-                            return $return;                            
+                            return response()->json($return);
                         }
                     } else {
                         $totalstatus = 0;
                         $this->addLog(0, "Failed to find a new ASN.");
                         $return['status'] = $totalstatus;
                         $return['log'] = $this->logs;
-                        return $return;
+                        return response()->json($return);
                     }
                 }
             } else {
@@ -240,7 +302,7 @@ class ProvisioningController extends Controller
                     $this->addLog(0, "Failed to assign PREFIX {$supernet->prefix} to site.");
                     $return['status'] = $totalstatus;
                     $return['log'] = $this->logs;
-                    return $return;
+                    return response()->json($return);
                 }
             }
         }
@@ -292,7 +354,7 @@ class ProvisioningController extends Controller
                 $this->addLog(0, "Failed to create Location.");
                 $return['status'] = $totalstatus;
                 $return['log'] = $this->logs;
-                return $return;
+                return response()->json($return);
             }
         }
 
@@ -300,19 +362,67 @@ class ProvisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = Sites::find($netboxsite->id);
-        return $return;
+        return response()->json($return);
     }
 
-    public function getDhcpScopes($sitecode)
+    /**
+     * @OA\Get(
+     *     path="/provisioning/dhcp/{sitecode}",
+     *     summary="Get DHCP scopes for a site",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Response(response=200, description="DHCP scopes for the site", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function getKeaDhcpScopes($sitecode)
     {
         $site = Sites::where('name__ic', $sitecode)->first();
         if(!isset($site->id))
         {
             return null;
         }
-        return $site->getDhcpScopesBySupernets();
+        $return = $site->getKeaDhcpScopesBySupernets();
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/provisioning/dhcp/{sitecode}/gizmo",
+     *     summary="Get Gizmo DHCP scopes for a site",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Response(response=200, description="Gizmo DHCP scopes for the site", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function getGizmoDhcpScopes($sitecode)
+    {
+        $site = Sites::where('name__ic', $sitecode)->first();
+        if(!isset($site->id))
+        {
+            return null;
+        }
+        $return = $site->getGizmoDhcpScopesBySupernets();
+        return response()->json($return);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/provisioning/dhcp/{sitecode}/vlan/{vlan}",
+     *     summary="Deploy a single DHCP scope for a specific VLAN at a site",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="vlan", in="path", required=true, @OA\Schema(type="integer", example=10)),
+     *     @OA\Response(response=200, description="DHCP scope deployment result",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deployDhcpScope($sitecode, $vlan)
     {
         $user = auth()->user();
@@ -327,7 +437,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
 
         if(!isset($vlan) || !isset($site->vlanToRoleMapping()[$vlan]))
@@ -336,7 +446,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
 
         $roleid = $site->vlanToRoleMapping()[$vlan];
@@ -348,7 +458,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
 
         $totalstatus = 1;
@@ -360,7 +470,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;            
+            return response()->json($return);
         }
 
         $overlaps = SubnetV4::findChildren($prefix->network(), $prefix->length());
@@ -376,7 +486,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
         $scope = null;
         try{
@@ -398,7 +508,7 @@ class ProvisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = $scope;
-        return $return;
+        return response()->json($return);
     }
 
     public function getMistSite($sitecode)
@@ -406,6 +516,20 @@ class ProvisioningController extends Controller
 
     }
 
+    /**
+     * @OA\Post(
+     *     path="/provisioning/mist/site/{sitecode}",
+     *     summary="Deploy a Mist site for the given site code",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\RequestBody(required=false, @OA\JsonContent(@OA\Property(property="gateway_template", type="string"), @OA\Property(property="network_template", type="string"), @OA\Property(property="rf_template", type="string"))),
+     *     @OA\Response(response=200, description="Mist site deployment result",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deployMistSite(Request $request, $sitecode)
     {
         $user = auth()->user();
@@ -425,7 +549,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
         $mistsite = Site::findByName($sitecode);
         if(!isset($mistsite->id))
@@ -436,7 +560,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = $mistsite;
-            return $return;
+            return response()->json($return);
         }
         //Stupid code to check for duplicate SITES with same name in SNOW, cuz that exists for some reason.
         $snowlocs = Location::where('companyISNOTEMPTY')->where('name',$sitecode)->get();
@@ -446,7 +570,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = $snowlocs;
-            return $return;
+            return response()->json($return);
         }
 
 		$mistsettings = $netboxsite->generateMistSiteSettings();
@@ -489,7 +613,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
 
         if(isset($submitted['gateway_template']))
@@ -541,7 +665,7 @@ class ProvisioningController extends Controller
             $return['data'] = null;
         }
         $return['log'] = $this->logs;
-        return $return;
+        return response()->json($return);
     }
 
     public function getNetboxDevices($sitecode)
@@ -549,6 +673,20 @@ class ProvisioningController extends Controller
 
     }
 
+    /**
+     * @OA\Post(
+     *     path="/provisioning/netboxsite/{sitecode}/devices",
+     *     summary="Deploy devices into a Netbox site",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(type="array", @OA\Items(@OA\Property(property="name", type="string"), @OA\Property(property="model", type="string"), @OA\Property(property="serial", type="string")))),
+     *     @OA\Response(response=200, description="Device deployment result",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="array", @OA\Items(type="object")))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deployNetboxDevices(Request $request, $sitecode)
     {
         $user = auth()->user();
@@ -565,7 +703,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         } else {
             $this->addLog(1, "SITE ID {$site->id} found.");
         }
@@ -577,7 +715,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
 
         $models = DeviceTypes::all();
@@ -796,9 +934,22 @@ class ProvisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = $newdevices;
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/provisioning/mist/site/{sitecode}/devices",
+     *     summary="Assign Mist devices to a site based on Netbox device records",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Response(response=200, description="Mist device deployment result",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", nullable=true))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function deployMistDevices($sitecode)
     {
         $user = auth()->user();
@@ -814,7 +965,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         } else {
             $this->addLog(1, "SITE ID {$netboxsite->id} found.");
         }
@@ -826,7 +977,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         } else {
             $this->addLog(1, "Found MIST SITE ID: {$mistsite->id}.");
         }
@@ -837,7 +988,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
         $devices = Devices::where('site_id', $netboxsite->id)->where('manufacturer_id',$manufacturer->id)->get();
         if($devices->count() == 0)
@@ -846,7 +997,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
         $deploy = [];
         foreach($devices as $device)
@@ -929,9 +1080,19 @@ class ProvisioningController extends Controller
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = null;
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/provisioning/netbox/devicetypes",
+     *     summary="Get a summarized list of all Netbox device type models",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(response=200, description="Sorted list of device model names", @OA\JsonContent(type="array", @OA\Items(type="string", example="EX4300-48P"))),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getNetboxDeviceTypesSummarized()
     {
         $types = DeviceTypes::all();
@@ -940,9 +1101,23 @@ class ProvisioningController extends Controller
             $return[] = $type->model;
         }
         sort($return);
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/provisioning/netboxsite/{sitecode}/addresses/{qty}",
+     *     summary="Get available provisioning IP addresses for a site",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="qty", in="path", required=false, @OA\Schema(type="integer", example=50)),
+     *     @OA\Response(response=200, description="Available provisioning IPs",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="data", type="object"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function getAvailableProvIps($sitecode, $qty = 50)
     {
         $netboxsite = Sites::where('name__ic',$sitecode)->first();
@@ -952,7 +1127,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         } else {
             $this->addLog(1, "SITE: {$netboxsite->name} ID:{$netboxsite->id} found.");
         }
@@ -963,7 +1138,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         } else {
             $count = count($ips);
             $this->addLog(1, "Retrieved {$count} IPs from site {$netboxsite->name}");
@@ -972,9 +1147,20 @@ class ProvisioningController extends Controller
         $return['log'] = $this->logs;
         $return['data']['routers'][] = $netboxsite->generateRouterIp();
         $return['data']['switches'] = $ips;
-        return $return;
+        return response()->json($return);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/provisioning/dhcp/generate/{sitecode}",
+     *     summary="Generate DHCP scope parameters for a site without deploying",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Response(response=200, description="Generated DHCP scope parameters", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
     public function generateSiteDhcpParams($sitecode)
     {
         $site = Sites::where('name',$sitecode)->first();
@@ -986,7 +1172,7 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
-            return $return;
+            return response()->json($return);
         }
 
         $prefixes = $site->getActivePrefixes();
@@ -1015,6 +1201,6 @@ class ProvisioningController extends Controller
         $return['status'] = 1;
         $return['log'] = $this->logs;
         $return['data'] = $scopes;
-        return $return;
+        return response()->json($return);
     }
 }

@@ -18,6 +18,19 @@ class ReportsController extends Controller
 	    //$this->middleware('auth:api');
     }
 
+    /**
+     * @OA\Get(
+     *     path="/reports/sitesubnets",
+     *     summary="Get a report of all site supernet subnets",
+     *     description="Returns a map of site names to their associated supernet prefixes from Netbox.",
+     *     tags={"Reports"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Site subnet report keyed by site name",
+     *         @OA\JsonContent(type="object")
+     *     )
+     * )
+     */
     public function siteSubnetReport()
     {
         $role = Roles::where('name', 'SITE_SUPERNET')->first();
@@ -33,9 +46,22 @@ class ReportsController extends Controller
             }
         }
         ksort($sitesubnets);
-        return json_encode($sitesubnets);
+        return response()->json($sitesubnets);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/reports/dhcp/orphanedscopes",
+     *     summary="Get DHCP scopes that are not associated with any known Netbox site",
+     *     description="Compares all DHCP scopes against Netbox site supernets and returns scopes that do not fall within any known site supernet.",
+     *     tags={"Reports"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of orphaned DHCP scopes",
+     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
+     *     )
+     * )
+     */
     public function getOrphanedDhcpScopes()
     {
         $scopes = Dhcp::all();
@@ -53,9 +79,29 @@ class ReportsController extends Controller
                 }
             }
         }
-        return $scopes;
+        return response()->json($scopes);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/reports/opengear/status",
+     *     summary="Get ICMP and SNMP status of all Opengear OOB devices",
+     *     description="Returns a combined status report for Opengear devices, including ICMP ping status and SNMP polling status from LibreNMS.",
+     *     tags={"Reports"},
+     *     @OA\Response(
+     *         response=200,
+     *         description="Opengear device status list sorted by site name",
+     *         @OA\JsonContent(
+     *             type="array",
+     *             @OA\Items(
+     *                 @OA\Property(property="name", type="string", example="SITE01"),
+     *                 @OA\Property(property="icmp", type="object", description="LibreNMS ICMP device record"),
+     *                 @OA\Property(property="snmp", type="object", description="LibreNMS SNMP device record")
+     *             )
+     *         )
+     *     )
+     * )
+     */
     public function getOpengearStatus()
     {
         $final = [];
@@ -81,6 +127,6 @@ class ReportsController extends Controller
             $tmp['name'] = $name;
             $newarray[] = $tmp;
         }
-        return $newarray;
+        return response()->json($newarray);
     }
 }
