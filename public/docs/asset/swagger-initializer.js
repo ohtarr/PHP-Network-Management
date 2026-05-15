@@ -39,5 +39,23 @@ window.onload = function() {
 
   observer.observe(document.body, { childList: true, subtree: true, attributes: false });
 
+  // Auto-select all text in parameter input fields on focus so that
+  // example placeholder values (e.g. "SITE01") are immediately replaced
+  // when the user starts typing — no manual deletion required.
+  // setTimeout(..., 0) is required because SwaggerUI uses React-controlled
+  // inputs; without the defer, React's own focus handler fires after ours
+  // and resets the selection.
+  document.addEventListener('focusin', function(e) {
+    var el = e.target;
+    if (
+      (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') &&
+      el.closest('#swagger-ui') &&
+      !el.closest('.auth-wrapper') &&
+      !el.closest('.dialog-ux')
+    ) {
+      setTimeout(function() { el.select(); }, 0);
+    }
+  });
+
   //</editor-fold>
 };

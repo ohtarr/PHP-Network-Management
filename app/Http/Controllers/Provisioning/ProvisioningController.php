@@ -1163,7 +1163,7 @@ class ProvisioningController extends Controller
      */
     public function generateSiteDhcpParams($sitecode)
     {
-        $site = Sites::where('name',$sitecode)->first();
+        $site = Sites::where('name__ic',$sitecode)->first();
         if(isset($site->id))
         {
             $this->addLog(1, "Found site with ID: {$site->id}");
