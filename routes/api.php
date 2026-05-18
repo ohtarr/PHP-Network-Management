@@ -65,6 +65,7 @@ Route::get('provisioning/dhcp/generate/{sitecode}', [App\Http\Controllers\Provis
 Route::get('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getKeaDhcpScopes']);
 Route::get('provisioning/dhcp/overlap/{network}/{bitmask}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getDhcpScopeOverlap']);
 Route::post('provisioning/dhcp/{sitecode}/vlan/{vlan}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScope']);
+Route::post('provisioning/dhcp/{sitecode}/subnet/{subnet}/{length}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScopeByPrefix']);
 Route::post('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployDhcpScopes']);
 
 Route::get('provisioning/dhcp/{sitecode}/gizmo', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getGizmoDhcpScopes']);

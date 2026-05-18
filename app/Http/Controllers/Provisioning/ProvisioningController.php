@@ -511,6 +511,103 @@ class ProvisioningController extends Controller
         return response()->json($return);
     }
 
+    /**
+     * @OA\Post(
+     *     path="/provisioning/dhcp/{sitecode}/subnet/{subnet}/{length}",
+     *     summary="Deploy a DHCP scope for a specific subnet and prefix length at a site",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="subnet", in="path", required=true, @OA\Schema(type="string", example="10.1.2.0")),
+     *     @OA\Parameter(name="length", in="path", required=true, @OA\Schema(type="integer", example=24)),
+     *     @OA\Response(response=200, description="DHCP scope deployment result",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function deployDhcpScopeByPrefix($sitecode, $subnet, $length)
+    {
+        $user = auth()->user();
+        if ($user->cant('provision-dhcp-scopes')) {
+            abort(401, 'You are not authorized');
+        }
+
+        $site = Sites::where('name__ic', $sitecode)->first();
+        if (!isset($site->id))
+        {
+            $this->addLog(0, "Unable to find site with name {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return response()->json($return);
+        }
+        $this->addLog(1, "Found site {$sitecode} with ID {$site->id}.");
+
+        $prefix = Prefixes::where('scope_type', "dcim.site")->where('scope_id', $site->id)->where('prefix', $subnet . "/" . $length)->where('status', 'active')->first();
+        if (!isset($prefix->id))
+        {
+            $this->addLog(0, "Unable to find active PREFIX {$subnet}/{$length} assigned to site {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return response()->json($return);
+        }
+        $this->addLog(1, "Found active PREFIX {$subnet}/{$length} (ID {$prefix->id}) assigned to site {$sitecode}.");
+
+        $totalstatus = 1;
+
+        $parent = SubnetV4::findParent($prefix->network());
+        if (isset($parent->id))
+        {
+            $this->addLog(0, "Scope {$prefix->network()} is part of an existing scope! {$parent->subnet}");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return response()->json($return);
+        }
+        $this->addLog(1, "Subnet {$prefix->network()} is not part of any existing scope.");
+
+        $overlaps = SubnetV4::findChildren($prefix->network(), $prefix->length());
+        if ($overlaps->count() > 0)
+        {
+            $overlapsmsg = "";
+            foreach ($overlaps as $overlap)
+            {
+                $overlapsmsg .= $overlap->scopeID . ',';
+            }
+
+            $this->addLog(0, "Scope {$prefix->network()} has existing overlapping scopes! {$overlapsmsg}");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return response()->json($return);
+        }
+        $this->addLog(1, "Subnet {$prefix->network()} has no overlapping child scopes.");
+
+        $scope = null;
+        try {
+            $start = microtime(true);
+            $scope = $prefix->deployDhcpScope();
+            $end = microtime(true);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Error from KEA-DHCP-API: " . $e->getMessage());
+        }
+
+        if (isset($scope->subnet))
+        {
+            $this->addLog(1, "Deployed DHCP scope {$scope->subnet} for site {$sitecode} in " . round($end - $start, 1) . " seconds.");
+        } else {
+            $totalstatus = 0;
+            $this->addLog(0, "Failed to deploy DHCP scope {$prefix->network()}/{$length} for site {$sitecode}.");
+        }
+
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = $scope;
+        return response()->json($return);
+    }
+
     public function getMistSite($sitecode)
     {
 

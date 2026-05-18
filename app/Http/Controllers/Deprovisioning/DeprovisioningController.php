@@ -61,7 +61,7 @@ class DeprovisioningController extends Controller
      *         @OA\JsonContent(
      *             @OA\Property(property="status", type="integer", example=1),
      *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
-     *             @OA\Property(property="data", type="array", @OA\Items(type="string", example="SITE01"))
+     *             @OA\Property(property="data", type="array", @OA\Items(type="string", example="KHONELAB"))
      *         )
      *     ),
      *     @OA\Response(response=401, description="Unauthorized")
@@ -114,7 +114,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code whose Mist devices should be unassigned",
-     *         @OA\Schema(type="string", example="SITE01")
+     *         @OA\Schema(type="string", example="KHONELAB")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -175,7 +175,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code of the Mist site to delete",
-     *         @OA\Schema(type="string", example="SITE01")
+     *         @OA\Schema(type="string", example="KHONELAB")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -316,8 +316,8 @@ class DeprovisioningController extends Controller
     /**
      * @OA\Get(
      *     path="/deprovisioning/dhcp/{sidecode}/todelete",
-     *     summary="Get DHCP scopes that would be deleted for a site",
-     *     description="Returns the list of DHCP scopes associated with the site's prefixes without actually deleting them.",
+     *     summary="Get Kea DHCP scopes that would be deleted for a site",
+     *     description="Returns the list of Kea DHCP scopes associated with the site's prefixes without actually deleting them.",
      *     tags={"Deprovisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
@@ -325,11 +325,11 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code to preview DHCP scope deletions for",
-     *         @OA\Schema(type="string", example="SITE01")
+     *         @OA\Schema(type="string", example="KHONELAB")
      *     ),
      *     @OA\Response(
      *         response=200,
-     *         description="List of DHCP scopes that would be deleted",
+     *         description="List of Kea DHCP scopes that would be deleted",
      *         @OA\JsonContent(
      *             @OA\Property(property="status", type="integer", example=1),
      *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
@@ -362,7 +362,70 @@ class DeprovisioningController extends Controller
             $this->addLog(1, "SITE ID {$netboxsite->id} found.");
         }
 
-        $scopes = $netboxsite->getDhcpScopesByPrefixes();
+        $scopes = $netboxsite->getKeaDhcpScopesBySupernets();
+        $this->addLog(1, "Found " . count($scopes) . " Scopes to delete.");
+
+        foreach($scopes as $scope)
+        {
+            $scopeids[] = (object) ['subnet' => $scope->subnet];
+        }
+
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = $scopeids;
+        return response()->json($return);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/deprovisioning/dhcp/{sidecode}/todelete/gizmo",
+     *     summary="Get Gizmo DHCP scopes that would be deleted for a site",
+     *     description="Returns the list of Gizmo DHCP scopes associated with the site's prefixes without actually deleting them.",
+     *     tags={"Deprovisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="sidecode",
+     *         in="path",
+     *         required=true,
+     *         description="The site code to preview DHCP scope deletions for",
+     *         @OA\Schema(type="string", example="KHONELAB")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of Gizmo DHCP scopes that would be deleted",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="log", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="data", type="array", @OA\Items(
+     *                 @OA\Property(property="subnet", type="string", example="10.1.1.0")
+     *             ))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function dhcpScopesToDeleteGizmo($sitecode)
+    {
+        $user = auth()->user();
+		if ($user->cant('provision-mist-devices')) {
+			abort(401, 'You are not authorized');
+        }
+
+        $totalstatus = 1;
+
+        $netboxsite = Sites::where('name__ic',$sitecode)->first();
+        if(!isset($netboxsite->id))
+        {
+            $this->addLog(0, "SITE {$sitecode} not found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "SITE ID {$netboxsite->id} found.");
+        }
+
+        $scopes = $netboxsite->getGizmoDhcpScopesBySupernets();
         $this->addLog(1, "Found " . count($scopes) . " Scopes to delete.");
 
         foreach($scopes as $scope)
@@ -388,7 +451,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code whose DHCP scopes should be deleted",
-     *         @OA\Schema(type="string", example="SITE01")
+     *         @OA\Schema(type="string", example="KHONELAB")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -491,7 +554,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code of the Netbox site to delete",
-     *         @OA\Schema(type="string", example="SITE01")
+     *         @OA\Schema(type="string", example="KHONELAB")
      *     ),
      *     @OA\Response(
      *         response=200,
