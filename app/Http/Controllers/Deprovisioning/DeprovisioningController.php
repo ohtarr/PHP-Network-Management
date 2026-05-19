@@ -589,17 +589,30 @@ class DeprovisioningController extends Controller
             $this->addLog(1, "SITE ID {$netboxsite->id} found.");
         }
 
-        $scopes = $netboxsite->getDhcpScopes();
+        $scopes = $netboxsite->getKeaDhcpScopesBySupernets();
         $scopecount = $scopes->count();
         if($scopecount > 0)
         {
-            $this->addLog(0, "Found {$scopecount} scopes for site {$netboxsite->name}, cancelling netbox site deletion.");
+            $this->addLog(0, "Found {$scopecount} KEA scopes for site {$netboxsite->name}, cancelling netbox site deletion.");
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
             return $return;
         } else {
-            $this->addLog(1, "Found {$scopecount} scopes for site {$netboxsite->name}.");
+            $this->addLog(1, "Found {$scopecount} KEA scopes for site {$netboxsite->name}.");
+        }
+
+        $scopes = $netboxsite->getGizmoDhcpScopesBySupernets();
+        $scopecount = $scopes->count();
+        if($scopecount > 0)
+        {
+            $this->addLog(0, "Found {$scopecount} GIZMO scopes for site {$netboxsite->name}, cancelling netbox site deletion.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return $return;
+        } else {
+            $this->addLog(1, "Found {$scopecount} GIZMO scopes for site {$netboxsite->name}.");
         }
 
         $mistsite = $netboxsite->getMistSite();
