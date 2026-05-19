@@ -12,6 +12,9 @@ use App\Models\Mist\Device as MistDevice;
 use App\Models\Device\Output;
 use App\Jobs\SyncDeviceDnsJob;
 use App\Jobs\SyncDeviceLibreNMSJob;
+use App\Jobs\SyncVirtualMachineDnsJob;
+use App\Jobs\SyncVirtualMachineLibreNMSJob;
+use App\Models\Netbox\VIRTUALIZATION\VirtualMachines;
 use Illuminate\Support\Facades\Log;
 use App\Models\Log\Log as DbLog;
 
@@ -21,7 +24,7 @@ class ManagementController extends Controller
     
     public function __construct()
     {
-        $this->middleware('auth:api')->except(['syncNetboxDevice']);
+        $this->middleware('auth:api')->except(['syncNetboxDevice', 'syncNetboxVirtualMachine']);
     }
 
     public function addLog($status, $msg)
@@ -241,6 +244,90 @@ class ManagementController extends Controller
             'netbox_device_id' => $netboxDeviceId,
             'event'            => $event,
             'name'             => $deviceName ?? null,
+        ]);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/management/netbox/webhook/virtual-machine",
+     *     summary="Receive a Netbox webhook for virtual machine changes and dispatch sync jobs",
+     *     description="Accepts a Netbox webhook payload for virtual-machine create/update/delete events. Dispatches SyncVirtualMachineDnsJob and SyncVirtualMachineLibreNMSJob. This endpoint does not require authentication.",
+     *     tags={"Management"},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             @OA\Property(property="model", type="string", example="virtual-machine", description="Must be 'virtual-machine' to be processed"),
+     *             @OA\Property(property="event", type="string", example="updated", description="Event type: created, updated, or deleted"),
+     *             @OA\Property(property="data", type="object",
+     *                 @OA\Property(property="id", type="integer", example=42, description="Netbox virtual machine ID"),
+     *                 @OA\Property(property="name", type="string", example="vm-site01-web01", description="Virtual machine name")
+     *             )
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Jobs dispatched successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="status", type="integer", example=1),
+     *             @OA\Property(property="message", type="string", example="SyncVirtualMachineDnsJob and SyncVirtualMachineLibreNMSJob dispatched for Netbox VM ID 42 (event: updated)."),
+     *             @OA\Property(property="netbox_vm_id", type="integer", example=42),
+     *             @OA\Property(property="event", type="string", example="updated"),
+     *             @OA\Property(property="name", type="string", example="vm-site01-web01")
+     *         )
+     *     ),
+     *     @OA\Response(response=422, description="Missing virtual machine ID in payload"),
+     *     @OA\Response(response=404, description="Netbox virtual machine not found")
+     * )
+     */
+    public function syncNetboxVirtualMachine(Request $request)
+    {
+        $model = $request->input('model');
+        if ($model !== 'virtual-machine') {
+            return response()->json([
+                'status'  => 0,
+                'message' => "Webhook model '{$model}' is not 'virtual-machine', ignoring.",
+            ], 200);
+        }
+
+        $netboxVmId = $request->input('data.id');
+        if (!$netboxVmId) {
+            return response()->json([
+                'status'  => 0,
+                'message' => 'No virtual machine ID found in webhook payload (data.id).',
+            ], 422);
+        }
+
+        $netboxVmId = (int) $netboxVmId;
+
+        $event  = $request->input('event', 'updated');
+        $vmName = $request->input('data.name');
+
+        Log::info('ManagementController@syncNetboxVirtualMachine: webhook received', [
+            'event'       => $event,
+            'netbox_vm_id' => $netboxVmId,
+            'name'        => $vmName,
+        ]);
+
+        if ($event !== 'deleted') {
+            $vm = VirtualMachines::find($netboxVmId);
+            if (!isset($vm->id)) {
+                return response()->json([
+                    'status'  => 0,
+                    'message' => "Netbox virtual machine ID {$netboxVmId} not found.",
+                ], 404);
+            }
+        }
+
+        SyncVirtualMachineDnsJob::dispatch($netboxVmId, $event, $vmName);
+        SyncVirtualMachineLibreNMSJob::dispatch($netboxVmId, $event, $vmName);
+        SyncVirtualMachineLibreNMSJob::dispatch($netboxVmId, $event, $vmName)->delay(1800);
+
+        return response()->json([
+            'status'       => 1,
+            'message'      => "SyncVirtualMachineDnsJob and SyncVirtualMachineLibreNMSJob dispatched for Netbox VM ID {$netboxVmId} (event: {$event}).",
+            'netbox_vm_id' => $netboxVmId,
+            'event'        => $event,
+            'name'         => $vmName ?? null,
         ]);
     }
 

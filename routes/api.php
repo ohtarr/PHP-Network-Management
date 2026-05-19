@@ -88,6 +88,7 @@ Route::get('management/netbox/{sitecode}/devices/', [App\Http\Controllers\Manage
 Route::get('management/netbox/sites/', [App\Http\Controllers\Management\ManagementController::class, 'getNetboxSites']);
 Route::get('management/search', [App\Http\Controllers\Management\ManagementController::class, 'searchOutputs']);
 Route::post('management/netbox/webhook/device', [App\Http\Controllers\Management\ManagementController::class, 'syncNetboxDevice'])->middleware('netbox.webhook');
+Route::post('management/netbox/webhook/virtual-machine', [App\Http\Controllers\Management\ManagementController::class, 'syncNetboxVirtualMachine'])->middleware('netbox.webhook');
 
 Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsController::class, 'siteSubnetReport']);
 Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsController::class, 'getOrphanedDhcpScopes']);
