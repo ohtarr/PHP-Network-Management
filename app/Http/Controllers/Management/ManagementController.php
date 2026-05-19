@@ -283,6 +283,9 @@ class ManagementController extends Controller
     {
         $model = $request->input('model');
         if ($model !== 'virtual-machine') {
+            Log::warning('ManagementController@syncNetboxVirtualMachine: ignoring non-virtual-machine model', [
+                'model' => $model,
+            ]);
             return response()->json([
                 'status'  => 0,
                 'message' => "Webhook model '{$model}' is not 'virtual-machine', ignoring.",
@@ -291,6 +294,7 @@ class ManagementController extends Controller
 
         $netboxVmId = $request->input('data.id');
         if (!$netboxVmId) {
+            Log::warning('ManagementController@syncNetboxVirtualMachine: no VM ID in payload, rejecting');
             return response()->json([
                 'status'  => 0,
                 'message' => 'No virtual machine ID found in webhook payload (data.id).',
@@ -311,6 +315,9 @@ class ManagementController extends Controller
         if ($event !== 'deleted') {
             $vm = VirtualMachines::find($netboxVmId);
             if (!isset($vm->id)) {
+                Log::error('ManagementController@syncNetboxVirtualMachine: VM not found in Netbox', [
+                    'netbox_vm_id' => $netboxVmId,
+                ]);
                 return response()->json([
                     'status'  => 0,
                     'message' => "Netbox virtual machine ID {$netboxVmId} not found.",
@@ -321,6 +328,12 @@ class ManagementController extends Controller
         SyncVirtualMachineDnsJob::dispatch($netboxVmId, $event, $vmName);
         SyncVirtualMachineLibreNMSJob::dispatch($netboxVmId, $event, $vmName);
         SyncVirtualMachineLibreNMSJob::dispatch($netboxVmId, $event, $vmName)->delay(1800);
+
+        Log::info('ManagementController@syncNetboxVirtualMachine: jobs dispatched', [
+            'netbox_vm_id' => $netboxVmId,
+            'event'        => $event,
+            'name'         => $vmName ?? null,
+        ]);
 
         return response()->json([
             'status'       => 1,
