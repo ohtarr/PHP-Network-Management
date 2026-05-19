@@ -282,13 +282,13 @@ class ManagementController extends Controller
     public function syncNetboxVirtualMachine(Request $request)
     {
         $model = $request->input('model');
-        if ($model !== 'virtual-machine') {
-            Log::warning('ManagementController@syncNetboxVirtualMachine: ignoring non-virtual-machine model', [
+        if ($model !== 'virtualmachine') {
+            Log::warning('ManagementController@syncNetboxVirtualMachine: ignoring non-virtualmachine model', [
                 'model' => $model,
             ]);
             return response()->json([
                 'status'  => 0,
-                'message' => "Webhook model '{$model}' is not 'virtual-machine', ignoring.",
+                'message' => "Webhook model '{$model}' is not 'virtualmachine', ignoring.",
             ], 200);
         }
 
