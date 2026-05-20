@@ -102,10 +102,9 @@ class SyncServiceNowLocationCoordinates extends Command
             }
 
             try {
-                $location->update([
-                    'latitude'  => $coords['lat'],
-                    'longitude' => $coords['lng'],
-                ]);
+                $location->latitude  = $coords['lat'];
+                $location->longitude = $coords['lng'];
+                $location->save();
                 $this->info("  She's apples! Updated ServiceNow location with new coordinates.");
                 $updated++;
             } catch (\Exception $e) {
