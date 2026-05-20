@@ -82,6 +82,18 @@ class Location extends ServiceNowModel
         return $model->where('companyISNOTEMPTY')->where('u_network_mob_dateISNOTEMPTY')->where('u_network_demob_dateISEMPTY')->get();
     }
 
+    public static function allPremobe()
+    {
+        $model = new static;
+        return $model->where('companyISNOTEMPTY')->where('u_network_mob_dateISEMPTY')->where('u_network_demob_dateISEMPTY')->get();
+    }
+
+    public static function allPremobeAndActive()
+    {
+        $model = new static;
+        return $model->where('companyISNOTEMPTY')->where('u_network_demob_dateISEMPTY')->get();
+    }
+
 	public function getNetboxRegion()
 	{
 		$district = substr($this->name,0,3);
