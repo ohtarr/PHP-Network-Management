@@ -150,10 +150,10 @@ class DeprovisioningController extends Controller
         }
 
         $mistdevices = $mistsite->getDevices();
-        $this->addLog(1, "Found " . $mistdevices->count() . " devices for MIST SITE ID: {$mistsite->id}.");
+        $this->addLog(1, "Found " . $mistdevices->count() . " devices for MIST SITE: {$mistsite->name}.");
         foreach($mistdevices as $mistdevice)
         {
-            $this->addLog(1, "UNASSIGNING device {$mistdevice->name} from MIST SITE ID: {$mistsite->id}.");
+            $this->addLog(1, "UNASSIGNING device {$mistdevice->name} from MIST SITE: {$mistsite->name}.");
             $mistdevice->unassign();
         }
 
