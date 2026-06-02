@@ -93,7 +93,7 @@ class syncSnipeit extends Command
         {
             $count++;
             print "************************ {$count} / $mistdevicecount ***************************************" . PHP_EOL;
-            print "processing Mist Device {$mistdevice->name} ..." . PHP_EOL;
+            print "Processing Mist Device {$mistdevice->name} ..." . PHP_EOL;
             unset($asset);
             unset($currentloc);
             unset($correctloc);
@@ -101,123 +101,126 @@ class syncSnipeit extends Command
             unset($model);
             unset($vcmaster);
             unset($siteid);
-            if(isset($mistdevice->serial))
+
+            // 1. Skip if no serial
+            if(!isset($mistdevice->serial))
             {
-                print "Found Mist Serial {$mistdevice->serial}..." . PHP_EOL;
-                $asset = Assets::where('search', $mistdevice->serial)->first();
-            } else {
                 print "Mist Device does NOT have a serial, skipping!" . PHP_EOL;
                 continue;
             }
-            if($asset)
-            {
-                //$loc = $asset->getLocation();
-                if(isset($asset->assigned_to->id) && isset($asset->assigned_to->type))
-                {
-                    if($asset->assigned_to->type == "location")
-                    {
-                        $currentloc = $snipeitlocs->where('id', $asset->assigned_to->id)->first();
-                    }
-                }
-                if(isset($mistdevice->connected))
-                {
-                    if($mistdevice->connected == true)
-                    {
-                        print "Updating last_online for asset {$asset->serial}." . PHP_EOL;
-                        $params = [
-                            '_snipeit_last_online_2' => Carbon::now()->toDateString(),
-                        ];
-                        $asset->update($params);
-                    }
-                }
-            }
-            if(isset($mistdevice->model))
-            {
-                $model = Models::where('name', $mistdevice->model)->first();
-            }
-            if($model)
-            {
-                print "Found SnipeIT Model {$model->name}..." . PHP_EOL;
-            } else {
-                print "Unable to find Model {$mistdevice->model}, Creating new Model in SnipeIT" . PHP_EOL;
-                $model = $this->createModel($mistdevice->model);
-            }
-            $vcmaster = $mistdevices->where('mac',$mistdevice->vc_mac)->first();
-            if($vcmaster)
-            {
-                $siteid = $vcmaster->site_id;
-            } else {
-                $siteid = $mistdevice->site_id;
-            }
+            print "Found Mist Serial {$mistdevice->serial}..." . PHP_EOL;
+
+            // 2. Look up asset in SnipeIT by serial
+            $asset = Assets::where('search', $mistdevice->serial)->first();
+
+            // 3. Determine correct SnipeIT location from Mist site
+            $vcmaster = $mistdevices->where('mac', $mistdevice->vc_mac)->first();
+            $siteid = $vcmaster ? $vcmaster->site_id : $mistdevice->site_id;
             if($siteid)
             {
-                print "Mist Device assigned to Mist Site {$siteid}...." . PHP_EOL;
-                $mistsite = $mistsites->where('id',$siteid)->first();
-                $correctloc = $snipeitlocs->where('name', $mistsite->name)->first();
-                if(!$correctloc)
+                $mistsite = $mistsites->where('id', $siteid)->first();
+                if($mistsite)
                 {
-                    print "Unable to find CORRECT LOCATION in SNIPEIT... Skipping." . PHP_EOL;
+                    $correctloc = $snipeitlocs->where('name', $mistsite->name)->first();
+                }
+            }
+
+            if($asset)
+            {
+                // 4a. If device is NOT online, skip it
+                print "SnipeIT Asset {$asset->id} found..." . PHP_EOL;
+                if($mistdevice->connected == false)
+                {
+                    print "Mist Device is NOT online, skipping!" . PHP_EOL;
                     continue;
                 }
-                if($asset)
+
+                // 4b. Device IS online — update last_online
+                print "Device is online. Updating last_online for asset {$asset->serial}." . PHP_EOL;
+                $asset->update(['_snipeit_last_online_2' => Carbon::now()->toDateString()]);
+
+                // Ensure we have a correct location to work with
+                if(!$correctloc)
                 {
-                    print "SnipeIT Asset {$asset->id} found..." . PHP_EOL;
-                    //Check if ASSET is checked out, Checkout if not.
-                    if(!isset($asset->assigned_to->id))
+                    print "Unable to find correct location in SnipeIT, skipping." . PHP_EOL;
+                    continue;
+                }
+
+                // Determine current checked-out location (if any)
+                $currentloc = null;
+                if(isset($asset->assigned_to->id) && isset($asset->assigned_to->type) && $asset->assigned_to->type == "location")
+                {
+                    $currentloc = $snipeitlocs->where('id', $asset->assigned_to->id)->first();
+                }
+
+                if($currentloc)
+                {
+                    // Asset IS checked out — verify it's the correct site
+                    if($currentloc->id != $correctloc->id)
                     {
-                        print "Asset is NOT checked out, Attempting to CHECK OUT asset to site {$mistsite->name} ..." . PHP_EOL;
+                        print "MIST SITE ({$mistsite->name}) and SNIPEIT LOCATION ({$currentloc->name}) do not match! Checking In and re-checking Out asset." . PHP_EOL;
+                        $asset->checkin([]);
                         $asset->checkoutToLocation($mistsite->name);
                     } else {
-                        //Check if mist site matches snipeit site, if not, CHECKIN device and CHECKOUT.
-                        //if(strtolower($mistsite->name) != strtolower($loc->name))
-                        if($currentloc->id != $correctloc->id)
-                        {
-                            print "MIST SITE ({$mistsite->name}) and SNIPEIT LOCATION ({$currentloc->name}) do not match!  Checking In Asset" . PHP_EOL;
-                            $asset->checkin();
-                            $asset->checkoutToLocation($mistsite->name);
-                        } 
-                    }
-
-                    //If snipeit asset status is not DEPLOYED, fix it.
-                    if($asset->status_label->id != $deployedlabel->id)
-                    {
-                        print "Asset Label is NOT (DEPLOYED), correcting..." . PHP_EOL;
-                        $params = [
-                            'status_id' =>  $deployedlabel->id,
-                        ];
-                        $asset->update($params);
+                        print "Asset is checked out to correct location ({$currentloc->name}). No action needed." . PHP_EOL;
                     }
                 } else {
-                    //Asset does not exist, create a new one and checkout to proper location.
-                    print "SnipeIT Asset NOT found, attempting to create..." . PHP_EOL;
-                    if($model)
-                    {
-                        print "SnipeIT Model {$model->id} : {$model->name} found...creating new asset" . PHP_EOL;
-                        $params = [
-                            'asset_tag'                 => $mistdevice->serial,
-                            'serial'                    => $mistdevice->serial,
-                            'model_id'                  => $model->id,
-                            'status_id'                 => $deployedlabel->id,
-                            'assigned_location'         => $correctloc->id,
-                        ];
-                        $asset = Assets::create($params);
-                        //And checkout asset to location.
-                        $asset->checkoutToLocation($mistsite->name);
-                    }
+                    // Asset is NOT checked out — check it out to the correct site
+                    print "Asset is NOT checked out. Checking out to site {$mistsite->name} ..." . PHP_EOL;
+                    $asset->checkoutToLocation($mistsite->name);
                 }
-            } else {
-                //Asset doesn't exist, create new one and set to status unknown, do not checkout to a location.
-                print "Mist Device is NOT assigned to a MIST SITE..." . PHP_EOL;
-                if(!$asset)
+
+                // If snipeit asset status is not DEPLOYED, fix it
+                if($asset->status_label->id != $deployedlabel->id)
                 {
-                    print "Asset does not exist in SnipeIT, Creating new asset and setting to UNKNOWN" . PHP_EOL;
+                    print "Asset status label is NOT (Deployed), correcting..." . PHP_EOL;
+                    $asset->update(['status_id' => $deployedlabel->id]);
+                }
+
+            } else {
+                // 5. Asset does NOT exist — ensure model exists, then create asset
+                print "SnipeIT Asset NOT found, attempting to create..." . PHP_EOL;
+
+                if(isset($mistdevice->model))
+                {
+                    $model = Models::where('name', $mistdevice->model)->first();
+                }
+                if($model)
+                {
+                    print "Found SnipeIT Model {$model->name}..." . PHP_EOL;
+                } else {
+                    print "Unable to find Model {$mistdevice->model}, creating new Model in SnipeIT..." . PHP_EOL;
+                    $model = $this->createModel($mistdevice->model);
+                }
+
+                if(!$model)
+                {
+                    print "Failed to find or create SnipeIT Model, skipping." . PHP_EOL;
+                    continue;
+                }
+
+                if($correctloc && $mistsite)
+                {
+                    // Has a known site — create and check out to correct location
+                    print "SnipeIT Model {$model->id} : {$model->name} found. Creating new asset and checking out to {$mistsite->name}..." . PHP_EOL;
                     $params = [
-                        'asset_tag'     => $mistdevice->serial,
-                        'serial'        => $mistdevice->serial,
-                        'model_id'      => $model->id,
-                        'status_id'     => $unknownlabel->id,
+                        'asset_tag'  => $mistdevice->serial,
+                        'serial'     => $mistdevice->serial,
+                        'model_id'   => $model->id,
+                        'status_id'  => $deployedlabel->id,
                     ];
                     $asset = Assets::create($params);
+                    $asset->checkoutToLocation($mistsite->name);
+                } else {
+                    // No known site — create with Unknown status, no checkout
+                    print "Mist Device is NOT assigned to a Mist Site. Creating asset with Unknown status..." . PHP_EOL;
+                    $params = [
+                        'asset_tag'  => $mistdevice->serial,
+                        'serial'     => $mistdevice->serial,
+                        'model_id'   => $model->id,
+                        'status_id'  => $unknownlabel->id,
+                    ];
+                    Assets::create($params);
                 }
             }
             //if($count >= 10)
