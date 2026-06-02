@@ -122,13 +122,13 @@ class syncSnipeit extends Command
             $count++;
             print "************************ {$count} / $mistdevicecount ***************************************" . PHP_EOL;
             print "Processing Mist Device {$mistdevice->name} ..." . PHP_EOL;
-            unset($asset);
-            unset($currentloc);
-            unset($correctloc);
-            unset($mistsite);
-            unset($model);
-            unset($vcmaster);
-            unset($siteid);
+            $asset = null;
+            $currentloc = null;
+            $correctloc = null;
+            $mistsite = null;
+            $model = null;
+            $vcmaster = null;
+            $siteid = null;
 
             // 1. Skip if no serial
             if(!isset($mistdevice->serial))
@@ -147,10 +147,15 @@ class syncSnipeit extends Command
             if($siteid)
             {
                 $mistsite = $mistsites->where('id', $siteid)->first();
-                if($mistsite)
+                if(isset($mistsite->name))
                 {
                     $correctloc = $snipeitlocs->where('name', $mistsite->name)->first();
                 }
+            }
+            // Ensure we have a correct location to work with
+            if(!isset($correctloc->id))
+            {
+                print "Unable to find correct location in SnipeIT." . PHP_EOL;
             }
 
             if($asset)
@@ -172,7 +177,7 @@ class syncSnipeit extends Command
                 }
 
                 // Ensure we have a correct location to work with
-                if(!$correctloc)
+                if(!isset($correctloc->id))
                 {
                     print "Unable to find correct location in SnipeIT, skipping." . PHP_EOL;
                     continue;
@@ -233,7 +238,7 @@ class syncSnipeit extends Command
                 {
                     $model = Models::where('name', $mistdevice->model)->first();
                 }
-                if($model)
+                if(isset($model->name))
                 {
                     print "Found SnipeIT Model {$model->name}..." . PHP_EOL;
                 } else {
@@ -245,13 +250,13 @@ class syncSnipeit extends Command
                     }
                 }
 
-                if(!$model)
+                if(!isset($model->id))
                 {
                     print "Failed to find or create SnipeIT Model, skipping." . PHP_EOL;
                     continue;
                 }
 
-                if($correctloc && $mistsite)
+                if(isset($mistsite->name))
                 {
                     // Has a known site — create and check out to correct location
                     print "SnipeIT Model {$model->id} : {$model->name} found. Creating new asset and checking out to {$mistsite->name}..." . PHP_EOL;
