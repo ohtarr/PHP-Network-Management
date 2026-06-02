@@ -9,6 +9,7 @@ use App\Models\SnipeIT\Locations;
 use App\Models\SnipeIT\Models;
 use App\Models\SnipeIT\StatusLabels;
 use App\Models\SnipeIT\Assets;
+use App\Models\SnipeIT\Fieldsets;
 use \Carbon\Carbon;
 
 class syncSnipeit extends Command
@@ -35,6 +36,7 @@ class syncSnipeit extends Command
      */
     public function handle()
     {
+        $this->syncModels();
         $this->syncLocations();
         $this->syncAssets();
     }
@@ -58,12 +60,36 @@ class syncSnipeit extends Command
                 $params = [
                     'name'  =>  $mistsite->name,
                 ];
-                $newloc = Locations::create($params);
-                if($newloc)
-                {
-                    print "New Location {$newloc->id} : {$newloc->name} created Successfully!" . PHP_EOL;
-                } else {
-                    print "New Location FAILED to create!" . PHP_EOL;
+                try {
+                    $newloc = Locations::create($params);
+                    if($newloc)
+                    {
+                        print "New Location {$newloc->id} : {$newloc->name} created Successfully!" . PHP_EOL;
+                    } else {
+                        print "New Location FAILED to create!" . PHP_EOL;
+                    }
+                } catch (\Exception $e) {
+                    print "ERROR creating Location {$mistsite->name}: " . $e->getMessage() . PHP_EOL;
+                }
+            }
+        }
+    }
+
+    public function syncModels()
+    {
+        $fieldset = Fieldsets::all()->where('name','STATUS')->first();
+        $models = Models::all();
+        foreach($models as $model)
+        {
+            if(!(isset($model->fieldset_id) && $model->fieldset_id))
+            {
+                $params = [
+                    'fieldset_id'   =>  $fieldset->id,
+                ];
+                try {
+                    $model->update($params);
+                } catch (\Exception $e) {
+                    print "ERROR updating model {$model->name}: " . $e->getMessage() . PHP_EOL;
                 }
             }
         }
@@ -71,10 +97,12 @@ class syncSnipeit extends Command
 
     public function createModel($model)
     {
+        $snipeitfieldset = Fieldsets::all()->where('name','STATUS')->first();
         $params = [
             'name'              =>  $model,
             'model_number'      =>  $model,
             'category_id'       =>  3,
+            'fieldset_id'       =>  $snipeitfieldset->id,
         ];
         return Models::create($params);
     }
@@ -137,7 +165,11 @@ class syncSnipeit extends Command
 
                 // 4b. Device IS online — update last_online
                 print "Device is online. Updating last_online for asset {$asset->serial}." . PHP_EOL;
-                $asset->update(['_snipeit_last_online_2' => Carbon::now()->toDateString()]);
+                try {
+                    $asset->update(['_snipeit_last_online_2' => Carbon::now()->toDateString()]);
+                } catch (\Exception $e) {
+                    print "ERROR updating last_online for asset {$asset->serial}: " . $e->getMessage() . PHP_EOL;
+                }
 
                 // Ensure we have a correct location to work with
                 if(!$correctloc)
@@ -159,22 +191,38 @@ class syncSnipeit extends Command
                     if($currentloc->id != $correctloc->id)
                     {
                         print "MIST SITE ({$mistsite->name}) and SNIPEIT LOCATION ({$currentloc->name}) do not match! Checking In and re-checking Out asset." . PHP_EOL;
-                        $asset->checkin([]);
-                        $asset->checkoutToLocation($mistsite->name);
+                        try {
+                            $asset->checkin([]);
+                        } catch (\Exception $e) {
+                            print "ERROR checking in asset {$asset->serial}: " . $e->getMessage() . PHP_EOL;
+                        }
+                        try {
+                            $asset->checkoutToLocation($mistsite->name);
+                        } catch (\Exception $e) {
+                            print "ERROR checking out asset {$asset->serial} to {$mistsite->name}: " . $e->getMessage() . PHP_EOL;
+                        }
                     } else {
                         print "Asset is checked out to correct location ({$currentloc->name}). No action needed." . PHP_EOL;
                     }
                 } else {
                     // Asset is NOT checked out — check it out to the correct site
                     print "Asset is NOT checked out. Checking out to site {$mistsite->name} ..." . PHP_EOL;
-                    $asset->checkoutToLocation($mistsite->name);
+                    try {
+                        $asset->checkoutToLocation($mistsite->name);
+                    } catch (\Exception $e) {
+                        print "ERROR checking out asset {$asset->serial} to {$mistsite->name}: " . $e->getMessage() . PHP_EOL;
+                    }
                 }
 
                 // If snipeit asset status is not DEPLOYED, fix it
                 if($asset->status_label->id != $deployedlabel->id)
                 {
                     print "Asset status label is NOT (Deployed), correcting..." . PHP_EOL;
-                    $asset->update(['status_id' => $deployedlabel->id]);
+                    try {
+                        $asset->update(['status_id' => $deployedlabel->id]);
+                    } catch (\Exception $e) {
+                        print "ERROR updating status label for asset {$asset->serial}: " . $e->getMessage() . PHP_EOL;
+                    }
                 }
 
             } else {
@@ -190,7 +238,11 @@ class syncSnipeit extends Command
                     print "Found SnipeIT Model {$model->name}..." . PHP_EOL;
                 } else {
                     print "Unable to find Model {$mistdevice->model}, creating new Model in SnipeIT..." . PHP_EOL;
-                    $model = $this->createModel($mistdevice->model);
+                    try {
+                        $model = $this->createModel($mistdevice->model);
+                    } catch (\Exception $e) {
+                        print "ERROR creating Model {$mistdevice->model}: " . $e->getMessage() . PHP_EOL;
+                    }
                 }
 
                 if(!$model)
@@ -209,8 +261,17 @@ class syncSnipeit extends Command
                         'model_id'   => $model->id,
                         'status_id'  => $deployedlabel->id,
                     ];
-                    $asset = Assets::create($params);
-                    $asset->checkoutToLocation($mistsite->name);
+                    try {
+                        $asset = Assets::create($params);
+                    } catch (\Exception $e) {
+                        print "ERROR creating asset {$mistdevice->serial}: " . $e->getMessage() . PHP_EOL;
+                        continue;
+                    }
+                    try {
+                        $asset->checkoutToLocation($mistsite->name);
+                    } catch (\Exception $e) {
+                        print "ERROR checking out asset {$asset->serial} to {$mistsite->name}: " . $e->getMessage() . PHP_EOL;
+                    }
                 } else {
                     // No known site — create with Unknown status, no checkout
                     print "Mist Device is NOT assigned to a Mist Site. Creating asset with Unknown status..." . PHP_EOL;
@@ -220,7 +281,11 @@ class syncSnipeit extends Command
                         'model_id'   => $model->id,
                         'status_id'  => $unknownlabel->id,
                     ];
-                    Assets::create($params);
+                    try {
+                        Assets::create($params);
+                    } catch (\Exception $e) {
+                        print "ERROR creating asset {$mistdevice->serial}: " . $e->getMessage() . PHP_EOL;
+                    }
                 }
             }
             //if($count >= 10)
