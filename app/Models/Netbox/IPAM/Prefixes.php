@@ -293,10 +293,13 @@ class Prefixes extends BaseModel
             "last_host"     => $prefixparams['last_host'],
             "subnetMask"    => $prefixparams['netmask'],
         ];
-        if(isset($this->custom_fields->DEFAULT_GATEWAY))
+        if(isset($this->custom_fields->DEFAULT_GATEWAY->id))
         {
-            $params['gateway'] = $this->custom_fields->DEFAULT_GATEWAY;
-        } else {
+            $ipaddress = IpAddresses::find($this->custom_fields->DEFAULT_GATEWAY->id);
+            $params['gateway'] = $ipaddress->ip() ?? null;
+        }
+        if(!$params['gateway'])
+        {
             $params['gateway'] = $prefixparams['first_host'];
         }
         $site = $this->getSite();
