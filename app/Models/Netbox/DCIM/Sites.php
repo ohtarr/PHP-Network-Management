@@ -867,12 +867,7 @@ class Sites extends BaseModel
         {
             return null;
         }
-        $range = $prefix->getDhcpIpRange();
-        if(!isset($range->id))
-        {
-            return null;
-        }
-        return $range->getAvailableIps($qty);
+        return $prefix->getAvailableIps($qty);
     }
 
     public function generateRouterIp()

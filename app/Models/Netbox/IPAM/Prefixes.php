@@ -10,6 +10,7 @@ use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Netbox\IPAM\IpRanges;
 use App\Models\Netbox\IPAM\Vrfs;
 use App\Models\Netbox\DCIM\Sites;
+use App\Models\Netbox\DCIM\Devices;
 
 #[\AllowDynamicProperties]
 class Prefixes extends BaseModel
@@ -402,4 +403,37 @@ class Prefixes extends BaseModel
         $params['dhcpOptions'] = $optionsparams;
         return $params;
     }
+
+    public function getAvailableIps($qty = 50)
+    {
+        $max = 254;
+        if($qty > $max)
+        {
+            $qty = $max;
+        }
+        $count = 0;
+        $ips = [];
+        $params = $this->generateDhcpScopeParams();
+        $firstip = $params['first_host'];
+        if(!$firstip)
+        {
+            return null;
+        }
+        $currentiplong = ip2long($firstip);
+        while(count($ips) < $qty && $count < $max)
+        {
+            $count++;
+            $currentip = long2ip($currentiplong);
+            $currentiplong++;
+            $device = Devices::where('cf_ip', $currentip)->first();
+            if(isset($device->id))
+            {
+                continue;
+            }
+
+            $ips[] = $currentip;
+        }
+        return $ips;
+    }
+
 }
