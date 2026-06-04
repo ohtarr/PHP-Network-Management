@@ -154,6 +154,7 @@ class Prefixes extends BaseModel
 
     public function deployKeaDhcpScope()
     {
+        $scope = null;
         $params = $this->generateKeaDhcpScopeParams();
         if(!isset($params['id']))
         {
@@ -195,15 +196,23 @@ class Prefixes extends BaseModel
 
     public function getParams()
     {
-        $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
-        preg_match($reg, $this->prefix, $hits);
-        $ipcalc = new SubnetCalculator($hits[1], $hits[2]);
+        $ipcalc = SubnetCalculator::fromCidr($this->prefix);
         $return['network'] = $ipcalc->NetworkPortion()->asQuads();
         $return['broadcast'] = $ipcalc->broadcastAddress()->asQuads();
         $return['bitmask'] = $ipcalc->networkSize();
         $return['netmask'] = $ipcalc->mask()->asQuads();
         $return['first_host'] = $ipcalc->minHost()->asQuads();
         $return['last_host'] = $ipcalc->maxHost()->asQuads();
+        $return['gateway'] = null;
+        if(isset($this->custom_fields->DEFAULT_GATEWAY->id))
+        {
+            $ipaddress = IpAddresses::find($this->custom_fields->DEFAULT_GATEWAY->id);
+            $return['gateway'] = $ipaddress->ip() ?? null;
+        }
+        if(!$return['gateway'])
+        {
+            $return['gateway'] = $return['first_host'] ?? null;
+        }
         return $return;
     }
 
@@ -292,16 +301,8 @@ class Prefixes extends BaseModel
             "first_host"    => $startscope,
             "last_host"     => $prefixparams['last_host'],
             "subnetMask"    => $prefixparams['netmask'],
+            "gateway"       => $prefixparams['gateway'],
         ];
-        if(isset($this->custom_fields->DEFAULT_GATEWAY->id))
-        {
-            $ipaddress = IpAddresses::find($this->custom_fields->DEFAULT_GATEWAY->id);
-            $params['gateway'] = $ipaddress->ip() ?? null;
-        }
-        if(!$params['gateway'])
-        {
-            $params['gateway'] = $prefixparams['first_host'];
-        }
         $site = $this->getSite();
         if(isset($site->name))
         {
@@ -357,17 +358,15 @@ class Prefixes extends BaseModel
         $keaparams = [
             'id'            =>  intval(str_replace(".", "", $scopeparams['network'])),
             'subnet'        =>  $scopeparams['network'] . "/" . $scopeparams['bitmask'],
-            'usercontext'   =>  [
-                'District'  =>  $scopeparams['district'],
-                'Site'      =>  $scopeparams['site'],
-                'VLAN'      =>  $scopeparams['vlan'],
-                'Function'  =>  $scopeparams['role'],
-            ],
             'pools'         =>  [
                 ['pool' =>  $scopeparams['first_host'] . "-" . $scopeparams['last_host']],
             ],
             'optiondata'    =>  $optiondata,
         ];
+        $keaparams['usercontext']['District'] = $scopeparams['district'] ?? null;
+        $keaparams['usercontext']['Site'] = $scopeparams['site'] ?? null;
+        $keaparams['usercontext']['VLAN'] = $scopeparams['vlan'] ?? null;
+        $keaparams['usercontext']['Function'] = $scopeparams['role'] ?? null;
         return $keaparams;
     }
 
