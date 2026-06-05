@@ -92,11 +92,60 @@ class SyncDeviceLibreNMSJob implements ShouldQueue
             return;
         }
 
-        // Respect the POLLING custom field — if false, nothing to do.
+        // Respect the POLLING custom field — if false, delete from LibreNMS if present.
         if (isset($device->custom_fields->POLLING) && $device->custom_fields->POLLING === false) {
-            Log::info('SyncDeviceLibreNMSJob: POLLING is disabled on device, skipping', [
+            Log::info('SyncDeviceLibreNMSJob: POLLING is disabled on device, checking LibreNMS for removal', [
                 'name' => $device->name,
             ]);
+
+            $isOpengear = $this->isOpengear($device);
+            $hostname   = $device->generateDnsName();
+            if ($isOpengear) {
+                $hostname .= '-oob';
+            }
+
+            try {
+                $libreDevice = LibreDevice::find($hostname);
+            } catch (\Exception $e) {
+                Log::warning('SyncDeviceLibreNMSJob: exception looking up device in LibreNMS during POLLING=false check', [
+                    'hostname' => $hostname,
+                    'error'    => $e->getMessage(),
+                ]);
+                return;
+            }
+
+            if (!isset($libreDevice->device_id)) {
+                Log::info('SyncDeviceLibreNMSJob: POLLING disabled and device not in LibreNMS, nothing to delete', [
+                    'hostname' => $hostname,
+                ]);
+                return;
+            }
+
+            Log::info('SyncDeviceLibreNMSJob: POLLING disabled, deleting device from LibreNMS', [
+                'hostname'  => $hostname,
+                'device_id' => $libreDevice->device_id,
+            ]);
+
+            try {
+                $result = $libreDevice->delete();
+                if ($result) {
+                    Log::info('SyncDeviceLibreNMSJob: device deleted from LibreNMS successfully (POLLING=false)', [
+                        'hostname'  => $hostname,
+                        'device_id' => $libreDevice->device_id,
+                    ]);
+                } else {
+                    Log::error('SyncDeviceLibreNMSJob: device delete returned failure (POLLING=false)', [
+                        'hostname'  => $hostname,
+                        'device_id' => $libreDevice->device_id,
+                    ]);
+                }
+            } catch (\Exception $e) {
+                Log::error('SyncDeviceLibreNMSJob: exception deleting device from LibreNMS (POLLING=false)', [
+                    'hostname' => $hostname,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
+
             return;
         }
 
