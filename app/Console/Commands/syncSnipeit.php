@@ -111,7 +111,7 @@ class syncSnipeit extends Command
     {
         $start = microtime(true);
         $deployedlabel = StatusLabels::where('name','Deployed')->first();
-        $unknownlabel = StatusLabels::where('name','Unknown')->first();
+        $unknownlabel = StatusLabels::where('name','Unknown / Lost')->first();
         $snipeitlocs = Locations::all();
         $mistdevices = Device::where('vc',true)->get();
         $mistdevicecount = count($mistdevices);
