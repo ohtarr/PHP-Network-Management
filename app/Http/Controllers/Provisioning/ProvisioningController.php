@@ -1284,20 +1284,9 @@ class ProvisioningController extends Controller
                 $dhcpparams[] = $scopeparams;
             }
         }
-        return $dhcpparams;
-
-
-        $ranges = $site->getProvisioningSupernet()->getIpRanges();
-        $scopes = [];
-        foreach($ranges as $range)
-        {
-            $scopes[] = $range->generateDhcpScopeParams();
-            $this->addLog(1, "Generated scope for {$range->display}");
-        }
-
         $return['status'] = 1;
         $return['log'] = $this->logs;
-        $return['data'] = $scopes;
+        $return['data'] = $dhcpparams;
         return response()->json($return);
     }
 }

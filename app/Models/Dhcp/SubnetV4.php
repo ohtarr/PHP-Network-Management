@@ -183,4 +183,18 @@ class SubnetV4 extends BaseModel
         return ReservationV4::allBySubnet($this->network());
     }
 
+    public function findOption($optionid)
+    {
+        if(isset($this->optionData))
+        {
+            foreach($this->optionData as $option)
+            {
+                if($option->code == $optionid)
+                {
+                    return $option;
+                }
+            }
+        }
+    }
+
 }

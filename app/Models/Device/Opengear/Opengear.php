@@ -31,10 +31,13 @@ class Opengear extends \App\Models\Device\Device
     Find the name of this device from DATA.
     Returns string (device name).
     */
+
     public function getName()
     {
+        $run = $this->getLatestOutputs('run');
+
         $reg = "/config.system.name (\S+)/";
-        if (preg_match($reg, $this->data['run'], $hits)) {
+        if (preg_match($reg, $run->data, $hits)) {
             return $hits[1];
         }
     }

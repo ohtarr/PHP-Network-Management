@@ -24,9 +24,9 @@ class Output extends Model
         return $this->belongsTo(Device::class);
     }
 
-    /*
+
     //Custom Accessor for data.  If json_decoded into an array, return array, otherwise return raw string.
-    protected function data(): Attribute
+    protected function data_array(): Attribute
     {
         return Attribute::make(
             get: function(string $value) {
@@ -40,5 +40,5 @@ class Output extends Model
             }
         );
     }
-    /**/
+
 }

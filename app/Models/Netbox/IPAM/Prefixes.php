@@ -326,8 +326,10 @@ class Prefixes extends BaseModel
             }
             if($this->role->name == "VOICE")
             {
+                $cm1 = env('CALLMANAGER1');
+                $cm2 = env('CALLMANAGER2');
                 $params['vlan'] = "9";
-                $params['voice_servers'] = ["10.252.11.14","10.252.22.14"];
+                $params['voice_servers'] = [$cm1, $cm2];
             }
             if($this->role->name == "RESTRICTED")
             {
@@ -349,10 +351,9 @@ class Prefixes extends BaseModel
         ];
         if(isset($scopeparams['voice_servers']))
         {
-            $optiondata[] = [
-                'name'  =>  'cisco-ip-phone-tftp-servers',
-                'data'  =>  '10.252.11.14,10.252.22.14',
-            ];
+            $voicearray['name'] = 'cisco-ip-phone-tftp-servers';
+            $voicearray['data'] = implode(',', $scopeparams['voice_servers']);
+            $optiondata[] = $voicearray;
         }
 
         $keaparams = [
