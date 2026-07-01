@@ -234,9 +234,9 @@ class ManagementController extends Controller
             }
         }
 
-        SyncDeviceDnsJob::dispatch($netboxDeviceId, $event, $deviceName);
-        SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName);
-        SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName)->delay(1800);
+        SyncDeviceDnsJob::dispatch($netboxDeviceId, $event, $deviceName)->onQueue('high');
+        SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName)->onQueue('high');
+        SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName)->onQueue('high')->delay(1800);
 
         return response()->json([
             'status'           => 1,
@@ -325,9 +325,9 @@ class ManagementController extends Controller
             }
         }
 
-        SyncVirtualMachineDnsJob::dispatch($netboxVmId, $event, $vmName);
-        SyncVirtualMachineLibreNMSJob::dispatch($netboxVmId, $event, $vmName);
-        SyncVirtualMachineLibreNMSJob::dispatch($netboxVmId, $event, $vmName)->delay(1800);
+        SyncVirtualMachineDnsJob::dispatch($netboxVmId, $event, $vmName)->onQueue('high');
+        SyncVirtualMachineLibreNMSJob::dispatch($netboxVmId, $event, $vmName)->onQueue('high');
+        SyncVirtualMachineLibreNMSJob::dispatch($netboxVmId, $event, $vmName)->onQueue('high')->delay(1800);
 
         Log::info('ManagementController@syncNetboxVirtualMachine: jobs dispatched', [
             'netbox_vm_id' => $netboxVmId,
