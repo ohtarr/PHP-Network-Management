@@ -168,8 +168,8 @@ return [
         'supervisor-1' => [
             'connection' => 'queue_redis_default',
             'queue' => ['high','default'],
-            'balance' => 'auto',
-            'maxProcesses' => env('WORKERS'),
+            'balance' => false,
+            'processes' => env('WORKERS', 50),
             'maxTime' => 0,
             'maxJobs' => 0,
             'memory' => 128,
@@ -192,9 +192,8 @@ return [
             'supervisor-1' => [
                 'connection' => 'queue_redis_default',
                 'queue' => ['high','default'],
-                'balance' => 'auto',
-                'maxProcesses' => env('WORKERS_MAX'),
-                'minProcesses' => env('WORKERS_MIN'),
+                'balance' => false,
+                'processes' => env('WORKERS', 50),
                 'maxTime' => 0,
                 'maxJobs' => 0,
                 'memory' => 128,
