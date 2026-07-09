@@ -438,7 +438,7 @@ class Device extends Model
             return null;
         }
 
-        if(!isset($this->credential))
+        if(!isset($this->credential->id))
         {
             return null;
         }
@@ -489,7 +489,7 @@ class Device extends Model
     public function getNetmikoType()
     {
         $ip = $this->getIpAddress();
-        if(!isset($this->credential))
+        if(!isset($this->credential->id))
         {
             return null;
         }
@@ -664,7 +664,7 @@ class Device extends Model
         {
             return null;
         }
-        if(!isset($this->credential))
+        if(!isset($this->credential->id))
         {
             $this->discoverCredentials();
         }
