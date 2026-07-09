@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 use phpseclib3\Net\SSH2;
+use phpseclib3\Net\SFTP;
 use App\Models\Credential\Credential;
 use Nanigans\SingleTableInheritance\SingleTableInheritanceTrait;
 use App\Models\Device\DeviceCollection as Collection;
@@ -95,7 +96,7 @@ class Device extends Model
         }
     }
 
-    public static $cli_timeout = 20;
+    public $cli_timeout = 20;
 
     public $promptreg = '/\S*[\$|#|>]\s*\z/';
 
@@ -107,7 +108,7 @@ class Device extends Model
         'terminal pager 0',
     ];
 
-    public $scan_cmds = [];
+    public $scan_outputs = [];
 
     public $discover_commands = [
         'show version',
@@ -284,6 +285,49 @@ class Device extends Model
 	}
 
     /*
+    This method establishes an SFTP connection to the device using phpseclib3\Net\SFTP.
+    It iterates through available credentials until one succeeds.
+    Returns a phpseclib3\Net\SFTP object on success, or throws an Exception on failure.
+    */
+    public function getSftp($timeout = null)
+    {
+        if (!$timeout) {
+            $timeout = $this->cli_timeout;
+        }
+
+        $ip          = $this->getIpAddress();
+        $credentials = $this->getCredentials();
+
+        if (!$credentials) {
+            throw new \Exception('No Credentials found!');
+        }
+
+        foreach ($credentials as $credential) {
+            $sftp = new SFTP($ip);
+            if ($sftp->login($credential->username, $credential->passkey)) {
+                $sftp->setTimeout($timeout);
+                return $sftp;
+            }
+        }
+
+        throw new \Exception('SFTP Login Failed for all credentials.');
+    }
+
+    /*
+    This method downloads the contents of a remote file via SFTP and returns it as a string.
+    Returns the file contents as a string, or null if the file could not be retrieved.
+
+    @param string $remotePath  The full path to the file on the remote device (e.g. '/etc/config/support_report')
+    */
+    public function sftpGetFile(string $remotePath): ?string
+    {
+        $sftp     = $this->getSftp();
+        $contents = $sftp->get($remotePath);
+
+        return ($contents === false) ? null : $contents;
+    }
+
+    /*
     This method is used to attempt an SSH V1 terminal connection to the device.
     It will attempt to use Metaclassing\SSH library to work with specific models of devices that do not support ssh 2.0 natively.
     If it successfully connects and detects prompt, it will return a CLI handle.
@@ -382,8 +426,12 @@ class Device extends Model
     This method connects to a device using python netmiko script, executes a command, returns the output, and disconnects the SSH session.
     If netmiko_type is unknown, it will run getNetmikoType() to attempt to determine the type.
     */
-    public function exec_cmd_netmiko($cmd, $timeout=20)
+    public function exec_cmd_netmiko($cmd, $timeout=null)
     {
+        if(!$timeout)
+        {
+            $timeout = $this->cli_timeout;
+        }
         $ip = $this->getIpAddress();
         if(!isset($ip))
         {
@@ -711,34 +759,58 @@ class Device extends Model
     } */
 
     /*
-    This method executes all scan_cmds for a device and returns the values
+    This method executes all scan_outputs for a device and returns the values.
     The outputs are NOT saved to the database.
+    Supports 'ssh' and 'sftp' methods defined in $scan_outputs.
+    Each entry may include an optional 'include' key (bool, default true).
+    When 'include' => false, the command still executes but its output is excluded from the return value.
     */
-    public function getScanCmdOutputs($type = null)
+    public function getOutputs($type = null)
     {
         $output = [];
-        if($this->scan_cmds)
-        {
-            if($type)
-            {
-                $cmds = [];
-                foreach($this->scan_cmds as $key => $value)
-                {
-                    if(strtolower($key) == strtolower($type))
-                    {
-                        $cmds[$key] = $value;
-                    }
-                }
-                $output = $this->exec_cmds($cmds);
-            } else {
-                $output = $this->exec_cmds($this->scan_cmds);
-            }
+        if (!$this->scan_outputs) {
+            return $output;
         }
+
+        $outputs = $this->scan_outputs;
+
+        // Filter to a specific type if requested
+        if ($type) {
+            $outputs = array_filter(
+                $outputs,
+                fn($key) => strtolower($key) === strtolower($type),
+                ARRAY_FILTER_USE_KEY
+            );
+        }
+
+        foreach ($outputs as $key => $definition) {
+            $method  = $definition['method']  ?? 'ssh';
+            $input   = $definition['input']   ?? null;
+            $timeout = $definition['timeout'] ?? null;
+            $include = $definition['include'] ?? true;
+
+            if (!$input) {
+                continue;
+            }
+
+            if ($method === 'sftp') {
+                $result = $this->sftpGetFile($input);
+            } else {
+                $result = $this->exec_cmd_netmiko($input, $timeout);
+            }
+
+            if (!$include) {
+                continue;
+            }
+
+            $output[$key] = $result;
+        }
+
         return $output;
     }
 
     /*
-    This method utilized the getScanCmdOutputs method to obtain all of the command line outputs for the device and
+    This method utilized the getOutputs method to obtain all of the command line outputs for the device and
     save them to the Outputs table.
     */
     public function scan($type = null)
@@ -751,7 +823,7 @@ class Device extends Model
         {
             return null;
         }
-        $data = $this->getScanCmdOutputs($type);
+        $data = $this->getOutputs($type);
         
         foreach($data as $key => $output)
         {

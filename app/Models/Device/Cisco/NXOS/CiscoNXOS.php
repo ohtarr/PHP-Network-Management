@@ -11,16 +11,40 @@ class CiscoNXOS extends Cisco
     
     protected static $singleTableType = __CLASS__;
 
-    //List of commands to run during a scan of this device.
-    public $scan_cmds = [
-        'run'           => 'show run',
-        'version'       => 'show version',
-        'interfaces'    => 'show interface',
-        'inventory'     => 'show inventory all',
-        'dir'           => 'dir',
-        'cdp'           => 'show cdp neighbor detail',
-        'lldp'          => 'show lldp neighbor detail',
-        'mac'           => 'show mac address-table',
+    //List of outputs to collect during a scan of this device.
+    public $scan_outputs = [
+        'run'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show run',
+        ],
+        'version'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show version',
+        ],
+        'interfaces'    =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show interface',
+        ],
+        'inventory'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show inventory all',
+        ],
+        'dir'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'dir',
+        ],
+        'cdp'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show cdp neighbor detail',
+        ],
+        'lldp'          =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show lldp neighbor detail',
+        ],
+        'mac'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show mac address-table',
+        ],
     ];
 
     /*

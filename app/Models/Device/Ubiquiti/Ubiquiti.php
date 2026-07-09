@@ -11,12 +11,24 @@ class Ubiquiti extends \App\Models\Device\Device
 
     protected static $singleTableType = __CLASS__;
 
-    //List of commands to run during a scan of this device.
-    public $scan_cmds = [
-        'run'               => 'cat /tmp/system.cfg',
-        'version'           => 'cat /etc/version',
-        'inventory'         => 'cat /etc/board.info',
-        'wstalist'          => 'wstalist',
+    //List of outputs to collect during a scan of this device.
+    public $scan_outputs = [
+        'run'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'cat /tmp/system.cfg',
+        ],
+        'version'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'cat /etc/version',
+        ],
+        'inventory'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'cat /etc/board.info',
+        ],
+        'wstalist'      =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'wstalist',
+        ],
     ];
 
     /*

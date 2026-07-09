@@ -20,15 +20,36 @@ class Juniper extends \App\Models\Device\Device
         'data'  =>  'array',
     ];
 
-    //List of commands to run during a scan of this device.
-    public $scan_cmds = [
-        'version'		=>	'show version | display json',
-        'inventory'		=>	'show chassis hardware | display json',
-        'run'			=>	'show configuration | display inheritance no-comments | display json',
-        'interface'		=>	'show interfaces | display json',
-        'lldp'			=>	'show lldp neighbors | display json',
-        'run_set'		=>	'show configuration | display set',
-        'sessions'      =>  'show security flow statistics | display json',
+    //List of outputs to collect during a scan of this device.
+    public $scan_outputs = [
+        'version'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show version | display json',
+        ],
+        'inventory'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show chassis hardware | display json',
+        ],
+        'run'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show configuration | display inheritance no-comments | display json',
+        ],
+        'interface'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show interfaces | display json',
+        ],
+        'lldp'          =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show lldp neighbors | display json',
+        ],
+        'run_set'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show configuration | display set',
+        ],
+        'sessions'      =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show security flow statistics | display json',
+        ],
     ];
 
     /*

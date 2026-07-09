@@ -11,20 +11,40 @@ class Opengear extends \App\Models\Device\Device
 
     protected static $singleTableType = __CLASS__;
 
-    public static $cli_timeout = 120;
+    public $cli_timeout = 180;
 
     //public $promptreg = '/\S*[\$|#]\s*\z/';
     public $promptreg = '/^\s*[\$|#]\s*$/';
 
     public $precli = [];
 
-    //List of commands to run during a scan of this device.
-    public $scan_cmds = [
-        ''                  => 'sudo /etc/scripts/support_report.sh',
-        'run'               => 'config -g config',
-        'version'           => 'cat /etc/version',
-        'serial'            => 'showserial',
-        'support_report'    => 'cat /etc/config/support_report',
+    //List of outputs to collect during a scan of this device.
+    public $scan_outputs = [
+        'srscript'	    =>	[
+            'method'	=>	'ssh',
+            'input'		=>	'sudo /etc/scripts/support_report.sh',
+            'timeout'	=>	180,
+            'include'	=>	false,
+        ],
+        'run'		    =>	[
+            'method'	=>	'ssh',
+            'input'		=>	'config -g config',
+            'timeout'	=>	5,
+        ],
+        'version'		=>	[
+            'method'	=>	'ssh',
+            'input'		=>	'cat /etc/version',
+            'timeout'	=>	5,
+        ],
+        'serial'		=>	[
+            'method'	=>	'ssh',
+            'input'		=>	'showserial',
+            'timeout'	=>	5,
+        ],
+        'support_report'=>	[
+            'method'	=>	'sftp',
+            'input'		=>	'/etc/config/support_report',
+        ],
     ];
 
     /*
@@ -35,7 +55,10 @@ class Opengear extends \App\Models\Device\Device
     public function getName()
     {
         $run = $this->getLatestOutputs('run');
-
+        if(!isset($run->data))
+        {
+            return null;
+        }
         $reg = "/config.system.name (\S+)/";
         if (preg_match($reg, $run->data, $hits)) {
             return $hits[1];
@@ -48,13 +71,13 @@ class Opengear extends \App\Models\Device\Device
     */
     public function getSerial()
     {
-        if(isset($this->data['serial']))
+        $output = $this->getLatestOutputs('support_report');
+        if(!isset($output->data))
         {
-            return $this->data['serial'];
+            return null;
         }
-
         $reg = "/Serial number\|\s+(\d+)/";
-        if(preg_match($reg, $this->data['support_report'], $hits))
+        if(preg_match($reg, $output->data, $hits))
         {
             return $hits[1];
         }
@@ -66,47 +89,72 @@ class Opengear extends \App\Models\Device\Device
     */
     public function getModel()
     {
+        $output = $this->getLatestOutputs('support_report');
+        if(!isset($output->data))
+        {
+            return null;
+        }
         $reg = "/<model>(\S+)<\/model>/";
-        if (preg_match($reg, $this->data['support_report'], $hits)) {
+        if (preg_match($reg, $output->data, $hits)) {
             return $hits[1];
         }
         $reg = "/Model\|\s+(\S+)/";
-        if (preg_match($reg, $this->data['support_report'], $hits)) {
+        if (preg_match($reg, $output->data, $hits)) {
             return $hits[1];
         }
     }
 
     public function getIccid()
     {
+        $output = $this->getLatestOutputs('support_report');
+        if(!isset($output->data))
+        {
+            return null;
+        }
         $reg = "/sim-iccid\s+(\d+)/";
-        if (preg_match($reg, $this->data['support_report'], $hits)) {
+        if (preg_match($reg, $output->data, $hits)) {
             return $hits[1];
         }
     }
 
     public function getImei()
     {
+        $output = $this->getLatestOutputs('support_report');
+        if(!isset($output->data))
+        {
+            return null;
+        }
         $reg = "/imei\s+(\d+)/";
-        if (preg_match($reg, $this->data['support_report'], $hits)) {
+        if (preg_match($reg, $output->data, $hits)) {
             return $hits[1];
         }
     }
 
     public function getVersion()
     {
+        $output = $this->getLatestOutputs('support_report');
+        if(!isset($output->data))
+        {
+            return null;
+        }
         $reg = "/OpenGear\/\S+\s+Version (\S+)/";
-        if (preg_match($reg, $this->data['support_report'], $hits)) {
+        if (preg_match($reg, $output->data, $hits)) {
             return $hits[1];
         }
     }
 
     public function getInterfaces()
     {
+        $output = $this->getLatestOutputs('support_report');
+        if(!isset($output->data))
+        {
+            return null;
+        }
         $reg = "/(eth0|eth1|wwan0).*?txqueuelen/s";
         $macreg = "/HWaddr\s+(\S+)/";
         $ipreg = "/inet addr:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/";
         $maskreg = "/Mask:(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})/";
-        preg_match_all($reg, $this->data['support_report'], $hits, PREG_SET_ORDER);
+        preg_match_all($reg, $output->data, $hits, PREG_SET_ORDER);
         $interfaces = [];
         foreach($hits as $interface)
         {

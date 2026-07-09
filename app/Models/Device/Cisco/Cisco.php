@@ -28,7 +28,7 @@ class Cisco extends Device
         'terminal pager 0',
     ];
 
-    public static $cli_timeout = 20;
+    public $cli_timeout = 20;
 
     public $discover_commands = [
         'sh version',
@@ -55,17 +55,44 @@ class Cisco extends Device
             '/Cisco Adaptive Security Appliance/i',
         ],
     ];
-    //List of commands to run during a scan of this device.
-    public $scan_cmds = [
-        'run'           => 'sh run',
-        'version'       => 'sh version',
-        'interfaces'    => 'sh interfaces',
-        'inventory'     => 'sh inventory',
-        'dir'           => 'dir',
-        'cdp'           => 'sh cdp neighbor detail',
-        'lldp'          => 'sh lldp neighbor detail',
-        'mac'           => 'sh mac address-table',
-        'arp'           => 'sh ip arp',
+    //List of outputs to collect during a scan of this device.
+    public $scan_outputs = [
+        'run'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh run',
+        ],
+        'version'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh version',
+        ],
+        'interfaces'    =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh interfaces',
+        ],
+        'inventory'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh inventory',
+        ],
+        'dir'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'dir',
+        ],
+        'cdp'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh cdp neighbor detail',
+        ],
+        'lldp'          =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh lldp neighbor detail',
+        ],
+        'mac'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh mac address-table',
+        ],
+        'arp'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh ip arp',
+        ],
     ];
 
     public function newCollection(array $models = []) 

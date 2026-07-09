@@ -24,12 +24,24 @@ class CiscoASA extends Cisco
     public $discover_regex = [
     ];
 
-    //List of commands to run during a scan of this device.
-    public $scan_cmds = [
-        'run'           => 'show run',
-        'version'       => 'show version',
-        'conn'          => 'show conn count',
-        'interface'     => 'show interface',
+    //List of outputs to collect during a scan of this device.
+    public $scan_outputs = [
+        'run'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show run',
+        ],
+        'version'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show version',
+        ],
+        'conn'          =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show conn count',
+        ],
+        'interface'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show interface',
+        ],
     ];
 
 	public function exec_cmds($cmds, $timeout = null)

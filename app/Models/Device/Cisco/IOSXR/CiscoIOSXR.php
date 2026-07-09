@@ -11,21 +11,60 @@ class CiscoIOSXR extends Cisco
     
     protected static $singleTableType = __CLASS__;
 
-    //List of commands to run during a scan of this device.
-    public $scan_cmds = [
-        'run'           => 'show run',
-        'version'       => 'show version',
-        'interfaces'    => 'show interfaces',
-        'inventory'     => 'admin show inventory',
-        'dir'           => 'dir',
-        'cdp'           => 'show cdp neighbor detail',
-        'lldp'          => 'show lldp neighbor detail',
-        'arp'           => 'show arp',
-        'arpv101'       => 'show arp vrf V101:DATACENTER',
-        'arpv102'       => 'show arp vrf V102:OFFICE',
-        'route'         => 'show ip route',
-        'routev101'     => 'show ip route vrf V101:DATACENTER',
-        'routev102'     => 'show ip route vrf V102:OFFICE',
+    //List of outputs to collect during a scan of this device.
+    public $scan_outputs = [
+        'run'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show run',
+        ],
+        'version'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show version',
+        ],
+        'interfaces'    =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show interfaces',
+        ],
+        'inventory'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'admin show inventory',
+        ],
+        'dir'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'dir',
+        ],
+        'cdp'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show cdp neighbor detail',
+        ],
+        'lldp'          =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show lldp neighbor detail',
+        ],
+        'arp'           =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show arp',
+        ],
+        'arpv101'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show arp vrf V101:DATACENTER',
+        ],
+        'arpv102'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show arp vrf V102:OFFICE',
+        ],
+        'route'         =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show ip route',
+        ],
+        'routev101'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show ip route vrf V101:DATACENTER',
+        ],
+        'routev102'     =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show ip route vrf V102:OFFICE',
+        ],
     ];
     /*
      Find the NAME of this device from OUTPUTs.

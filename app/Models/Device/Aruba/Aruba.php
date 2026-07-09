@@ -11,14 +11,32 @@ class Aruba extends \App\Models\Device\Device
 
     protected static $singleTableType = __CLASS__;
 
-    //List of commands to run during a scan of this device.
-    public $scan_cmds = [
-        'run'           => 'sh run',
-        'version'       => 'sh version',
-        'inventory'     => 'sh inventory',
-        'dir'           => 'dir',
-        'cdp'           => 'sh cdp neighbor',
-        'lldp'          => 'sh lldp neighbor',
+    //List of outputs to collect during a scan of this device.
+    public $scan_outputs = [
+        'run'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh run',
+        ],
+        'version'   =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh version',
+        ],
+        'inventory' =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh inventory',
+        ],
+        'dir'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'dir',
+        ],
+        'cdp'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh cdp neighbor',
+        ],
+        'lldp'      =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'sh lldp neighbor',
+        ],
     ];
 
     //Use SSH2 for connection
