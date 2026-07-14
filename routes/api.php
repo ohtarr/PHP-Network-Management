@@ -22,6 +22,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //Route::apiResource('/buildings', App\Models\Location\Building\BuildingController::class);
 //Route::apiResource('/rooms', App\Models\Location\Room\RoomController::class);
 //Route::apiResource('/sites', App\Models\Location\Site\SiteController::class);
+Route::apiResource('/depot-orders', App\Http\Controllers\DepotOrder\DepotOrderController::class);
 Route::apiResource('/devices/aruba', App\Models\Device\Aruba\ArubaController::class);
 Route::apiResource('/devices/cisco/ios', App\Models\Device\Cisco\IOS\CiscoIOSController::class);
 Route::apiResource('/devices/cisco/iosxe', App\Models\Device\Cisco\IOSXE\CiscoIOSXEController::class);
