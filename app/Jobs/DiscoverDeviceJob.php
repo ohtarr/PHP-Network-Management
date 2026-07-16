@@ -40,10 +40,16 @@ class DiscoverDeviceJob implements ShouldQueue
         {
             $device = Device::findOrFail($this->options['id']);
         } else {
-            "No ID found!  Cancelling Job!\n";
+            Log::error("DiscoverDeviceJob failed: No device ID provided in options.", ['options' => $this->options]);
+            return;
         }
         Log::info("DiscoverDeviceJob starting for device ID {$device->id}.");
-        $device->discover();
-        Log::info("DiscoverDeviceJob completed for device ID {$device->id}.");
+        $result = $device->discover();
+        if($result)
+        {
+            Log::info("DiscoverDeviceJob completed successfully for device ID {$device->id}.", ['type' => get_class($result)]);
+        } else {
+            Log::warning("DiscoverDeviceJob completed but discovery returned no result for device ID {$device->id}. Device may be unreachable, have no valid credentials, or be an unrecognized type.");
+        }
     }
 }

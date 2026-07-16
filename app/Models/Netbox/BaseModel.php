@@ -252,4 +252,21 @@ class BaseModel
         }
     }
 
+    public function hasTag($tagname)
+    {
+        $match = 0;
+        foreach($this->tags as $tag)
+        {
+            if(strtolower($tag->name) == strtolower($tagname))
+            {
+                $match = $tag;
+                break;
+            }
+        }
+        if($match)
+        {
+            return True;
+        }
+    }
+
 }

@@ -4,6 +4,7 @@ namespace App\Models\Device;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
@@ -660,17 +661,34 @@ class Device extends Model
     */
     public function discover()
     {
+        $context = ['device_id' => $this->id, 'netbox_id' => $this->netbox_id];
+
         if(!$this->ping())
         {
+            Log::warning("Device::discover() failed: device did not respond to ping.", $context);
             return null;
         }
+
         if(!isset($this->credential->id))
         {
+            Log::info("Device::discover() no credential set, attempting discoverCredentials().", $context);
             $this->discoverCredentials();
+            if(!isset($this->credential->id))
+            {
+                Log::warning("Device::discover() failed: no valid credentials found.", $context);
+                return null;
+            }
         }
+
         if(!isset($this->data['netmiko_type']))
         {
+            Log::info("Device::discover() no netmiko_type set, attempting discoverNetmikoType().", $context);
             $this->discoverNetmikoType();
+            if(!isset($this->data['netmiko_type']))
+            {
+                Log::warning("Device::discover() failed: could not determine netmiko type.", $context);
+                return null;
+            }
         }
 
         /*
@@ -698,6 +716,7 @@ class Device extends Model
         $type = $device->getType();
         if($type)
         {
+            Log::info("Device::discover() identified device type as {$type}.", $context);
             if($this->id)
             {
                 DB::table('devices')->where('id',$this->id)->update(['type' =>  $type]);
@@ -707,6 +726,9 @@ class Device extends Model
                 return self::find($this->id);
             }
         }
+
+        Log::warning("Device::discover() failed: could not match device output to any known type.", $context);
+        return null;
     }
 
     /*

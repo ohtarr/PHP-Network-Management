@@ -22,6 +22,10 @@ class Juniper extends \App\Models\Device\Device
 
     //List of outputs to collect during a scan of this device.
     public $scan_outputs = [
+        'run'       =>  [
+            'method'    =>  'ssh',
+            'input'     =>  'show configuration | display set',
+        ],
         'version'       =>  [
             'method'    =>  'ssh',
             'input'     =>  'show version | display json',
@@ -29,10 +33,6 @@ class Juniper extends \App\Models\Device\Device
         'inventory'     =>  [
             'method'    =>  'ssh',
             'input'     =>  'show chassis hardware | display json',
-        ],
-        'run'           =>  [
-            'method'    =>  'ssh',
-            'input'     =>  'show configuration | display inheritance no-comments | display json',
         ],
         'interface'     =>  [
             'method'    =>  'ssh',
@@ -42,9 +42,9 @@ class Juniper extends \App\Models\Device\Device
             'method'    =>  'ssh',
             'input'     =>  'show lldp neighbors | display json',
         ],
-        'run_set'       =>  [
+        'run_json'           =>  [
             'method'    =>  'ssh',
-            'input'     =>  'show configuration | display set',
+            'input'     =>  'show configuration | display json',
         ],
         'sessions'      =>  [
             'method'    =>  'ssh',
@@ -58,10 +58,10 @@ class Juniper extends \App\Models\Device\Device
     */
     public function getName()
     {
-        $run = $this->getLatestOutputs('run');
-        if(isset($run->data['configuration']['system']['host-name']))
+        $run = $this->getLatestOutputs('run_json')->dataArray;
+        if(isset($run['configuration']['system']['host-name']))
         {
-            return $run->data['configuration']['system']['host-name'];
+            return $run['configuration']['system']['host-name'];
         }
     }
 
@@ -71,7 +71,7 @@ class Juniper extends \App\Models\Device\Device
     */
     public function getSerial()
     {
-        $inv = $this->getLatestOutputs('inventory')->data;
+        $inv = $this->getLatestOutputs('inventory')->dataArray;
         if(isset($inv["chassis-inventory"][0]["chassis"][0]["serial-number"][0]['data']))
         {
             return $inv["chassis-inventory"][0]["chassis"][0]["serial-number"][0]['data'];
@@ -84,7 +84,7 @@ class Juniper extends \App\Models\Device\Device
     */
     public function getModel()
     {
-        $inv = $this->getLatestOutputs('inventory')->data;
+        $inv = $this->getLatestOutputs('inventory')->dataArray;
         if(isset($inv["chassis-inventory"][0]["chassis"][0]["description"][0]['data']))
         {
             return $inv["chassis-inventory"][0]["chassis"][0]["description"][0]['data'];
@@ -93,7 +93,7 @@ class Juniper extends \App\Models\Device\Device
 
     public function getChassisHardware()
     {
-        $array = $this->getLatestOutputs('inventory')->data;
+        $array = $this->getLatestOutputs('inventory')->dataArray;
         $chassis['name'] = $array["chassis-inventory"][0]["chassis"][0]['name'][0]['data'];
         $chassis['serial'] = $array["chassis-inventory"][0]["chassis"][0]['serial-number'][0]['data'];			
         $chassis['description'] = $array["chassis-inventory"][0]["chassis"][0]['description'][0]['data'];
@@ -153,7 +153,7 @@ class Juniper extends \App\Models\Device\Device
 	{
 		$fpcreg = "/FPC (\d+)/";
 		$chassis = null;
-        $array = $this->getLatestOutputs('inventory')->data;
+        $array = $this->getLatestOutputs('inventory')->dataArray;
 		if(!is_array($array))
 		{
 			return null;

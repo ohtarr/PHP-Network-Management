@@ -66,7 +66,7 @@ return [
             'driver' => 'redis',
             'connection' => 'db_redis_queue',
             'queue' => env('REDIS_QUEUE', 'default'),
-            'retry_after' => 90,
+            'retry_after' => 360,   // Must be greater than DiscoverDeviceJob $timeout (300s)
             'block_for' => null,
             'after_commit' => false,
         ],

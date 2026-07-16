@@ -125,6 +125,7 @@ return [
             'path' => storage_path('logs/provisioning.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'days' => 14,
+            'permission' => 0664,
         ],
     ],
 

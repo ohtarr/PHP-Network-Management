@@ -26,16 +26,16 @@ class Output extends Model
 
 
     //Custom Accessor for data.  If json_decoded into an array, return array, otherwise return raw string.
-    protected function data_array(): Attribute
+    protected function dataArray(): Attribute
     {
         return Attribute::make(
-            get: function(string $value) {
-                $array = json_decode($value,1);
+            get: function() {
+                $array = json_decode($this->data, true);
                 if(is_array($array))
                 {
                     return $array;
                 } else {
-                    return $value;
+                    return $this->data;
                 }
             }
         );

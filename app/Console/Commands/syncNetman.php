@@ -28,6 +28,7 @@ class syncNetman extends Command
     public $netmandevices;
     public $netboxdevices;
     public $netboxvms;
+    public $netboxvirtualchassis;
 
     /**
      * Execute the console command.
@@ -43,7 +44,8 @@ class syncNetman extends Command
 
     public function addDevices()
     {
-        $vc = $this->getNetboxVcMasterDevices();
+        //$vc = $this->getNetboxVcMasterDevices();
+        $vc = $this->getAllNetboxVirtualChassis();
         $devices = $this->getNetboxNonVcDevices();
         $vms = $this->getNetboxVms();
 
@@ -73,6 +75,9 @@ class syncNetman extends Command
                 } catch (\Exception $e) {
 
                 }
+            } else {
+                print "Device does NOT have an IP!  Skipping..." . PHP_EOL;
+                continue;
             }
         }
 
@@ -115,6 +120,19 @@ class syncNetman extends Command
             }
         }
         return collect($devices);
+    }
+
+    public function getAllNetboxVirtualChassis()
+    {
+        if(!$this->netboxvirtualchassis)
+        {
+            print "********************************************************************" . PHP_EOL;
+            print "Fetching Netbox Virtual Chassis..." . PHP_EOL;
+            print "********************************************************************" . PHP_EOL;
+            $virtualchassis = VirtualChassis::where('cf_NETMAN_MANAGED',"true")->get();
+            $this->netboxvirtualchassis = $virtualchassis;
+        }
+        return $this->netboxvirtualchassis;
     }
 
     public function getNetboxVms()
