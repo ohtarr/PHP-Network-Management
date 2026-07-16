@@ -433,16 +433,16 @@ class Device extends Model
         {
             $timeout = $this->cli_timeout;
         }
+        if(!isset($this->credential_id))
+        {
+            return null;
+        }
         $ip = $this->getIpAddress();
         if(!isset($ip))
         {
             return null;
         }
 
-        if(!isset($this->credential->id))
-        {
-            return null;
-        }
         $username = $this->credential['username'];
         $password = $this->credential['passkey'];
 
@@ -490,7 +490,7 @@ class Device extends Model
     public function getNetmikoType()
     {
         $ip = $this->getIpAddress();
-        if(!isset($this->credential->id))
+        if(!isset($this->credential_id))
         {
             return null;
         }
@@ -669,11 +669,11 @@ class Device extends Model
             return null;
         }
 
-        if(!isset($this->credential->id))
+        if(!isset($this->credential_id))
         {
             Log::info("Device::discover() no credential set, attempting discoverCredentials().", $context);
             $this->discoverCredentials();
-            if(!isset($this->credential->id))
+            if(!isset($this->credential_id))
             {
                 Log::warning("Device::discover() failed: no valid credentials found.", $context);
                 return null;
