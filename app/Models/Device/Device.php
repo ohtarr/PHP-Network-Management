@@ -443,8 +443,8 @@ class Device extends Model
             return null;
         }
 
-        $username = $this->credential['username'];
-        $password = $this->credential['passkey'];
+        $username = $this->credential->username;
+        $password = $this->credential->passkey;
 
         if(!isset($this->data['netmiko_type']))
         {
@@ -494,8 +494,8 @@ class Device extends Model
         {
             return null;
         }
-        $username = $this->credential['username'];
-        $password = $this->credential['passkey'];
+        $username = $this->credential->username;
+        $password = $this->credential->passkey;
         $exe = env('PYTHON_EXE');
         $cmd = "{$exe} bin/detecttype.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\"";
         //print $cmd . PHP_EOL;
