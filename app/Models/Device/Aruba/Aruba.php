@@ -46,30 +46,6 @@ class Aruba extends \App\Models\Device\Device
     }
 
     /*
-    This method is used to establish a CLI session with a device.
-    It will attempt to use Metaclassing\SSH library to work with specific models of devices that do not support ssh2.0 natively.
-    Returns a Metaclassing\SSH object.
-    */
-/*     public function getCli($timeout = 20)
-    {
-        $credentials = $this->getCredentials();
-        foreach ($credentials as $credential) {
-            // Attempt to connect using Metaclassing\SSH library.
-            try {
-                $cli = $this->getSSH1($this->ip, $credential->username, $credential->passkey);
-            } catch (\Exception $e) {
-                //If that fails, attempt to connect using phpseclib\Net\SSH2 library.
-            }
-            if ($cli) {
-                $this->credential_id = $credential->id;
-                $this->save();
-
-                return $cli;
-            }
-        }
-    } */
-
-    /*
     Find the name of this device from DATA.
     Returns string (device name).
     */

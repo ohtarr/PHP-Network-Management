@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-use phpseclib3\Net\SSH2;
 use phpseclib3\Net\SFTP;
 use App\Models\Credential\Credential;
 use Nanigans\SingleTableInheritance\SingleTableInheritanceTrait;
@@ -21,15 +20,10 @@ use App\Models\Device\Cisco\Cisco;
 use App\Models\Device\Opengear\Opengear;
 use App\Models\Device\Ubiquiti\Ubiquiti;
 use App\Models\Device\Juniper\Juniper;
-use App\Models\ServiceNow\Location;
-use App\Models\Netbox\DCIM\Devices as NetboxDevice;
 
 class Device extends Model
 {
-    //use Searchable;	// Add for Scout to search */
     use SoftDeletes, SingleTableInheritanceTrait, HasRolesAndAbilities;
-    //use SingleTableInheritanceTrait, HasRolesAndAbilities;
-
 
     protected $table = 'devices';
     protected static $singleTableTypeField = 'type';
@@ -162,6 +156,24 @@ class Device extends Model
         return $this->belongsTo(Credential::class, 'credential_id', 'id');
     }
 
+    public function getCurrentCredential()
+    {
+        if(!isset($this->credential_id))
+        {
+            return null;
+        }
+        return Credential::find($this->credential_id);
+    }
+
+    public function getCredentialCandidates()
+    {
+        //Find all credentials matching the CLASS of the device first.
+        $classcreds = Credential::where('class', get_class($this))->get();
+        //Find all credentials that are global (not class specific).
+        $allcreds = Credential::whereNull('class')->get();
+        return $classcreds->merge($allcreds);
+    }
+
     /*
     This method is used to generate a COLLECTION of credentials to use to connect to this device.
     Returns a COLLECTION
@@ -180,31 +192,6 @@ class Device extends Model
         //Return a collection of credentials to attempt.
         return $classcreds->merge($allcreds);
     }
-    /*
-    public function discoverCredentials()
-    {
-        $credentials = $this->getCredentials();
-        if(!$credentials)
-        {
-            return null;
-        }
-        foreach ($credentials as $credential) {
-            //Attempt to connect using phpseclib\Net\SSH2 library.
-            try {
-                $cli = $this->getSSH2($this->getIpAddress(), $credential->username, $credential->passkey, 20);
-            } catch (\Exception $e) {
-                echo $e->getMessage()."\n";
-            }
-
-            if (isset($cli))
-            {
-                $this->credential_id = $credential->id;
-                $this->save();
-                return $credential;
-            }
-        }
-    }
-    /**/
 
     /*
     This method is used to attempt to detect usable credentials on the device.  If found, it will add it to the device object and save to DB.
@@ -212,13 +199,15 @@ class Device extends Model
     public function discoverCredentials()
     {
         $ip = $this->getIpAddress();
-        $credentials = $this->getCredentials();
-        if(!$credentials)
-        {
-            return null;
+        if (!$ip) {
+            throw new \Exception('No IP address found for this device.');
         }
-        foreach ($credentials as $credential) {
-            //Attempt to connect using phpseclib\Net\SSH2 library.
+        $candidates = $this->getCredentialCandidates();
+        if(!$candidates)
+        {
+            throw new \Exception('No credential candidates found.');
+        }
+        foreach ($candidates as $credential) {
             try {
                 $exe = env('PYTHON_EXE');
                 $cmd = "{$exe} bin/testcreds.py --host=\"{$ip}\" --username=\"{$credential->username}\" --password=\"{$credential->passkey}\"";
@@ -237,58 +226,10 @@ class Device extends Model
     }
 
     /*
-    This method is used to establish a CLI session with a device.
-    It will attempt to use Metaclassing\SSH library to work with specific models of devices that do not support ssh2.0 natively.
-    If it fails to establish a working SSH session with Metaclassing\SSH, it will then attempt using phpseclib\Net\SSH2.
-    Returns a Metaclassing\SSH object OR a phpseclib\Net\SSH2 object.
-    */
-    public function getCli($timeout = null)
-    {
-        if(!$timeout)
-        {
-            $timeout = $this->cli_timeout;
-        }
-        //Get our collection of credentials to attempt and foreach them.
-        $credentials = $this->getCredentials();
-        if(!$credentials)
-        {
-			throw new \Exception('No Credentials found!');
-        }
-        foreach ($credentials as $credential) {
-            //Attemp to connect using phpseclib\Net\SSH2 library.
-            try {
-                $cli = $this->getSSH2($this->getIpAddress(), $credential->username, $credential->passkey, $timeout);
-            } catch (\Exception $e) {
-                echo $e->getMessage()."\n";
-            }
-
-            if (isset($cli)) {
-                return $cli;
-            }
-        }
-    }
-
-	public function getSSH2($ip, $username, $password, $timeout = 20)
-	{
-		$cli = new SSH2($ip);
-		
-        if (!$cli->login($username, $password)) {
-			throw new \Exception('Login Failed');
-        }
-        $cli->setTimeout($timeout);
-        $OUTPUT = $cli->read($this->promptreg , SSH2::READ_REGEX);
-        foreach($this->precli as $precli)
-        {
-            $cli->write($precli . "\n");
-            $cli->read($this->promptreg , SSH2::READ_REGEX);            
-        }
-		return $cli;
-	}
-
-    /*
     This method establishes an SFTP connection to the device using phpseclib3\Net\SFTP.
-    It iterates through available credentials until one succeeds.
-    Returns a phpseclib3\Net\SFTP object on success, or throws an Exception on failure.
+    It uses getCurrentCredential() to retrieve the assigned credential.
+    Throws an Exception if no credential is assigned, no IP is found, or login fails.
+    Returns a phpseclib3\Net\SFTP object on success.
     */
     public function getSftp($timeout = null)
     {
@@ -296,22 +237,26 @@ class Device extends Model
             $timeout = $this->cli_timeout;
         }
 
-        $ip          = $this->getIpAddress();
-        $credentials = $this->getCredentials();
+        $credential = $this->getCurrentCredential();
 
-        if (!$credentials) {
-            throw new \Exception('No Credentials found!');
+        if (!$credential) {
+            throw new \Exception('Unable to determine credential for this device.');
         }
 
-        foreach ($credentials as $credential) {
-            $sftp = new SFTP($ip);
-            if ($sftp->login($credential->username, $credential->passkey)) {
-                $sftp->setTimeout($timeout);
-                return $sftp;
-            }
+        $ip = $this->getIpAddress();
+
+        if (!$ip) {
+            throw new \Exception('No IP address found for this device.');
         }
 
-        throw new \Exception('SFTP Login Failed for all credentials.');
+        $sftp = new SFTP($ip);
+
+        if (!$sftp->login($credential->username, $credential->passkey)) {
+            throw new \Exception('SFTP Login Failed.');
+        }
+
+        $sftp->setTimeout($timeout);
+        return $sftp;
     }
 
     /*
@@ -329,28 +274,6 @@ class Device extends Model
     }
 
     /*
-    This method is used to attempt an SSH V1 terminal connection to the device.
-    It will attempt to use Metaclassing\SSH library to work with specific models of devices that do not support ssh 2.0 natively.
-    If it successfully connects and detects prompt, it will return a CLI handle.
-    */
-/*     public static function getSSH1($ip, $username, $password)
-    {
-        $deviceinfo = [
-            'host'      => $ip,
-            'username'  => $username,
-            'password'  => $password,
-        ];
-        $cli = new SSH($deviceinfo);
-        $cli->connect();
-        if ($cli->connected) {
-            // send the term len 0 command to stop paging output with ---more---
-            $cli->exec('terminal length 0');  //Cisco
-            $cli->exec('no paging');  //Aruba
-            return $cli;
-        }
-    } */
-
-    /*
     This method is a launch point to different methods of executing commands.
     This allows overiding capabilities in different dependant models.
     */
@@ -358,71 +281,7 @@ class Device extends Model
     {
         return $this->exec_cmds_netmiko($cmds);
     }
-    /*
-	public function exec_cmds_1($cmds, $timeout = null)
-	{
-        if(!$timeout)
-        {
-            $timeout = $this->cli_timeout;
-        }
-		$cli = $this->getCli($timeout);
-        if(!$cli)
-        {
-			throw new \Exception('Unable to establish CLI!');
-        }
-		if(is_array($cmds))
-		{
-			foreach($cmds as $key => $cmd)
-			{
-				$cli->write($cmd . "\n");
-				$output[$key] = $cli->read($this->promptreg , SSH2::READ_REGEX);
-			}
-		} elseif (is_string($cmds)) {
-			$LINES = explode("\n", $cmds);
-			$output = "";
-			foreach($LINES as $LINE)
-			{
-				if(!$LINE)
-				{
-					continue;
-				}
-				$cli->write($LINE . "\n");
-				$output .= $cli->read($this->promptreg , SSH2::READ_REGEX);
-			}
-		}
-		$cli->disconnect();
-		return $output;
-	}
 
-	public function exec_cmds_2($cmds, $timeout = null)
-	{
-		$cli = $this->getCli();
-        if(!$cli)
-        {
-			throw new \Exception('Unable to establish CLI!');
-        }
-        if(is_array($cmds))
-		{
-			foreach($cmds as $key => $cmd)
-			{
-				$output[$key] = $cli->exec($cmd);
-			}
-		} elseif (is_string($cmds)) {
-			$LINES = explode("\n", $cmds);
-			$output = "";
-			foreach($LINES as $LINE)
-			{
-				if(!$LINE)
-				{
-					continue;
-				}
-				$output .= $cli->exec($LINE);
-			}
-		}
-		$cli->disconnect();
-		return $output;
-	}
-    /**/
     /*
     This method connects to a device using python netmiko script, executes a command, returns the output, and disconnects the SSH session.
     If netmiko_type is unknown, it will run getNetmikoType() to attempt to determine the type.
@@ -433,25 +292,28 @@ class Device extends Model
         {
             $timeout = $this->cli_timeout;
         }
-        if(!isset($this->credential_id))
+
+        $credential = $this->getCurrentCredential();
+        if(!$credential)
         {
-            return null;
-        }
-        $ip = $this->getIpAddress();
-        if(!isset($ip))
-        {
-            return null;
+            throw new \Exception('Unable to determine credential for this device.');
         }
 
-        $username = $this->credential->username;
-        $password = $this->credential->passkey;
+        $ip = $this->getIpAddress();
+        if(!$ip)
+        {
+            throw new \Exception('No IP address found for this device.');
+        }
+
+        $username = $credential->username;
+        $password = $credential->passkey;
 
         if(!isset($this->data['netmiko_type']))
         {
             $detectedtype = $this->getNetmikoType();
             if(!$detectedtype)
             {
-                return null;
+                throw new \Exception('Unable to determine netmiko type for this device.');
             }
             $type = $detectedtype;
         } else {
@@ -489,10 +351,15 @@ class Device extends Model
     */
     public function getNetmikoType()
     {
-        $ip = $this->getIpAddress();
-        if(!isset($this->credential_id))
+        $credential = $this->getCurrentCredential();
+        if(!$credential)
         {
-            return null;
+            throw new \Exception('Unable to determine credential for this device.');
+        }
+        $ip = $this->getIpAddress();
+        if(!$ip)
+        {
+            throw new \Exception('No IP address found for this device.');
         }
         $username = $this->credential->username;
         $password = $this->credential->passkey;
@@ -520,19 +387,6 @@ class Device extends Model
         $this->save();
         return $this;
     }
-
-    /*
-    This method is used to attempt an SSH V2 terminal connection to the device.
-    It will utilize the phpseclib\net\SSH library and return a CLI handle if successful
-    */
-/*     public static function getSSH2($ip, $username, $password)
-    {
-        //Try using phpseclib\Net\SSH2 to connect to device.
-        $cli = new SSH2($ip);
-        if ($cli->login($username, $password)) {
-            return $cli;
-        }
-    } */
 
     /*
     This method is used to determine the TYPE of device this is and recategorize it.
@@ -613,24 +467,7 @@ class Device extends Model
 
         //Create a new model instance of type $newtype
         $device = $newtype::make($this->toArray());
-        /*
-        if($this->id)
-        {
-            $device->id = $this->id;
-        }
-        if($this->netbox_type)
-        {
-            $device->netbox_type = $this->netbox_type;
-        }
-        if($this->netbox_id)
-        {
-            $device->netbox_id = $this->netbox_id;
-        }
-        if($this->credential_id)
-        {
-            $device->credential_id = $this->credential_id;
-        }
-        /**/
+
         //run discover again.
         $device = $device->getTypeObject();
         return $device;
@@ -648,13 +485,6 @@ class Device extends Model
         }
     }
 
-/*     public static function discoverNew($ip)
-    {
-        $device = new self;
-        $device->ip = $ip;
-        return $device->discover();
-    } */
-
     /*
     This method is utilizes the getType() method to determine what kind of device this is.  Once determined
     it updates the device in database.
@@ -669,10 +499,17 @@ class Device extends Model
             return null;
         }
 
-        if(!isset($this->credential_id))
+        $credential = $this->getCurrentCredential();
+        if(!$credential)
         {
             Log::info("Device::discover() no credential set, attempting discoverCredentials().", $context);
             $this->discoverCredentials();
+            throw new \Exception('Unable to determine credential for this device.');
+        }
+        if(!isset($this->credential_id))
+        {
+
+    
             if(!isset($this->credential_id))
             {
                 Log::warning("Device::discover() failed: no valid credentials found.", $context);
@@ -691,27 +528,6 @@ class Device extends Model
             }
         }
 
-        /*
-        $device = new self;
-        if($this->netbox_id)
-        {
-            $device->netbox_id = $this->netbox_id;
-        }
-        if($this->netbox_type)
-        {
-            $device->netbox_type = $this->netbox_type;
-        }
-        if($this->credential_id)
-        {
-            $device->credential_id = $this->credential_id;
-        } else {
-            $cred = $this->discoverCredentials();
-            if($cred)
-            {
-                $device->credential_id = $cred->id;
-            }
-        }
-        /**/
         $device = new self($this->toArray());
         $type = $device->getType();
         if($type)
@@ -730,55 +546,6 @@ class Device extends Model
         Log::warning("Device::discover() failed: could not match device output to any known type.", $context);
         return null;
     }
-
-    /*
-    This method is used to determine if this devices IP is already in the database.
-    Returns null;
-    */
-/*     public function deviceExists()
-    {
-        print "deviceExists()\n";
-        $exists = $this->where('netbox_id',$this->netbox_id)->whereNot('id',$this->id)->get();
-        if($exists->isNotEmpty())
-        {
-            return $exists;
-        } else {
-            return null;
-        }
-        //print_r($this);
-        //$this->getOutput();
-         $device = Device::where('ip',$this->ip)
-            ->orWhere("serial", $this->serial)
-            ->orWhere("name", $this->name)
-            ->first();
-
-        $device1 = self::where('ip',$this->ip)->withTrashed()->first();
-        if($device1)
-        {
-            //print "IP MATCH!\n";
-            return $device1;
-        }
-        if(isset($this->data['serial']))
-        {
-            $device2 = self::where("data->serial", $this->data['serial'])->withTrashed()->first();
-            if($device2)
-            {
-                //print "SERIAL MATCH!\n";
-                return $device2;
-            }
-        }
-        if(isset($this->data['name']))
-        {
-            $device3 = self::where("data->name", $this->data['name'])->withTrashed()->first();
-            if($device3)
-            {
-                //print "NAME MATCH!\n";
-                return $device3;
-            }
-        }
-        //print_r($device);
-        //return $device;
-    } */
 
     /*
     This method executes all scan_outputs for a device and returns the values.
@@ -961,15 +728,9 @@ class Device extends Model
         return substr($this->getName(),0,8);
     }
 
-    public function getServiceNowLocation()
-    {
-        return Location::where('name', $this->getSiteCode())->first();
-    }
-
     //NETBOX RELATIONSHIPS
     public function getNetboxDeviceById()
     {
-        //$nb = new NetboxDevice;
         if(!$this->netbox_type)
         {
             return null;
@@ -988,7 +749,6 @@ class Device extends Model
         {
             return null;
         }
-        //$nb = new NetboxDevice;
         if(!$this->netbox_type)
         {
             return null;
