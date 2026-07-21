@@ -6,7 +6,6 @@ use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Vrfs;
 use App\Models\Netbox\IPAM\Roles;
-use App\Models\Netbox\IPAM\IpRanges;
 use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\DCIM\Locations;
 use App\Models\Netbox\DCIM\DeviceTypes;
@@ -396,49 +395,6 @@ class Sites extends BaseModel
             $prefix = Prefixes::create($params);
         }
         return $prefix;
-    }
-
-    public function deployIpRange($vlan)
-    {
-        $provprefix = $this->generateSiteNetworks($vlan);
-
-        $role = Roles::where('name','DHCP_SCOPE')->first();
-        $custom_fields['name'] = $provprefix['description'];
-        $custom_fields['description'] = $provprefix['description'];
-        $custom_fields['gateway'] = $provprefix['gateway'];
-        $custom_fields['dns1'] = $provprefix['dns1'];
-        $custom_fields['dns2'] = $provprefix['dns2'];
-        if(isset($provprefix['dns3']))
-        {  
-            $custom_fields['dns3'] = $provprefix['dns3'];
-        }
-        if(isset($provprefix['cm1']))
-        {  
-            $custom_fields['cm1'] = $provprefix['cm1'];
-        }
-        if(isset($provprefix['cm2']))
-        {  
-            $custom_fields['cm2'] = $provprefix['cm2'];
-        }
-        if(isset($provprefix['duration']))
-        {  
-            $custom_fields['duration'] = $provprefix['duration'];
-        }        
-        $params = [
-            'start_address'     =>  $provprefix['start_address'] . "/" . $provprefix['bitmask'],
-            'end_address'       =>  $provprefix['end_address'] . "/" . $provprefix['bitmask'],
-            'vrf'               =>  $provprefix['vrf'],
-            'status'            =>  'active',
-            'description'       =>  $provprefix['description'],
-            'role'              =>  $role->id,
-            'custom_fields'     =>  $custom_fields,
-        ];
-        $range = IpRanges::where("start_address", $provprefix['start_address'] . "/" . $provprefix['bitmask'])->where('vrf_id',$provprefix['vrf'])->first();
-        if(!isset($range->id))
-        {
-            $range = IpRanges::create($params);
-        }
-        return $range;
     }
 
     public function deployDhcpScope($vlan)

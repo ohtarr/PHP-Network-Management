@@ -174,20 +174,10 @@ class ValidationController extends Controller
                     continue;
                 }
 
-                $iprange = $prefix->getIpRanges()->where('role.name','DHCP_SCOPE')->first();
-                if(isset($iprange->id))
+                $scope = $prefix->getDhcpScope();
+                if(isset($scope->subnet))
                 {
-                    $this->addLog(1, "Netbox IPRANGE {$iprange->display} exists for prefix {$prefix->prefix}");
-                } else {
-                    $this->addLog(0, "Netbox IPRANGE does NOT exist for prefix {$prefix->prefix}");
-                    $totalstatus = 0;
-                    continue;
-                }
-
-                $scope = $iprange->getDhcpScope();
-                if(isset($scope->scopeID))
-                {
-                    $this->addLog(1, "DHCP Scope {$scope->scopeID} exists for prefix {$prefix->prefix}");
+                    $this->addLog(1, "DHCP Scope {$scope->subnet} exists for prefix {$prefix->prefix}");
                     if(isset($network['gateway']))
                     {
                         $option = $scope->findOption(3);

@@ -730,9 +730,7 @@ class Device extends BaseModel
         {
             return null;
         }
-        $hex = bin2hex($mac . "-" . $irb);
-        $formattedHex = chunk_split($hex, 2, '-');
-        return rtrim($formattedHex, '-');
+        return implode("-", str_split($mac, 2));
     }
 
 }

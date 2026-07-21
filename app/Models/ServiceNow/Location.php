@@ -5,7 +5,6 @@ namespace App\Models\ServiceNow;
 use ohtarr\ServiceNowModel;
 use App\Models\Netbox\DCIM\Sites;
 use App\Models\Netbox\DCIM\Regions;
-use App\Models\Netbox\DCIM\SiteGroups;
 
 class Location extends ServiceNowModel
 {

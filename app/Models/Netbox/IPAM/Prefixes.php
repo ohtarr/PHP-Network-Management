@@ -76,21 +76,6 @@ class Prefixes extends BaseModel
         return $query->get();
     }
 
-    public function getDhcpIpRange()
-    {
-        $role = Roles::where('name','DHCP_SCOPE')->first();
-        if(!isset($role->id))
-        {
-            return null;
-        }
-        $query = IpRanges::where('parent', $this->prefix)->where('role_id', $role->id);
-        if(isset($this->vrf->id))
-        {
-            $query = $query->where('vrf_id', $this->vrf->id);
-        }
-        return $query->get()->first();
-    }
-
     public function getSite()
     {
         if(isset($this->scope_type) && isset($this->scope_id))
