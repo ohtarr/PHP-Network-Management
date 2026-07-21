@@ -315,13 +315,13 @@ class DeprovisioningController extends Controller
 
     /**
      * @OA\Get(
-     *     path="/deprovisioning/dhcp/{sidecode}/todelete",
+     *     path="/deprovisioning/dhcp/{sitecode}/todelete",
      *     summary="Get Kea DHCP scopes that would be deleted for a site",
      *     description="Returns the list of Kea DHCP scopes associated with the site's prefixes without actually deleting them.",
      *     tags={"Deprovisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
-     *         name="sidecode",
+     *         name="sitecode",
      *         in="path",
      *         required=true,
      *         description="The site code to preview DHCP scope deletions for",
@@ -378,13 +378,13 @@ class DeprovisioningController extends Controller
 
     /**
      * @OA\Get(
-     *     path="/deprovisioning/dhcp/{sidecode}/todelete/gizmo",
+     *     path="/deprovisioning/dhcp/{sitecode}/todelete/gizmo",
      *     summary="Get Gizmo DHCP scopes that would be deleted for a site",
      *     description="Returns the list of Gizmo DHCP scopes associated with the site's prefixes without actually deleting them.",
      *     tags={"Deprovisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
-     *         name="sidecode",
+     *         name="sitecode",
      *         in="path",
      *         required=true,
      *         description="The site code to preview DHCP scope deletions for",

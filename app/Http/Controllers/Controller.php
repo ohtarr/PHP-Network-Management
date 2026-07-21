@@ -42,6 +42,8 @@ use Illuminate\Routing\Controller as BaseController;
  * @OA\Tag(name="Reports", description="Network reporting endpoints")
  * @OA\Tag(name="SnipeIT", description="SnipeIT asset management operations")
  * @OA\Tag(name="Logs", description="Application activity log endpoints")
+ * @OA\Tag(name="DepotOrders", description="Depot order management")
+ * @OA\Tag(name="Orders", description="Netbox custom order object management")
  */
 class Controller extends BaseController
 {
