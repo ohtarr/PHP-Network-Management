@@ -35,7 +35,7 @@ Route::apiResource('/devices/opengear', App\Models\Device\Opengear\OpengearContr
 Route::apiResource('/devices/ubiquiti', App\Models\Device\Ubiquiti\UbiquitiController::class);
 Route::apiResource('/devices', App\Models\Device\DeviceController::class);
 Route::apiResource('/servicenow/incidents', App\Models\ServiceNow\IncidentController::class);
-//Route::apiResource('/netbox/devices', App\Models\Netbox\NetboxController::class);
+Route::apiResource('/netbox/devices', App\Http\Controllers\Netbox\Devices\DevicesController::class);
 
 //Route::get('/mist/device', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
 //Route::get('/mist/device/{deviceid}/', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
