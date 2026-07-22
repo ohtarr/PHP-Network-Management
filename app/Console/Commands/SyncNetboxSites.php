@@ -25,6 +25,26 @@ class SyncNetboxSites extends Command
     public $snowlocs;
     public $netboxsites;
 
+    protected array $mapping = [
+        'description'   =>  'u_description',
+        'latitude'      =>  'latitude',
+        'longitude'     =>  'longitude',
+    ];
+
+    protected array $custommapping = [
+        'STREET_NUMBER'                     =>  'u_street_number',
+        'STREET_PREDIRECTIONAL'             =>  'u_street_predirectional',
+        'STREET_NAME'                       =>  'u_street_name',
+        'STREET_SUFFIX'                     =>  'u_street_suffix',
+        'STREET_POSTDIRECTIONAL'            =>  'u_street_postdirectional',
+        'STREET2_SECONDARYUNITINDICATOR'    =>  'u_secondary_unit_indicator',
+        'STREET2_SECONDARYNUMBER'           =>  'u_secondary_number',
+        'CITY'                              =>  'city',
+        'STATE'                             =>  'state',
+        'POSTAL_CODE'                       =>  'zip',
+        'COUNTRY'                           =>  'country',
+    ];
+
     /**
      * Execute the console command.
      *
@@ -39,7 +59,7 @@ class SyncNetboxSites extends Command
     {
         if(!$this->snowlocs)
         {
-            $this->snowlocs = Location::allActive();
+            $this->snowlocs = Location::allPremobeAndActive();
         }
         return $this->snowlocs;
     }
@@ -57,18 +77,18 @@ class SyncNetboxSites extends Command
     {
         foreach($this->getNetboxSites() as $site)
         {
-            print "Syncing site " . $site->name . PHP_EOL;
-            unset($loc);
+            $this->info("Syncing site {$site->name}");
             $loc = $this->getNetboxSiteSnowLoc($site);
             if(!$loc)
             {
-                print "NO SITE FOUND, SKIPPING!\n";
+                $this->warn("NO LOC FOUND, SKIPPING!");
                 continue;
             }
             try{
+                $this->info("Found LOC {$loc->name}...Syncing...");
                 $this->SyncAddress($site, $loc);
             } catch (\Exception $e) {
-                print "Failed to Sync Address, Skipping...\n";
+                $this->error("Failed to Sync Address, Skipping...");
                 continue;
             }
         }
@@ -87,12 +107,9 @@ class SyncNetboxSites extends Command
     public function getNetboxSiteSnowLoc($site)
     {
         $loc = null;
-        if(isset($site->custom_fields->SNOW_SYSID))
+        if(!empty($site->custom_fields->SNOW_SYSID))
         {
-            if($site->custom_fields->SNOW_SYSID)
-            {
-                $loc = $this->getSnowLocBySysid($site->custom_fields->SNOW_SYSID);
-            }
+            $loc = $this->getSnowLocBySysid($site->custom_fields->SNOW_SYSID);
         }
         if(!$loc)
         {
@@ -101,42 +118,46 @@ class SyncNetboxSites extends Command
         return $loc;
     }
 
+    private function truncateCoord($value): string
+    {
+        return preg_replace('/(\.\d{6})\d+/', '$1', (string)(float)$value);
+    }
 
     public function SyncAddress($site, $loc)
     {
         $fix = [];
-        print "SYNCING ADDRESS for site " . $site->name . PHP_EOL;
-        $custommapping = [
-            'STREET_NUMBER'                     =>  'u_street_number',
-            'STREET_PREDIRECTIONAL'             =>  'u_street_predirectional',
-            'STREET_NAME'                       =>  'u_street_name',
-            'STREET_SUFFIX'                     =>  'u_street_suffix',
-            'STREET_POSTDIRECTIONAL'            =>  'u_street_postdirectional',
-            'STREET2_SECONDARYUNITINDICATOR'    =>  'u_secondary_unit_indicator',
-            'STREET2_SECONDARYNUMBER'           =>  'u_secondary_number',
-            'CITY'                              =>  'city',
-            'STATE'                             =>  'state',
-            'POSTAL_CODE'                       =>  'zip',
-            'COUNTRY'                           =>  'country',
-        ];
-        $mapping = [
-            'description'           =>  'u_description',
-        ];
-        foreach($custommapping as $nbkey => $snkey)
+        $this->info("SYNCING ADDRESS for site {$site->name}");
+        foreach($this->mapping as $nbkey => $snkey)
+        {
+            if(in_array($nbkey, ['latitude', 'longitude']))
+            {
+                $nbval = $this->truncateCoord($site->$nbkey);
+                $snval = $this->truncateCoord($loc->$snkey);
+                if($nbval != $snval)
+                {
+                    $fix[$nbkey] = $snval;
+                }
+            } else {
+                if($site->$nbkey != trim($loc->$snkey))
+                {
+                    $fix[$nbkey] = trim($loc->$snkey);
+                }
+            }
+        }
+        foreach($this->custommapping as $nbkey => $snkey)
         {
             if($site->custom_fields->$nbkey != $loc->$snkey)
             {
                 $fix['custom_fields'][$nbkey] = $loc->$snkey;
             }
         }
-
         if($fix)
         {
-            print "THINGS TO FIX: \n";
+            $this->info("THINGS TO FIX:");
             print_r($fix);
             $site->update($fix);
         } else {
-            print "Nothing to fix!  skipping!\n";
+            $this->info("Nothing to fix!  skipping!");
         }
     }
 }
