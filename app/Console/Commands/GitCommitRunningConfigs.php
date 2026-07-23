@@ -3,7 +3,10 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Bus;
 use App\Models\Device\Device;
+use App\Jobs\GitCreateRunFileJob;
+use App\Jobs\GitCommitRunningConfigsJob;
 
 class GitCommitRunningConfigs extends Command
 {
@@ -12,7 +15,7 @@ class GitCommitRunningConfigs extends Command
      *
      * @var string
      */
-    protected $signature = 'netman:gitCommitRunningConfigs {--push : Push commits to the remote git repository after committing}';
+    protected $signature = 'netman:gitCommitRunningConfigs';
 
     /**
      * The console command description.
@@ -36,59 +39,26 @@ class GitCommitRunningConfigs extends Command
         }
 
         $devices = Device::all();
-        $written = 0;
-        $skipped = 0;
 
+        $jobs = [];
         foreach ($devices as $device) {
-            $name = $device->getName();
-
-            if (!$name) {
-                $this->line("  [SKIP] Device ID {$device->id} — getName() returned null, skipping.");
-                $skipped++;
-                continue;
-            }
-
-            $output = $device->getLatestOutputs('run');
-
-            if (!$output || !$output->data) {
-                $this->line("  [SKIP] Device '{$name}' (ID {$device->id}) — no 'run' output found, skipping.");
-                $skipped++;
-                continue;
-            }
-
-            $filename = $repoPath . '/' . $name . '.txt';
-            file_put_contents($filename, $output->data);
-            $this->line("  [OK]   Wrote config for '{$name}'.");
-            $written++;
+            $jobs[] = new GitCreateRunFileJob($device->id, $repoPath);
         }
 
-        $this->info("Written: {$written} | Skipped: {$skipped}");
-
-        if ($written === 0) {
-            $this->warn("No configs were written — nothing to commit.");
+        if (empty($jobs)) {
+            $this->warn("No devices found — nothing to dispatch.");
             return 0;
         }
 
-        if ($this->option('push')) {
-            $timestamp = now()->format('Y-m-d H:i:s');
-            $commitMessage = "Auto-commit running configs - {$timestamp}";
+        Bus::batch($jobs)
+            ->then(function (\Illuminate\Bus\Batch $batch) use ($repoPath) {
+                GitCommitRunningConfigsJob::dispatch($repoPath);
+            })
+            ->name('GitCommitRunningConfigs')
+            ->dispatch();
 
-            $this->info("Running git add...");
-            $addOutput = shell_exec("cd " . escapeshellarg($repoPath) . " && git add . 2>&1");
-            $this->line($addOutput);
+        $this->info("Dispatched " . count($jobs) . " GitCreateRunFileJob(s) in a batch. GitCommitRunningConfigsJob will run automatically when all jobs complete.");
 
-            $this->info("Running git commit...");
-            $commitOutput = shell_exec("cd " . escapeshellarg($repoPath) . " && git commit -m " . escapeshellarg($commitMessage) . " 2>&1");
-            $this->line($commitOutput);
-
-            $this->info("Running git push...");
-            $pushOutput = shell_exec("cd " . escapeshellarg($repoPath) . " && git push 2>&1");
-            $this->line($pushOutput);
-
-            $this->info("Done! Running configs committed and pushed successfully.");
-        } else {
-            $this->info("Done! Running configs written to disk. Use --push to git add, commit, and push to the remote repository.");
-        }
         return 0;
     }
 }

@@ -20,6 +20,9 @@ class Kernel extends ConsoleKernel
         // Prune old log entries daily at midnight.
         // Retention period is controlled by LOG_RETENTION_DAYS in .env (default: 90 days).
         $schedule->command('logs:prune')->dailyAt('00:00');
+
+        // Commit and push device running-configs to the running-configs git repo nightly at 23:00.
+        $schedule->command('netman:gitCommitRunningConfigs')->dailyAt('23:00');
     }
 
     /**
