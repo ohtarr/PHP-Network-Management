@@ -14,6 +14,8 @@ class VirtualChassis extends BaseModel
     protected $app = "dcim";
     protected $model = "virtual-chassis";
 
+    protected $cachedMaster = null;
+
     public function devices()
     {
         return Devices::where('virtual_chassis_id',$this->id)->get();
@@ -21,10 +23,10 @@ class VirtualChassis extends BaseModel
 
     public function getMaster()
     {
-        if(isset($this->master->id))
-        {
-            return Devices::find($this->master->id);
+        if (!$this->cachedMaster && isset($this->master->id)) {
+            $this->cachedMaster = Devices::find($this->master->id);
         }
+        return $this->cachedMaster;
     }
 
     public function getIpAddress()

@@ -203,7 +203,7 @@ class Device extends Model
             throw new \Exception('No IP address found for this device.');
         }
         $candidates = $this->getCredentialCandidates();
-        if(!$candidates)
+        if($candidates->isEmpty())
         {
             throw new \Exception('No credential candidates found.');
         }
@@ -503,14 +503,8 @@ class Device extends Model
         if(!$credential)
         {
             Log::info("Device::discover() no credential set, attempting discoverCredentials().", $context);
-            $this->discoverCredentials();
-            throw new \Exception('Unable to determine credential for this device.');
-        }
-        if(!isset($this->credential_id))
-        {
-
-    
-            if(!isset($this->credential_id))
+            $found = $this->discoverCredentials();
+            if(!$found)
             {
                 Log::warning("Device::discover() failed: no valid credentials found.", $context);
                 return null;
@@ -545,6 +539,15 @@ class Device extends Model
 
         Log::warning("Device::discover() failed: could not match device output to any known type.", $context);
         return null;
+    }
+
+    public function rediscover()
+    {
+        $this->credential_id = null;
+        $data = $this->data;
+        unset($data['netmiko_type']);
+        $this->data = $data;
+
     }
 
     /*
@@ -650,6 +653,11 @@ class Device extends Model
     public function getMgmtIp()
     {
 
+    }
+
+    public function getMac()
+    {
+        
     }
 
     /*

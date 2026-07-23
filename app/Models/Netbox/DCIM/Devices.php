@@ -10,6 +10,7 @@ use App\Models\Netbox\DCIM\RearPorts;
 use App\Models\Netbox\DCIM\Racks;
 use App\Models\Netbox\DCIM\ModuleBays;
 use App\Models\Netbox\IPAM\Prefixes;
+use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Mist\Device;
 use App\Models\Gizmo\Dhcp;
 
@@ -18,6 +19,9 @@ class Devices extends BaseModel
 {
     protected $app = "dcim";
     protected $model = "devices";
+
+    protected $virtualChassis = null;
+    protected $cachedIp = null;
 
     public function location()
     {
@@ -112,27 +116,68 @@ class Devices extends BaseModel
 
     public function getIpAddress()
     {
+        if ($this->cachedIp !== null) {
+            return $this->cachedIp;
+        }
         $reg = "/(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\/(\d{1,2})/";
         if(isset($this->primary_ip->address))
         {
             $ip = $this->primary_ip->address;
             if(preg_match($reg, $ip, $hits))
             {
-                return $hits[1];
+                return $this->cachedIp = $hits[1];
             }
         } elseif(isset($this->custom_fields->ip)) {
-            return $this->custom_fields->ip;
+            return $this->cachedIp = $this->custom_fields->ip;
         } elseif(isset($this->virtual_chassis->master->id)){
-            $master = self::find($this->virtual_chassis->master->id);
+            $master = $this->getVirtualChassisMaster();
             if(isset($master->primary_ip->address))
             {
                 $ip = $master->primary_ip->address;
                 if(preg_match($reg, $ip, $hits))
                 {
-                    return $hits[1];
+                    return $this->cachedIp = $hits[1];
                 }
             } elseif(isset($master->custom_fields->ip)) {
-                return $master->custom_fields->ip;            
+                return $this->cachedIp = $master->custom_fields->ip;
+            }
+        }
+    }
+
+    public function getMgmtIp()
+    {
+        if(isset($this->primary_ip->id))
+        {
+            $address = IpAddresses::find($this->primary_ip->id);
+            if(isset($address->id))
+            {
+                if(isset($address->address))
+                {
+                    return $address;
+                }
+            }
+        }
+    }
+
+    public function getMgmtInterface()
+    {
+        if(isset($this->primary_ip->id))
+        {
+            $address = IpAddresses::find($this->primary_ip->id);
+            if(isset($address->id))
+            {
+                if(isset($address->assigned_object_type) && $address->assigned_object_type == "dcim.interface")
+                {
+                    if(isset($address->assigned_object_id))
+                    {
+                        $interface = Interfaces::find($address->assigned_object_id);
+                        if(isset($interface->id))
+                        {
+                            return $interface;
+                        }
+                    }
+
+                }
             }
         }
     }
@@ -195,10 +240,19 @@ class Devices extends BaseModel
 
     public function getVirtualChassis()
     {
-        if(isset($this->virtual_chassis->id))
-        {
-            return VirtualChassis::find($this->virtual_chassis->id);
+        if (!$this->virtualChassis && isset($this->virtual_chassis->id)) {
+            $this->virtualChassis = VirtualChassis::find($this->virtual_chassis->id);
         }
+        return $this->virtualChassis;
+    }
+
+    public function getVirtualChassisMaster()
+    {
+        $vc = $this->getVirtualChassis();
+        if ($vc) {
+            return $vc->getMaster();
+        }
+        return null;
     }
 
     public function generateDnsName()
