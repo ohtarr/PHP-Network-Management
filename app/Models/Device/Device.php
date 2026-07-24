@@ -602,38 +602,112 @@ class Device extends Model
     }
 
     /*
+    Apply gitconfig line_filters to a raw output string.
+    Strips blank/whitespace-only lines and any line matching a configured regex pattern
+    from config/gitconfig.php. This normalises volatile lines (timestamps, checksums, etc.)
+    so they do not cause spurious "changed" detections or pollute stored outputs.
+    */
+    public function applyLineFilters(string $output): string
+    {
+        $filters = config('gitconfig.line_filters', []);
+        $lines = explode("\n", $output);
+        $lines = array_filter($lines, function (string $line) use ($filters) {
+            // Remove blank / whitespace-only lines
+            if (trim($line) === '') {
+                return false;
+            }
+            // Remove lines matching any filter pattern
+            foreach ($filters as $pattern) {
+                if (preg_match($pattern, $line)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+        return implode("\n", $lines);
+    }
+
+    /*
     This method utilized the getOutputs method to obtain all of the command line outputs for the device and
     save them to the Outputs table.
+
+    Behaviour is controlled by the DEVICE_OUTPUT_RETENTION env variable:
+      - 0 (default / unset): delete all previous outputs of the same type before saving the new one
+                             (original behaviour — only the latest record is kept).
+      - N > 0              : keep the N most-recent outputs per device+type; oldest records are pruned
+                             once the count exceeds N.
+
+    Additionally:
+      - Line filters from config/gitconfig.php are applied to the raw output before saving, stripping
+        volatile lines (timestamps, checksums, etc.) that would otherwise cause false "changed" detections.
+      - The filtered output is compared against the latest stored output; if they are identical the new
+        record is NOT saved (and no pruning occurs), avoiding unnecessary DB writes.
     */
     public function scan($type = null)
     {
-        if(!$this->id)
-        {
+        if (!$this->id) {
             return null;
         }
-        if(!$this->ping())
-        {
+        if (!$this->ping()) {
             return null;
         }
-        $data = $this->getOutputs($type);
-        
-        foreach($data as $key => $output)
-        {
-            unset($existing);
-            if(!$output)
-            {
+
+        $data      = $this->getOutputs($type);
+        $retention = (int) env('DEVICE_OUTPUT_RETENTION', 0);
+
+        foreach ($data as $key => $output) {
+            if (!$output) {
                 continue;
             }
-            $existing = $this->getAllOutputs($key);
-            foreach($existing as $exists)
-            {
-                $exists->delete();
+
+            // Guard: if any output indicates a pending commit-confirmed rollback,
+            // abort the entire scan — the device config is in a temporary state and
+            // will revert automatically; saving it would produce a misleading record.
+            if (stripos($output, 'commit confirmed will be rolled back') !== false) {
+                Log::warning("Device::scan() aborted: 'commit confirmed will be rolled back' detected in '{$key}' output.", ['device_id' => $this->id]);
+                return null;
             }
-            $new = new Output;
-            $new->device_id = $this->id;
-            $new->type = $key;
-            $new->data = $output;
+
+            // 1. Strip volatile / noisy lines using the shared line-filter config
+            $filtered = $this->applyLineFilters($output);
+
+            // 2. Skip saving if the filtered output is identical to the latest stored output
+            $latest = $this->output()
+                ->where('type', $key)
+                ->orderBy('id', 'DESC')
+                ->first();
+
+            if ($latest && $latest->data === $filtered) {
+                continue;
+            }
+
+            // 3. Save the new (filtered) output record
+            $new             = new Output;
+            $new->device_id  = $this->id;
+            $new->type       = $key;
+            $new->data       = $filtered;
             $new->save();
+
+            // 4. Prune old records according to the retention setting
+            if ($retention > 0) {
+                // Keep only the N most-recent records; delete the oldest ones over the limit
+                $count = $this->output()->where('type', $key)->count();
+                if ($count > $retention) {
+                    $deleteCount = $count - $retention;
+                    $oldest = $this->output()
+                        ->where('type', $key)
+                        ->orderBy('id', 'ASC')
+                        ->limit($deleteCount)
+                        ->pluck('id');
+                    Output::whereIn('id', $oldest)->delete();
+                }
+            } else {
+                // Original behaviour: delete all previous outputs, keeping only the new one
+                $this->output()
+                    ->where('type', $key)
+                    ->where('id', '!=', $new->id)
+                    ->delete();
+            }
         }
         return $this;
     }

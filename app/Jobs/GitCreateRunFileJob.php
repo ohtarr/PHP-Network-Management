@@ -62,25 +62,8 @@ class GitCreateRunFileJob implements ShouldQueue
 
         $filename = $this->repoPath . '/' . $name . '.txt';
 
-        // Load filter patterns from config/gitconfig.php
-        $filters = config('gitconfig.line_filters', []);
-
-        // Split into lines, remove blank lines and any line matching a filter pattern, then rejoin
-        $lines = explode("\n", $output->data);
-        $lines = array_filter($lines, function (string $line) use ($filters) {
-            // Remove blank / whitespace-only lines
-            if (trim($line) === '') {
-                return false;
-            }
-            // Remove lines matching any filter pattern
-            foreach ($filters as $pattern) {
-                if (preg_match($pattern, $line)) {
-                    return false;
-                }
-            }
-            return true;
-        });
-        $filtered = implode("\n", $lines);
+        // Apply shared line filters (strips blank lines and volatile lines such as timestamps/checksums)
+        $filtered = $device->applyLineFilters($output->data);
 
         file_put_contents($filename, $filtered);
         Log::info("GitCreateRunFileJob: Wrote config for '{$name}' (ID {$this->deviceId}).");
