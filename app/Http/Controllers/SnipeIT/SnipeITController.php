@@ -54,9 +54,13 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function getAssets()
+    public function getAssets(Request $request)
     {
-        $results = Assets::all();
+        $query = Assets::getQuery();
+        foreach ($request->query() as $key => $value) {
+            $query->where($key, $value);
+        }
+        $results = $query->get();
         $return['status'] = 1;
         $return['log'] = $this->logs;
         $return['data'] = $results;
