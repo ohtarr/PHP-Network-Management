@@ -369,6 +369,7 @@ class SnipeITController extends Controller
     public function updateAsset($serial, Request $request)
     {
         $return['status'] = 1;
+        $return['data'] = null;
         $submitted = $request->collect();
         try{
             $asset = Assets::findByTag($serial);
@@ -386,13 +387,13 @@ class SnipeITController extends Controller
             if(isset($results->id))
             {
                 $this->addLog(1, "Successfully updated Asset ID {$results->id}");
+                $return['data'] = $results;
             }
         } else {
             $this->addLog(0, "Unable to find asset with serial {$serial}.");
             $return['status'] = 0;
         }
         $return['log'] = $this->logs;
-        $return['data'] = $results;
         return json_encode($return);
     }
 
