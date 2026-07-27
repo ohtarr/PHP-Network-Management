@@ -444,7 +444,6 @@ class SnipeITController extends Controller
         }
         $this->addLog(1, "Created Asset ID: {$results->id}");
         $return['log'] = $this->logs;
-        $return['data'] = $results;
         return json_encode($return);
     }
 }
