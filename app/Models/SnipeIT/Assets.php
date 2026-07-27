@@ -96,7 +96,6 @@ class Assets extends BaseModel
     {
         $path = "hardware/byserial/" . $serial;
         $response = static::getQuery()->httpGet($path);
-        return $response;
         return static::hydrateMany($response->rows)->first();
     }
 
