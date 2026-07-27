@@ -432,14 +432,17 @@ class SnipeITController extends Controller
      */
     public function createAsset(Request $request)
     {
+        $return['status'] = 1;
+        $return['data'] = null;
         $submitted = $request->collect();
         try{
             $results = Assets::create($submitted);
+            $return['data'] = $results;
         } catch (\Exception $e) {
+            $return['status'] = 0;
             $this->addLog(0, "Failed to create Asset:" . $e->getMessage());
         }
         $this->addLog(1, "Created Asset ID: {$results->id}");
-        $return['status'] = 1;
         $return['log'] = $this->logs;
         $return['data'] = $results;
         return json_encode($return);
