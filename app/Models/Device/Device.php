@@ -76,7 +76,7 @@ class Device extends Model
             $grouped = $outputs->groupBy('type');
             foreach($grouped as $key => $value)
             {
-                $return[$key] = $value->first();
+                $return[] = $value->first();
             }
             return collect($return);
         }
