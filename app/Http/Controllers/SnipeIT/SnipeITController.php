@@ -4,15 +4,13 @@ namespace App\Http\Controllers\SnipeIT;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Models\Log\Log as DbLog;
-use App\Models\Mist\Site;
-use App\Models\Mist\Device;
 use App\Models\SnipeIT\Locations;
 use App\Models\SnipeIT\Models;
 use App\Models\SnipeIT\StatusLabels;
 use App\Models\SnipeIT\Categories;
 use App\Models\SnipeIT\Assets;
-use \Carbon\Carbon;
 
 class SnipeITController extends Controller
 {
@@ -37,6 +35,40 @@ class SnipeITController extends Controller
     }
 
     /**
+     * Build a standardized JSON response.
+     */
+    private function buildResponse(mixed $data = null, int $status = 1): JsonResponse
+    {
+        return response()->json([
+            'status' => $status,
+            'log'    => $this->logs,
+            'data'   => $data,
+        ]);
+    }
+
+    /**
+     * Find an asset by serial/tag, logging success or failure.
+     * Returns the asset on success, or null on failure.
+     */
+    private function findAssetBySerial(string $serial): ?Assets
+    {
+        try {
+            $asset = Assets::findByTag($serial);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Failed to FIND Asset: " . $e->getMessage());
+            return null;
+        }
+
+        if (isset($asset->id)) {
+            $this->addLog(1, "Found asset ID {$asset->id} with serial {$serial}.");
+            return $asset;
+        }
+
+        $this->addLog(0, "Unable to find asset with serial {$serial}.");
+        return null;
+    }
+
+    /**
      * @OA\Get(
      *     path="/snipeit/hardware",
      *     summary="Get all SnipeIT hardware assets",
@@ -54,17 +86,15 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function getAssets(Request $request)
+    public function getAssets(Request $request): JsonResponse
     {
+        $allowedFilters = ['status_id', 'model_id', 'location_id', 'category_id'];
         $query = Assets::getQuery();
-        foreach ($request->query() as $key => $value) {
+        foreach ($request->only($allowedFilters) as $key => $value) {
             $query->where($key, $value);
         }
         $results = $query->get();
-        $return['status'] = 1;
-        $return['log'] = $this->logs;
-        $return['data'] = $results;
-        return json_encode($return);
+        return $this->buildResponse($results);
     }
 
     /**
@@ -92,13 +122,10 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function getAssetsBySerial($serial)
+    public function getAssetsBySerial($serial): JsonResponse
     {
         $results = Assets::findByTag($serial);
-        $return['status'] = 1;
-        $return['log'] = $this->logs;
-        $return['data'] = $results;
-        return json_encode($return);
+        return $this->buildResponse($results);
     }
 
     /**
@@ -119,13 +146,9 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function getLocations()
+    public function getLocations(): JsonResponse
     {
-        $results = Locations::all();
-        $return['status'] = 1;
-        $return['log'] = $this->logs;
-        $return['data'] = $results;
-        return json_encode($return);
+        return $this->buildResponse(Locations::all());
     }
 
     /**
@@ -146,13 +169,9 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function getCategories()
+    public function getCategories(): JsonResponse
     {
-        $results = Categories::all();
-        $return['status'] = 1;
-        $return['log'] = $this->logs;
-        $return['data'] = $results;
-        return json_encode($return);
+        return $this->buildResponse(Categories::all());
     }
 
     /**
@@ -173,13 +192,9 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function getModels()
+    public function getModels(): JsonResponse
     {
-        $results = Models::all();
-        $return['status'] = 1;
-        $return['log'] = $this->logs;
-        $return['data'] = $results;
-        return json_encode($return);
+        return $this->buildResponse(Models::all());
     }
 
     /**
@@ -200,13 +215,9 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function getStatusLabels()
+    public function getStatusLabels(): JsonResponse
     {
-        $results = StatusLabels::all();
-        $return['status'] = 1;
-        $return['log'] = $this->logs;
-        $return['data'] = $results;
-        return json_encode($return);
+        return $this->buildResponse(StatusLabels::all());
     }
 
     /**
@@ -238,41 +249,27 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function checkinAsset($serial, Request $request)
+    public function checkinAsset($serial, Request $request): JsonResponse
     {
-        $return['status'] = 1;
         $submitted = $request->collect();
-        try{
-            $asset = Assets::findByTag($serial);
-        } catch (\Exception $e) {
-            $this->addLog(0, "Failed to FIND Asset: " . $e->getMessage());
-            $return['status'] = 0;
+
+        $asset = $this->findAssetBySerial($serial);
+        if (!$asset) {
+            return $this->buildResponse(null, 0);
         }
-        if(isset($asset->id))
-        {
-            $this->addLog(1, "Found asset ID {$asset->id} with serial {$serial}.");
-        } else {
-            $this->addLog(0, "Unable to find asset with serial {$serial}.");
-            $return['status'] = 0;
-        }
-        try{
+
+        try {
             $results = $asset->checkin($submitted);
         } catch (\Exception $e) {
             $this->addLog(0, $e->getMessage());
-            $return['status'] = 0;
+            return $this->buildResponse(null, 0);
         }
-        if(isset($results->id))
-        {
+
+        if (isset($results->id)) {
             $this->addLog(1, "Asset ID {$results->id} checked in successfully");
         }
-        $return['log'] = $this->logs;
-        if(isset($results))
-        {
-            $return['data'] = $results;
-        } else {
-            $return['data'] = null;
-        }
-        return json_encode($return);
+
+        return $this->buildResponse(isset($results->id) ? $results : null);
     }
 
     /**
@@ -304,41 +301,27 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function checkoutAsset($serial, Request $request)
+    public function checkoutAsset($serial, Request $request): JsonResponse
     {
-        $return['status'] = 1;
         $submitted = $request->collect();
-        try{
-            $asset = Assets::findByTag($serial);
-        } catch (\Exception $e) {
-            $this->addLog(0, "Failed to FIND Asset: " . $e->getMessage());
-            $return['status'] = 0;
+
+        $asset = $this->findAssetBySerial($serial);
+        if (!$asset) {
+            return $this->buildResponse(null, 0);
         }
-        if(isset($asset->id))
-        {
-            $this->addLog(1, "Found asset ID {$asset->id} with serial {$serial}.");
-        } else {
-            $this->addLog(0, "Unable to find asset with serial {$serial}.");
-            $return['status'] = 0;
-        }
-        try{
+
+        try {
             $results = $asset->checkout($submitted);
         } catch (\Exception $e) {
             $this->addLog(0, $e->getMessage());
-            $return['status'] = 0;
+            return $this->buildResponse(null, 0);
         }
-        if(isset($results->id))
-        {
+
+        if (isset($results->id)) {
             $this->addLog(1, "Asset ID {$asset->id} successfully checked out.");
         }
-        $return['log'] = $this->logs;
-        if(isset($results->id))
-        {
-            $return['data'] = $results;
-        } else {
-            $return['data'] = null;
-        }
-        return json_encode($return);
+
+        return $this->buildResponse(isset($results->id) ? $results : null);
     }
 
     /**
@@ -370,35 +353,36 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function updateAsset($serial, Request $request)
+    public function updateAsset($serial, Request $request): JsonResponse
     {
-        $return['status'] = 1;
-        $return['data'] = null;
         $submitted = $request->collect();
-        try{
+
+        try {
             $asset = Assets::findByTag($serial);
         } catch (\Exception $e) {
             $this->addLog(0, "Failed to GET asset: " . $e->getMessage());
+            return $this->buildResponse(null, 0);
         }
-        if(isset($asset->id))
-        {
-            $this->addLog(1, "Found asset ID {$asset->id} with serial {$serial}.");
-            try{
-                $results = $asset->update($submitted);
-            } catch (\Exception $e) {
-                $this->addLog(0, "Failed to UPDATE asset: " . $e->getMessage());
-            }
-            if(isset($results->id))
-            {
-                $this->addLog(1, "Successfully updated Asset ID {$results->id}");
-                $return['data'] = $results;
-            }
-        } else {
+
+        if (!isset($asset->id)) {
             $this->addLog(0, "Unable to find asset with serial {$serial}.");
-            $return['status'] = 0;
+            return $this->buildResponse(null, 0);
         }
-        $return['log'] = $this->logs;
-        return json_encode($return);
+
+        $this->addLog(1, "Found asset ID {$asset->id} with serial {$serial}.");
+
+        try {
+            $results = $asset->update($submitted);
+        } catch (\Exception $e) {
+            $this->addLog(0, "Failed to UPDATE asset: " . $e->getMessage());
+            return $this->buildResponse(null, 0);
+        }
+
+        if (isset($results->id)) {
+            $this->addLog(1, "Successfully updated Asset ID {$results->id}");
+        }
+
+        return $this->buildResponse($results->id ?? null ? $results : null);
     }
 
     /**
@@ -430,24 +414,22 @@ class SnipeITController extends Controller
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function createAsset(Request $request)
+    public function createAsset(Request $request): JsonResponse
     {
         $submitted = $request->collect();
-        try{
+
+        try {
             $results = Assets::create($submitted);
         } catch (\Exception $e) {
             $this->addLog(0, "Failed to create Asset:" . $e->getMessage());
+            return $this->buildResponse(null, 0);
         }
-        if(isset($results->id))
-        {
+
+        if (isset($results->id)) {
             $this->addLog(1, "Created Asset ID: {$results->id}");
-            $return['status'] = 1;
-            $return['data'] = $results;
-        } else {
-            $return['status'] = 0;
-            $return['data'] = null;
+            return $this->buildResponse($results);
         }
-        $return['log'] = $this->logs;
-        return json_encode($return);
+
+        return $this->buildResponse(null, 0);
     }
 }

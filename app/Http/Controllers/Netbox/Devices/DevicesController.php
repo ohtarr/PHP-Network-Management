@@ -10,7 +10,7 @@ class DevicesController extends Controller
 {
     public function __construct()
     {
-        //$this->middleware('auth:api');
+        $this->middleware('auth:api');
     }
 
     /**
@@ -32,6 +32,111 @@ class DevicesController extends Controller
      *         description="Number of results to skip for pagination (default: 0)",
      *         @OA\Schema(type="integer", example=0)
      *     ),
+     *     @OA\Parameter(
+     *         name="q",
+     *         in="query",
+     *         required=false,
+     *         description="Free-text search across device fields",
+     *         @OA\Schema(type="string", example="core-switch")
+     *     ),
+     *     @OA\Parameter(
+     *         name="name",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by exact device name",
+     *         @OA\Schema(type="string", example="core-sw-01")
+     *     ),
+     *     @OA\Parameter(
+     *         name="name__ic",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by device name containing value (case-insensitive)",
+     *         @OA\Schema(type="string", example="core")
+     *     ),
+     *     @OA\Parameter(
+     *         name="status",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by device status (active, planned, staged, failed, inventory, decommissioning, offline)",
+     *         @OA\Schema(type="string", example="active")
+     *     ),
+     *     @OA\Parameter(
+     *         name="site",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by site slug",
+     *         @OA\Schema(type="string", example="nyc-dc1")
+     *     ),
+     *     @OA\Parameter(
+     *         name="site_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by site ID",
+     *         @OA\Schema(type="integer", example=1)
+     *     ),
+     *     @OA\Parameter(
+     *         name="location_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by location ID",
+     *         @OA\Schema(type="integer", example=5)
+     *     ),
+     *     @OA\Parameter(
+     *         name="rack_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by rack ID",
+     *         @OA\Schema(type="integer", example=10)
+     *     ),
+     *     @OA\Parameter(
+     *         name="role",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by device role slug",
+     *         @OA\Schema(type="string", example="core-switch")
+     *     ),
+     *     @OA\Parameter(
+     *         name="role_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by device role ID",
+     *         @OA\Schema(type="integer", example=3)
+     *     ),
+     *     @OA\Parameter(
+     *         name="device_type_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by device type ID",
+     *         @OA\Schema(type="integer", example=7)
+     *     ),
+     *     @OA\Parameter(
+     *         name="manufacturer_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by manufacturer ID",
+     *         @OA\Schema(type="integer", example=2)
+     *     ),
+     *     @OA\Parameter(
+     *         name="platform_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by platform ID",
+     *         @OA\Schema(type="integer", example=4)
+     *     ),
+     *     @OA\Parameter(
+     *         name="virtual_chassis_id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by virtual chassis ID",
+     *         @OA\Schema(type="integer", example=6)
+     *     ),
+     *     @OA\Parameter(
+     *         name="tag",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by tag slug",
+     *         @OA\Schema(type="string", example="managed")
+     *     ),
      *     @OA\Response(
      *         response=200,
      *         description="List of devices",
@@ -44,9 +149,33 @@ class DevicesController extends Controller
         $limit  = (int) $request->get('limit', 50);
         $offset = (int) $request->get('offset', 0);
 
-        $devices = Devices::limit($limit)->offset($offset)->get();
+        $query = Devices::limit($limit)->offset($offset);
 
-        return response()->json($devices);
+        $filters = [
+            'q',
+            'name',
+            'name__ic',
+            'status',
+            'site',
+            'site_id',
+            'location_id',
+            'rack_id',
+            'role',
+            'role_id',
+            'device_type_id',
+            'manufacturer_id',
+            'platform_id',
+            'virtual_chassis_id',
+            'tag',
+        ];
+
+        foreach ($filters as $filter) {
+            if ($request->has($filter)) {
+                $query->where($filter, $request->get($filter));
+            }
+        }
+
+        return response()->json($query->get());
     }
 
     /**

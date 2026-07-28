@@ -35,7 +35,7 @@ Route::apiResource('/devices/opengear', App\Models\Device\Opengear\OpengearContr
 Route::apiResource('/devices/ubiquiti', App\Models\Device\Ubiquiti\UbiquitiController::class);
 Route::apiResource('/devices', App\Models\Device\DeviceController::class);
 Route::apiResource('/servicenow/incidents', App\Models\ServiceNow\IncidentController::class);
-Route::apiResource('/netbox/devices', App\Http\Controllers\Netbox\Devices\DevicesController::class);
+Route::apiResource('/netbox/devices', App\Http\Controllers\Netbox\Devices\DevicesController::class)->names('netbox.devices');
 
 //Route::get('/mist/device', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
 //Route::get('/mist/device/{deviceid}/', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
@@ -98,6 +98,9 @@ Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsContr
 
 Route::get('logs', [App\Http\Controllers\Log\LogController::class, 'index']);
 Route::get('logs/{id}', [App\Http\Controllers\Log\LogController::class, 'show']);
+
+Route::get('outputs', [App\Http\Controllers\Output\OutputController::class, 'index']);
+Route::get('outputs/{id}', [App\Http\Controllers\Output\OutputController::class, 'show']);
 
 Route::get('snipeit/hardware', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getAssets']);
 Route::get('snipeit/hardware/byserial/{serial}', [App\Http\Controllers\SnipeIT\SnipeITController::class, 'getAssetsBySerial']);
