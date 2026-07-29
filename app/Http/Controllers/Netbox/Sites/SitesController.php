@@ -18,6 +18,7 @@ class SitesController extends Controller
      *     path="/netbox/sites",
      *     summary="Get a list of Netbox DCIM sites",
      *     tags={"Netbox Sites"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
      *         name="limit",
      *         in="query",
@@ -286,6 +287,7 @@ class SitesController extends Controller
      *     path="/netbox/sites/{id}",
      *     summary="Get a single Netbox DCIM site by ID",
      *     tags={"Netbox Sites"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -317,6 +319,7 @@ class SitesController extends Controller
      *     path="/netbox/sites",
      *     summary="Create a new Netbox DCIM site",
      *     tags={"Netbox Sites"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(type="object", description="Site fields to create")
@@ -340,6 +343,7 @@ class SitesController extends Controller
      *     path="/netbox/sites/{id}",
      *     summary="Update a Netbox DCIM site by ID",
      *     tags={"Netbox Sites"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -377,6 +381,7 @@ class SitesController extends Controller
      *     path="/netbox/sites/{id}",
      *     summary="Delete a Netbox DCIM site by ID",
      *     tags={"Netbox Sites"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",

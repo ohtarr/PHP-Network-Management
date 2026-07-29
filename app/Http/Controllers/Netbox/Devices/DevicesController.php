@@ -18,6 +18,7 @@ class DevicesController extends Controller
      *     path="/netbox/devices",
      *     summary="Get a list of Netbox DCIM devices",
      *     tags={"Netbox Devices"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
      *         name="limit",
      *         in="query",
@@ -183,6 +184,7 @@ class DevicesController extends Controller
      *     path="/netbox/devices/{id}",
      *     summary="Get a single Netbox DCIM device by ID",
      *     tags={"Netbox Devices"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -214,6 +216,7 @@ class DevicesController extends Controller
      *     path="/netbox/devices",
      *     summary="Create a new Netbox DCIM device",
      *     tags={"Netbox Devices"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\RequestBody(
      *         required=true,
      *         @OA\JsonContent(type="object", description="Device fields to create")
@@ -237,6 +240,7 @@ class DevicesController extends Controller
      *     path="/netbox/devices/{id}",
      *     summary="Update a Netbox DCIM device by ID",
      *     tags={"Netbox Devices"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
@@ -274,6 +278,7 @@ class DevicesController extends Controller
      *     path="/netbox/devices/{id}",
      *     summary="Delete a Netbox DCIM device by ID",
      *     tags={"Netbox Devices"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(
      *         name="id",
      *         in="path",
