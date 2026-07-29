@@ -23,7 +23,7 @@ class DepotOrderController extends Controller
      *         in="query",
      *         required=false,
      *         description="Number of results per page (default: 25)",
-     *         @OA\Schema(type="integer", example=25)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -77,7 +77,7 @@ class DepotOrderController extends Controller
      *         in="path",
      *         required=true,
      *         description="The depot order ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -102,7 +102,7 @@ class DepotOrderController extends Controller
      *         in="path",
      *         required=true,
      *         description="The depot order ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\RequestBody(
      *         required=true,
@@ -134,7 +134,7 @@ class DepotOrderController extends Controller
      *         in="path",
      *         required=true,
      *         description="The depot order ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,

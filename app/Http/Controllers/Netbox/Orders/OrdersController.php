@@ -23,14 +23,14 @@ class OrdersController extends Controller
      *         in="query",
      *         required=false,
      *         description="Maximum number of results to return (default: 50)",
-     *         @OA\Schema(type="integer", example=50)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="offset",
      *         in="query",
      *         required=false,
      *         description="Number of results to skip for pagination (default: 0)",
-     *         @OA\Schema(type="integer", example=0)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -59,7 +59,7 @@ class OrdersController extends Controller
      *         in="path",
      *         required=true,
      *         description="The order ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -113,7 +113,7 @@ class OrdersController extends Controller
      *         in="path",
      *         required=true,
      *         description="The order ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\RequestBody(
      *         required=true,
@@ -150,7 +150,7 @@ class OrdersController extends Controller
      *         in="path",
      *         required=true,
      *         description="The order ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,

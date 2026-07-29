@@ -36,7 +36,6 @@ Route::apiResource('/devices/ubiquiti', App\Models\Device\Ubiquiti\UbiquitiContr
 Route::apiResource('/devices', App\Models\Device\DeviceController::class);
 Route::apiResource('/servicenow/incidents', App\Models\ServiceNow\IncidentController::class);
 Route::apiResource('/netbox/devices', App\Http\Controllers\Netbox\Devices\DevicesController::class)->names('netbox.devices');
-Route::get('/netbox/site/{sitecode}/devices', [App\Http\Controllers\Netbox\Devices\DevicesController::class, 'getDevicesBySite']);
 Route::apiResource('/netbox/sites', App\Http\Controllers\Netbox\Sites\SitesController::class)->names('netbox.sites');
 
 //Route::get('/mist/device', [App\Models\Mist\MistController::class, 'getDeviceInventory']);

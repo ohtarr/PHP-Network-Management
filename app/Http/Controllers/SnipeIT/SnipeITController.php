@@ -108,7 +108,7 @@ class SnipeITController extends Controller
      *         in="path",
      *         required=true,
      *         description="The serial number (asset tag) to look up",
-     *         @OA\Schema(type="string", example="AB1234567890")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -231,7 +231,7 @@ class SnipeITController extends Controller
      *         in="path",
      *         required=true,
      *         description="The serial number (asset tag) of the asset to check in",
-     *         @OA\Schema(type="string", example="AB1234567890")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\RequestBody(
      *         required=false,
@@ -283,7 +283,7 @@ class SnipeITController extends Controller
      *         in="path",
      *         required=true,
      *         description="The serial number (asset tag) of the asset to check out",
-     *         @OA\Schema(type="string", example="AB1234567890")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\RequestBody(
      *         required=false,
@@ -335,7 +335,7 @@ class SnipeITController extends Controller
      *         in="path",
      *         required=true,
      *         description="The serial number (asset tag) of the asset to update",
-     *         @OA\Schema(type="string", example="AB1234567890")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\RequestBody(
      *         required=true,

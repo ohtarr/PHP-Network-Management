@@ -55,7 +55,7 @@ class ValidationController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code to validate",
-     *         @OA\Schema(type="string", example="SITE01")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,

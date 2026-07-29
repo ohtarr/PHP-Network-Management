@@ -26,28 +26,28 @@ class OutputController extends Controller
      *         in="query",
      *         required=false,
      *         description="Filter outputs by the device's Netbox ID",
-     *         @OA\Schema(type="integer", example=42)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="type",
      *         in="query",
      *         required=false,
      *         description="Filter outputs by type (e.g. 'show version')",
-     *         @OA\Schema(type="string", example="show version")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="latest",
      *         in="query",
      *         required=false,
      *         description="When true and netbox_id is provided, return only the most recent output per type",
-     *         @OA\Schema(type="boolean", example=true)
+     *         @OA\Schema(type="boolean")
      *     ),
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
      *         required=false,
      *         description="Number of results per page when paginating (default: 25). Only applies when netbox_id is not provided.",
-     *         @OA\Schema(type="integer", example=25)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -105,7 +105,7 @@ class OutputController extends Controller
      *         in="path",
      *         required=true,
      *         description="The output record ID",
-     *         @OA\Schema(type="integer", example=99)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,

@@ -23,119 +23,119 @@ class DevicesController extends Controller
      *         in="query",
      *         required=false,
      *         description="Maximum number of results to return (default: 50)",
-     *         @OA\Schema(type="integer", example=50)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="offset",
      *         in="query",
      *         required=false,
      *         description="Number of results to skip for pagination (default: 0)",
-     *         @OA\Schema(type="integer", example=0)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="q",
      *         in="query",
      *         required=false,
      *         description="Free-text search across device fields",
-     *         @OA\Schema(type="string", example="core-switch")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name",
      *         in="query",
      *         required=false,
      *         description="Filter by exact device name",
-     *         @OA\Schema(type="string", example="core-sw-01")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__ic",
      *         in="query",
      *         required=false,
      *         description="Filter by device name containing value (case-insensitive)",
-     *         @OA\Schema(type="string", example="core")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="status",
      *         in="query",
      *         required=false,
      *         description="Filter by device status (active, planned, staged, failed, inventory, decommissioning, offline)",
-     *         @OA\Schema(type="string", example="active")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="site",
      *         in="query",
      *         required=false,
      *         description="Filter by site slug",
-     *         @OA\Schema(type="string", example="nyc-dc1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="site_id",
      *         in="query",
      *         required=false,
      *         description="Filter by site ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="location_id",
      *         in="query",
      *         required=false,
      *         description="Filter by location ID",
-     *         @OA\Schema(type="integer", example=5)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="rack_id",
      *         in="query",
      *         required=false,
      *         description="Filter by rack ID",
-     *         @OA\Schema(type="integer", example=10)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="role",
      *         in="query",
      *         required=false,
      *         description="Filter by device role slug",
-     *         @OA\Schema(type="string", example="core-switch")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="role_id",
      *         in="query",
      *         required=false,
      *         description="Filter by device role ID",
-     *         @OA\Schema(type="integer", example=3)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="device_type_id",
      *         in="query",
      *         required=false,
      *         description="Filter by device type ID",
-     *         @OA\Schema(type="integer", example=7)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="manufacturer_id",
      *         in="query",
      *         required=false,
      *         description="Filter by manufacturer ID",
-     *         @OA\Schema(type="integer", example=2)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="platform_id",
      *         in="query",
      *         required=false,
      *         description="Filter by platform ID",
-     *         @OA\Schema(type="integer", example=4)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="virtual_chassis_id",
      *         in="query",
      *         required=false,
      *         description="Filter by virtual chassis ID",
-     *         @OA\Schema(type="integer", example=6)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="tag",
      *         in="query",
      *         required=false,
      *         description="Filter by tag slug",
-     *         @OA\Schema(type="string", example="managed")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -188,7 +188,7 @@ class DevicesController extends Controller
      *         in="path",
      *         required=true,
      *         description="The device ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -242,7 +242,7 @@ class DevicesController extends Controller
      *         in="path",
      *         required=true,
      *         description="The device ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\RequestBody(
      *         required=true,
@@ -279,7 +279,7 @@ class DevicesController extends Controller
      *         in="path",
      *         required=true,
      *         description="The device ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,

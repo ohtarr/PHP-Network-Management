@@ -53,7 +53,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=false,
      *         description="Number of days to look back for decommissioned sites (default: 90)",
-     *         @OA\Schema(type="integer", example=90)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -114,7 +114,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code whose Mist devices should be unassigned",
-     *         @OA\Schema(type="string", example="KHONELAB")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -175,7 +175,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code of the Mist site to delete",
-     *         @OA\Schema(type="string", example="KHONELAB")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -250,7 +250,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The network address of the DHCP scope to delete (e.g. 10.1.1.0)",
-     *         @OA\Schema(type="string", example="10.1.1.0")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -325,7 +325,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code to preview DHCP scope deletions for",
-     *         @OA\Schema(type="string", example="KHONELAB")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -388,7 +388,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code to preview DHCP scope deletions for",
-     *         @OA\Schema(type="string", example="KHONELAB")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -451,7 +451,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code whose DHCP scopes should be deleted",
-     *         @OA\Schema(type="string", example="KHONELAB")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -554,7 +554,7 @@ class DeprovisioningController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code of the Netbox site to delete",
-     *         @OA\Schema(type="string", example="KHONELAB")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,

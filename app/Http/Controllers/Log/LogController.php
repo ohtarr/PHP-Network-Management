@@ -24,28 +24,28 @@ class LogController extends Controller
      *         in="query",
      *         required=false,
      *         description="Return logs from the last N hours (takes precedence over days)",
-     *         @OA\Schema(type="integer", example=24)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="days",
      *         in="query",
      *         required=false,
      *         description="Return logs from the last N days",
-     *         @OA\Schema(type="integer", example=7)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="username",
      *         in="query",
      *         required=false,
      *         description="Filter by username (partial match, case-insensitive)",
-     *         @OA\Schema(type="string", example="jsmith")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="per_page",
      *         in="query",
      *         required=false,
      *         description="Number of results per page (default: 25)",
-     *         @OA\Schema(type="integer", example=25)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -90,7 +90,7 @@ class LogController extends Controller
      *         in="path",
      *         required=true,
      *         description="The log entry ID",
-     *         @OA\Schema(type="integer", example=42)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,

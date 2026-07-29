@@ -102,7 +102,7 @@ class ProvisioningController extends Controller
      *     summary="Get a single ServiceNow location by site code",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="ServiceNow location details",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="data", type="object"))
      *     ),
@@ -135,7 +135,7 @@ class ProvisioningController extends Controller
      *     summary="Get a Netbox site by site code",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="Netbox site object", @OA\JsonContent(type="object")),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
@@ -153,7 +153,7 @@ class ProvisioningController extends Controller
      *     description="Creates the Netbox site, assigns an ASN, allocates a provisioning supernet, deploys active prefixes per VLAN, and creates a default location.",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="Provisioning result",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
      *     ),
@@ -371,7 +371,7 @@ class ProvisioningController extends Controller
      *     summary="Get DHCP scopes for a site",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="DHCP scopes for the site", @OA\JsonContent(type="array", @OA\Items(type="object"))),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
@@ -393,7 +393,7 @@ class ProvisioningController extends Controller
      *     summary="Get Gizmo DHCP scopes for a site",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="Gizmo DHCP scopes for the site", @OA\JsonContent(type="array", @OA\Items(type="object"))),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
@@ -415,8 +415,8 @@ class ProvisioningController extends Controller
      *     summary="Deploy a single DHCP scope for a specific VLAN at a site",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
-     *     @OA\Parameter(name="vlan", in="path", required=true, @OA\Schema(type="integer", example=10)),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Parameter(name="vlan", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="DHCP scope deployment result",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
      *     ),
@@ -517,9 +517,9 @@ class ProvisioningController extends Controller
      *     summary="Deploy a DHCP scope for a specific subnet and prefix length at a site",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
-     *     @OA\Parameter(name="subnet", in="path", required=true, @OA\Schema(type="string", example="10.1.2.0")),
-     *     @OA\Parameter(name="length", in="path", required=true, @OA\Schema(type="integer", example=24)),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Parameter(name="subnet", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Parameter(name="length", in="path", required=true, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="DHCP scope deployment result",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
      *     ),
@@ -619,7 +619,7 @@ class ProvisioningController extends Controller
      *     summary="Deploy a Mist site for the given site code",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\RequestBody(required=false, @OA\JsonContent(@OA\Property(property="gateway_template", type="string"), @OA\Property(property="network_template", type="string"), @OA\Property(property="rf_template", type="string"))),
      *     @OA\Response(response=200, description="Mist site deployment result",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
@@ -776,7 +776,7 @@ class ProvisioningController extends Controller
      *     summary="Deploy devices into a Netbox site",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\RequestBody(required=true, @OA\JsonContent(type="array", @OA\Items(@OA\Property(property="name", type="string"), @OA\Property(property="model", type="string"), @OA\Property(property="serial", type="string")))),
      *     @OA\Response(response=200, description="Device deployment result",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="array", @OA\Items(type="object")))
@@ -1040,7 +1040,7 @@ class ProvisioningController extends Controller
      *     summary="Assign Mist devices to a site based on Netbox device records",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="Mist device deployment result",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", nullable=true))
      *     ),
@@ -1207,8 +1207,8 @@ class ProvisioningController extends Controller
      *     summary="Get available provisioning IP addresses for a site",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
-     *     @OA\Parameter(name="qty", in="path", required=false, @OA\Schema(type="integer", example=50)),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Parameter(name="qty", in="path", required=false, @OA\Schema(type="integer")),
      *     @OA\Response(response=200, description="Available provisioning IPs",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="data", type="object"))
      *     ),
@@ -1253,7 +1253,7 @@ class ProvisioningController extends Controller
      *     summary="Generate DHCP scope parameters for a site without deploying",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
-     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string", example="SITE01")),
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
      *     @OA\Response(response=200, description="Generated DHCP scope parameters", @OA\JsonContent(type="array", @OA\Items(type="object"))),
      *     @OA\Response(response=401, description="Unauthorized")
      * )

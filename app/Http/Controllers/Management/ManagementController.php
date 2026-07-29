@@ -72,7 +72,7 @@ class ManagementController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site code to retrieve the summary for",
-     *         @OA\Schema(type="string", example="SITE01")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -356,7 +356,7 @@ class ManagementController extends Controller
      *         in="query",
      *         required=true,
      *         description="The string to search for in device outputs",
-     *         @OA\Schema(type="string", example="10.1.1.1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,

@@ -23,224 +23,224 @@ class SitesController extends Controller
      *         in="query",
      *         required=false,
      *         description="Maximum number of results to return (default: 50)",
-     *         @OA\Schema(type="integer", example=50)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="offset",
      *         in="query",
      *         required=false,
      *         description="Number of results to skip for pagination (default: 0)",
-     *         @OA\Schema(type="integer", example=0)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="brief",
      *         in="query",
      *         required=false,
      *         description="Return brief results with only id, url, display, name, and slug fields (pass 1)",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="q",
      *         in="query",
      *         required=false,
      *         description="Free-text search across site fields",
-     *         @OA\Schema(type="string", example="new-york")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name",
      *         in="query",
      *         required=false,
      *         description="Filter by exact site name",
-     *         @OA\Schema(type="string", example="New York DC1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__ie",
      *         in="query",
      *         required=false,
      *         description="Filter by site name exact match (case-insensitive)",
-     *         @OA\Schema(type="string", example="new york dc1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__ic",
      *         in="query",
      *         required=false,
      *         description="Filter by site name containing value (case-insensitive)",
-     *         @OA\Schema(type="string", example="york")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__nic",
      *         in="query",
      *         required=false,
      *         description="Filter by site name NOT containing value (case-insensitive)",
-     *         @OA\Schema(type="string", example="york")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__isw",
      *         in="query",
      *         required=false,
      *         description="Filter by site name starting with value (case-insensitive)",
-     *         @OA\Schema(type="string", example="new")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__nisw",
      *         in="query",
      *         required=false,
      *         description="Filter by site name NOT starting with value (case-insensitive)",
-     *         @OA\Schema(type="string", example="new")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__iew",
      *         in="query",
      *         required=false,
      *         description="Filter by site name ending with value (case-insensitive)",
-     *         @OA\Schema(type="string", example="dc1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__niew",
      *         in="query",
      *         required=false,
      *         description="Filter by site name NOT ending with value (case-insensitive)",
-     *         @OA\Schema(type="string", example="dc1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__n",
      *         in="query",
      *         required=false,
      *         description="Filter by site name NOT equal to value",
-     *         @OA\Schema(type="string", example="New York DC1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="name__empty",
      *         in="query",
      *         required=false,
      *         description="Filter sites where name is empty/null (pass true)",
-     *         @OA\Schema(type="boolean", example=true)
+     *         @OA\Schema(type="boolean")
      *     ),
      *     @OA\Parameter(
      *         name="slug",
      *         in="query",
      *         required=false,
      *         description="Filter by site slug (exact match)",
-     *         @OA\Schema(type="string", example="nyc-dc1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__ie",
      *         in="query",
      *         required=false,
      *         description="Filter by slug exact match (case-insensitive)",
-     *         @OA\Schema(type="string", example="NYC-DC1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__ic",
      *         in="query",
      *         required=false,
      *         description="Filter by slug containing value (case-insensitive)",
-     *         @OA\Schema(type="string", example="nyc")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__nic",
      *         in="query",
      *         required=false,
      *         description="Filter by slug NOT containing value (case-insensitive)",
-     *         @OA\Schema(type="string", example="nyc")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__isw",
      *         in="query",
      *         required=false,
      *         description="Filter by slug starting with value (case-insensitive)",
-     *         @OA\Schema(type="string", example="nyc")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__nisw",
      *         in="query",
      *         required=false,
      *         description="Filter by slug NOT starting with value (case-insensitive)",
-     *         @OA\Schema(type="string", example="nyc")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__iew",
      *         in="query",
      *         required=false,
      *         description="Filter by slug ending with value (case-insensitive)",
-     *         @OA\Schema(type="string", example="dc1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__niew",
      *         in="query",
      *         required=false,
      *         description="Filter by slug NOT ending with value (case-insensitive)",
-     *         @OA\Schema(type="string", example="dc1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__n",
      *         in="query",
      *         required=false,
      *         description="Filter by slug NOT equal to value",
-     *         @OA\Schema(type="string", example="nyc-dc1")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="slug__empty",
      *         in="query",
      *         required=false,
      *         description="Filter sites where slug is empty/null (pass true)",
-     *         @OA\Schema(type="boolean", example=true)
+     *         @OA\Schema(type="boolean")
      *     ),
      *     @OA\Parameter(
      *         name="status",
      *         in="query",
      *         required=false,
      *         description="Filter by site status (active, planned, staging, decommissioning, retired)",
-     *         @OA\Schema(type="string", example="active")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="status__n",
      *         in="query",
      *         required=false,
      *         description="Filter by site status NOT equal to value",
-     *         @OA\Schema(type="string", example="retired")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="region_id",
      *         in="query",
      *         required=false,
      *         description="Filter by region ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="region_id__n",
      *         in="query",
      *         required=false,
      *         description="Filter by region ID NOT equal to value",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="group_id",
      *         in="query",
      *         required=false,
      *         description="Filter by site group ID",
-     *         @OA\Schema(type="integer", example=2)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="group_id__n",
      *         in="query",
      *         required=false,
      *         description="Filter by site group ID NOT equal to value",
-     *         @OA\Schema(type="integer", example=2)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Parameter(
      *         name="tag",
      *         in="query",
      *         required=false,
      *         description="Filter by tag slug",
-     *         @OA\Schema(type="string", example="managed")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
      *         name="tag__n",
      *         in="query",
      *         required=false,
      *         description="Filter by tag slug NOT equal to value",
-     *         @OA\Schema(type="string", example="managed")
+     *         @OA\Schema(type="string")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -291,7 +291,7 @@ class SitesController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
@@ -345,7 +345,7 @@ class SitesController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\RequestBody(
      *         required=true,
@@ -382,7 +382,7 @@ class SitesController extends Controller
      *         in="path",
      *         required=true,
      *         description="The site ID",
-     *         @OA\Schema(type="integer", example=1)
+     *         @OA\Schema(type="integer")
      *     ),
      *     @OA\Response(
      *         response=200,
