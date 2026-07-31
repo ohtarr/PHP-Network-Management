@@ -1,4 +1,5 @@
 from netmiko import SSHDetect, ConnectHandler
+from netmiko.exceptions import NetmikoTimeoutException, NetmikoAuthenticationException, ReadTimeout
 import re
 #import logging
 import argparse
@@ -26,7 +27,10 @@ device = {
 with ConnectHandler(**device) as net_connect:
 	outputs = []
 	for cmd in args.cmd:
-		output = net_connect.send_command(cmd, read_timeout=args.timeout)
+		try:
+			output = net_connect.send_command(cmd, read_timeout=args.timeout)
+		except Exception:
+			output = ""
 		outputs.append(output)
 	net_connect.disconnect()
 	print(DELIMITER.join(outputs))

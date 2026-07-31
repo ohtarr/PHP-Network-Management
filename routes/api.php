@@ -97,6 +97,9 @@ Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsControlle
 Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsController::class, 'getOrphanedDhcpScopes']);
 Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsController::class, 'getOpengearStatus']);
 
+Route::get('diagrams', [App\Models\Diagram\DiagramController::class, 'index']);
+Route::get('diagrams/{id}', [App\Models\Diagram\DiagramController::class, 'find']);
+
 Route::get('logs', [App\Http\Controllers\Log\LogController::class, 'index']);
 Route::get('logs/{id}', [App\Http\Controllers\Log\LogController::class, 'show']);
 
