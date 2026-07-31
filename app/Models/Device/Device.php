@@ -110,6 +110,7 @@ class Device extends Model
         'show inventory',
         'cat /etc/version',
         'cat /etc/board.info',
+        'show chassis detail',
     ];
 
     public $discover_regex = [
@@ -333,15 +334,67 @@ class Device extends Model
     }
 
     /*
-    This method takes an array of commands, executes each of them, and returns the values as a key=>value array.
+    This method takes an array of commands, executes all of them in a single SSH session, and returns
+    the values as a key=>value array. All commands are batched into one runcmd.py call to minimise
+    the number of SSH connections opened against the device.
+
+    @param array    $cmds     Associative array of key => command string
+    @param int|null $timeout  Optional read timeout in seconds; defaults to $this->cli_timeout
     */
-    public function exec_cmds_netmiko($cmds)
+    public function exec_cmds_netmiko($cmds, $timeout = null)
     {
-        $output = [];
-        foreach($cmds as $key => $cmd)
-        {
-            $output[$key] = $this->exec_cmd_netmiko($cmd);
+        if (empty($cmds)) {
+            return [];
         }
+
+        $credential = $this->getCurrentCredential();
+        if (!$credential) {
+            throw new \Exception('Unable to determine credential for this device.');
+        }
+
+        $ip = $this->getIpAddress();
+        if (!$ip) {
+            throw new \Exception('No IP address found for this device.');
+        }
+
+        $username = $credential->username;
+        $password = $credential->passkey;
+
+        if (!isset($this->data['netmiko_type'])) {
+            $detectedtype = $this->getNetmikoType();
+            if (!$detectedtype) {
+                throw new \Exception('Unable to determine netmiko type for this device.');
+            }
+            $type = $detectedtype;
+        } else {
+            $type = $this->data['netmiko_type'];
+        }
+
+        if (!$timeout) {
+            $timeout = $this->cli_timeout;
+        }
+
+        $exe = env('PYTHON_EXE');
+
+        // Build one --cmd argument per command so runcmd.py runs them all in a single SSH session
+        $cmdArgs = '';
+        foreach ($cmds as $cmd) {
+            $cmdArgs .= " --cmd=\"{$cmd}\"";
+        }
+
+        $shellcmd = "{$exe} bin/runcmd.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\" --type=\"{$type}\"{$cmdArgs} --timeout=\"{$timeout}\"";
+        $raw = shell_exec($shellcmd);
+
+        $delimiter = '---NETMIKO_OUTPUT_DELIMITER---';
+        $parts = $raw !== null ? explode($delimiter, $raw) : [];
+
+        $output = [];
+        $keys = array_keys($cmds);
+        foreach ($keys as $i => $key) {
+            $value = isset($parts[$i]) ? trim($parts[$i]) : null;
+            $output[$key] = ($value !== '') ? $value : null;
+        }
+
         return $output;
     }
 
@@ -361,8 +414,8 @@ class Device extends Model
         {
             throw new \Exception('No IP address found for this device.');
         }
-        $username = $this->credential->username;
-        $password = $this->credential->passkey;
+        $username = $credential->username;
+        $password = $credential->passkey;
         $exe = env('PYTHON_EXE');
         $cmd = "{$exe} bin/detecttype.py --host=\"{$ip}\" --username=\"{$username}\" --password=\"{$password}\"";
         //print $cmd . PHP_EOL;
@@ -556,6 +609,9 @@ class Device extends Model
     Supports 'ssh' and 'sftp' methods defined in $scan_outputs.
     Each entry may include an optional 'include' key (bool, default true).
     When 'include' => false, the command still executes but its output is excluded from the return value.
+
+    SSH commands are batched into a single runcmd.py call (one SSH connection) using the maximum
+    timeout defined across all SSH entries. SFTP commands are still executed individually.
     */
     public function getOutputs($type = null)
     {
@@ -575,27 +631,56 @@ class Device extends Model
             );
         }
 
+        // Separate SSH and SFTP definitions
+        $sshCommands = [];   // key => command string (for batching)
+        $sshInclude  = [];   // key => bool
+        $sshTimeouts = [];   // key => int|null
+        $sftpDefs    = [];   // key => definition array
+
         foreach ($outputs as $key => $definition) {
             $method  = $definition['method']  ?? 'ssh';
             $input   = $definition['input']   ?? null;
-            $timeout = $definition['timeout'] ?? null;
             $include = $definition['include'] ?? true;
+            $timeout = $definition['timeout'] ?? null;
 
             if (!$input) {
                 continue;
             }
 
             if ($method === 'sftp') {
-                $result = $this->sftpGetFile($input);
+                $sftpDefs[$key] = $definition;
             } else {
-                $result = $this->exec_cmd_netmiko($input, $timeout);
+                $sshCommands[$key] = $input;
+                $sshInclude[$key]  = $include;
+                $sshTimeouts[$key] = $timeout;
+            }
+        }
+
+        // Batch all SSH commands into a single SSH connection using the max timeout
+        if (!empty($sshCommands)) {
+            $maxTimeout = $this->cli_timeout;
+            foreach ($sshTimeouts as $t) {
+                if ($t !== null && $t > $maxTimeout) {
+                    $maxTimeout = $t;
+                }
             }
 
-            if (!$include) {
-                continue;
-            }
+            $sshResults = $this->exec_cmds_netmiko($sshCommands, $maxTimeout);
 
-            $output[$key] = $result;
+            foreach ($sshResults as $key => $result) {
+                if ($sshInclude[$key] ?? true) {
+                    $output[$key] = $result;
+                }
+            }
+        }
+
+        // Run SFTP commands individually (different protocol, cannot be batched)
+        foreach ($sftpDefs as $key => $definition) {
+            $include = $definition['include'] ?? true;
+            $result  = $this->sftpGetFile($definition['input']);
+            if ($include) {
+                $output[$key] = $result;
+            }
         }
 
         return $output;
@@ -732,6 +817,179 @@ class Device extends Model
     public function getMac()
     {
         
+    }
+
+    /*
+    Expand a common abbreviated interface name to its full canonical form.
+    This is useful when merging data from protocols that may use different
+    abbreviation styles (e.g. CDP uses full names, LLDP may use short names).
+
+    Handles the most common Cisco/vendor abbreviations. Returns the original
+    string unchanged if no known prefix is matched.
+
+    Examples:
+      Gi0/1        -> GigabitEthernet0/1
+      Fa0/1        -> FastEthernet0/1
+      Te0/1        -> TenGigabitEthernet0/1
+      Tw0/1        -> TwentyFiveGigE0/1
+      Hu0/1        -> HundredGigE0/1
+      Fo0/1        -> FortyGigabitEthernet0/1
+      Et0/1        -> Ethernet0/1
+      Ma0/0        -> Management0/0
+      Se0/0        -> Serial0/0
+      Tu0          -> Tunnel0
+      Lo0          -> Loopback0
+      Vl1          -> Vlan1
+      Po1          -> Port-channel1
+    */
+    public function expandInterfaceName(string $name): string
+    {
+        $prefixMap = [
+            'GigabitEthernet'        => ['Gi', 'Gig'],
+            'FastEthernet'           => ['Fa', 'Fas'],
+            'TenGigabitEthernet'     => ['Te', 'Ten'],
+            'TwentyFiveGigE'         => ['Tw', 'Twe'],
+            'FortyGigabitEthernet'   => ['Fo', 'For'],
+            'HundredGigE'            => ['Hu', 'Hun'],
+            'Ethernet'               => ['Et', 'Eth'],
+            'Management'             => ['Ma', 'Mgm'],
+            'Serial'                 => ['Se', 'Ser'],
+            'Tunnel'                 => ['Tu', 'Tun'],
+            'Loopback'               => ['Lo', 'Loo'],
+            'Vlan'                   => ['Vl', 'Vla'],
+            'Port-channel'           => ['Po', 'Por'],
+            'AppGigabitEthernet'     => ['Ap', 'App'],
+        ];
+
+        foreach ($prefixMap as $full => $abbrevs) {
+            foreach ($abbrevs as $abbrev) {
+                // Match if the name starts with the abbreviation (case-insensitive)
+                // followed immediately by a digit or slash (not more letters)
+                if (preg_match('/^' . preg_quote($abbrev, '/') . '(\d.*)/i', $name, $m)) {
+                    return $full . $m[1];
+                }
+            }
+        }
+
+        return $name;
+    }
+
+    /*
+    Normalize a raw media-type string (as reported by a device's interface output) into one of
+    four canonical values:
+      - 'copper'    : RJ-45 / twisted-pair copper
+      - 'fiber_sm'  : single-mode fiber (SFP-LX, SFP-ZX, SFP-LH, SFP-EX, SFP-LR, SFP-ER, SFP-ZR, etc.)
+      - 'fiber_mm'  : multi-mode fiber (SFP-SX, SFP-SR, OM1/OM2/OM3/OM4, etc.)
+      - 'fiber'     : fiber but mode cannot be determined from the keyword alone
+
+    Returns null if the keyword does not match any known pattern.
+
+    @param  string  $raw  The raw media-type value from the device (e.g. 'copper', 'SFP-LX', '10GBase-SR')
+    @return string|null
+    */
+    public function normalizeMediaType(string $raw): ?string
+    {
+        $raw = strtolower(trim($raw));
+
+        // ---- Copper keywords ----
+        $copperPatterns = [
+            '/copper/',
+            '/rj.?45/',
+            '/baset$/',         // 10BaseT, 100BaseT, 1000BaseT, 10GBaseT
+            '/base.?t\b/',
+            '/twisted.?pair/',
+            '/\bsfp.?t\b/',     // SFP-T (copper SFP)
+            '/\bsfp.?cu\b/',    // SFP-CU (direct-attach copper)
+            '/\bdac\b/',        // Direct Attach Copper
+            '/\btwinax/',
+        ];
+
+        // ---- Single-mode fiber keywords ----
+        $smPatterns = [
+            '/\bsm\b/',
+            '/single.?mode/',
+            '/\blx\b/',         // SFP-LX
+            '/\blh\b/',         // SFP-LH
+            '/\bex\b/',         // SFP-EX
+            '/\bzx\b/',         // SFP-ZX
+            '/\blr\b/',         // SFP-LR / 10GBase-LR
+            '/\ber\b/',         // SFP-ER / 10GBase-ER
+            '/\bzr\b/',         // 10GBase-ZR
+            '/\blw\b/',         // 10GBase-LW
+            '/\bew\b/',         // 10GBase-EW
+            '/base.?lx/',
+            '/base.?lr/',
+            '/base.?er/',
+            '/base.?zr/',
+            '/base.?lh/',
+            '/base.?ex/',
+            '/base.?zx/',
+            '/\bos[12]\b/',     // OS1 / OS2 single-mode fiber grades
+        ];
+
+        // ---- Multi-mode fiber keywords ----
+        $mmPatterns = [
+            '/\bmm\b/',
+            '/multi.?mode/',
+            '/\bsx\b/',         // SFP-SX
+            '/\bsr\b/',         // SFP-SR / 10GBase-SR
+            '/\bsw\b/',         // 10GBase-SW
+            '/base.?sx/',
+            '/base.?sr/',
+            '/base.?sw/',
+            '/\bom[1-5]\b/',    // OM1 / OM2 / OM3 / OM4 / OM5 multi-mode fiber grades
+        ];
+
+        // ---- Generic fiber keywords (mode unknown) ----
+        $fiberPatterns = [
+            '/fiber/',
+            '/fibre/',
+            '/optical/',
+            '/\bsfp\b/',        // bare "SFP" with no mode indicator
+            '/\bsfp\+/',        // SFP+
+            '/\bqsfp/',         // QSFP / QSFP+
+            '/\bxfp\b/',
+            '/\bcfp\b/',
+            '/\bglc\b/',        // GLC-* Cisco optic part numbers
+        ];
+
+        foreach ($copperPatterns as $pattern) {
+            if (preg_match($pattern, $raw)) {
+                return 'copper';
+            }
+        }
+        foreach ($smPatterns as $pattern) {
+            if (preg_match($pattern, $raw)) {
+                return 'fiber_sm';
+            }
+        }
+        foreach ($mmPatterns as $pattern) {
+            if (preg_match($pattern, $raw)) {
+                return 'fiber_mm';
+            }
+        }
+        foreach ($fiberPatterns as $pattern) {
+            if (preg_match($pattern, $raw)) {
+                return 'fiber';
+            }
+        }
+
+        return null;
+    }
+
+    /*
+    This method is designed to be overwritten by subclasses.
+    Returns an array of neighbor devices discovered via neighbor protocols (CDP, LLDP, etc.).
+    Each neighbor is an associative array containing any of the following keys (omitted when null/empty):
+      - name        : the neighbor device hostname
+      - mac         : the neighbor device MAC address (lowercase, no separators)
+      - local_port  : the local interface name facing the neighbor
+      - remote_port : the remote interface name on the neighbor device
+      - media_type  : the physical media type (e.g. 'copper', 'fiber')
+    */
+    public function getNeighbors(): array
+    {
+        return [];
     }
 
     /*

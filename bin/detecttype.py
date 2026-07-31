@@ -21,4 +21,5 @@ device = {
 #with SSHDetect(**device) as guesser:
 guesser = SSHDetect(**device)
 best_match = guesser.autodetect()
+guesser.connection.disconnect()
 print(best_match)
