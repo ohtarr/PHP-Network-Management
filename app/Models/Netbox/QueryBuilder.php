@@ -3,12 +3,13 @@
 namespace App\Models\Netbox;
 
 use \GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Psr7\Query;
 use App\Models\Azure\Azure;
 
 class QueryBuilder
 {
     public $headers;
-    public $search;
+    public $search = [];
     public $model;
 
     public function __construct()
@@ -47,7 +48,7 @@ class QueryBuilder
         $results = [];
         $guzzleparams = [
             'headers'   =>  $this->headers,
-            'query' =>  $this->search,
+            'query' =>  Query::build($this->search),
         ];
         $client = new GuzzleClient();
         if($customurl)
@@ -96,7 +97,7 @@ class QueryBuilder
     {
         $guzzleparams = [
             'headers'   =>  $this->headers,
-            'query' =>  $this->search,
+            'query' =>  Query::build($this->search),
         ];
         $client = new GuzzleClient();
 
@@ -137,7 +138,14 @@ class QueryBuilder
 
     public function where($column, $value)
     {
-        $this->search[$column] = $value;
+        if (isset($this->search[$column])) {
+            $this->search[$column] = array_merge(
+                (array) $this->search[$column],
+                (array) $value
+            );
+        } else {
+            $this->search[$column] = $value;
+        }
         return $this;
     }
 
