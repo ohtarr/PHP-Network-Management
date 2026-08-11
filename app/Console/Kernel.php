@@ -23,6 +23,9 @@ class Kernel extends ConsoleKernel
 
         // Commit and push device running-configs to the running-configs git repo nightly at 23:00.
         $schedule->command('netman:gitCommitRunningConfigs')->dailyAt('23:00');
+
+        // Verify the Network Alert Aggregation system is still creating incidents; alert if it goes silent.
+        $schedule->command('netman:checkNetworkAlertAggregation')->hourly();
     }
 
     /**
