@@ -177,6 +177,19 @@ return [
             'timeout' => 60,
             'nice' => 0,
         ],
+
+        'supervisor-2' => [
+            'connection' => 'queue_redis_default',
+            'queue' => ['netbox-discovery'],
+            'balance' => false,
+            'processes' => env('DISCOVERY_WORKERS', 10),
+            'maxTime' => 0,
+            'maxJobs' => 0,
+            'memory' => 128,
+            'tries' => 1,
+            'timeout' => 300,
+            'nice' => 0,
+        ],
     ],
 
     'environments' => [

@@ -16,7 +16,7 @@ class DiscoverDeviceJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public $timeout = 300;
-    public $tries = 1;
+    public $tries = 3;
     public $options;
 
     /**
@@ -27,6 +27,17 @@ class DiscoverDeviceJob implements ShouldQueue
     public function __construct($options)
     {
         $this->options = $options;
+        $this->onQueue(env('NETBOX_DISCOVERY_QUEUE', 'netbox-discovery'));
+    }
+
+    /**
+     * Stagger retries instead of hammering NetBox again immediately.
+     *
+     * @return array
+     */
+    public function backoff()
+    {
+        return [30, 120];
     }
 
     /**

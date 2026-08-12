@@ -11,10 +11,15 @@ class QueryBuilder
     public $headers;
     public $search = [];
     public $model;
+    public $guzzleOptions;
 
     public function __construct()
     {
         $this->headers['Authorization'] = 'Token ' . env('NETBOX_API_TOKEN');
+        $this->guzzleOptions = [
+            'connect_timeout' => (float) env('NETBOX_HTTP_CONNECT_TIMEOUT', 5),
+            'timeout'         => (float) env('NETBOX_HTTP_TIMEOUT', 15),
+        ];
     }
 
     public function buildUrl()
@@ -50,7 +55,7 @@ class QueryBuilder
             'headers'   =>  $this->headers,
             'query' =>  Query::build($this->search),
         ];
-        $client = new GuzzleClient();
+        $client = new GuzzleClient($this->guzzleOptions);
         if($customurl)
         {
             $url = $customurl;
@@ -99,7 +104,7 @@ class QueryBuilder
             'headers'   =>  $this->headers,
             'query' =>  Query::build($this->search),
         ];
-        $client = new GuzzleClient();
+        $client = new GuzzleClient($this->guzzleOptions);
 
         $response = $client->request('GET', $url, $guzzleparams);
         $body = $response->getBody()->getContents();
@@ -127,7 +132,7 @@ class QueryBuilder
             'params'    =>  [
                 'headers'   =>  $headers,
             ],
-            'options'   =>  [],
+            'options'   =>  $this->guzzleOptions,
         ];
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
@@ -172,7 +177,7 @@ class QueryBuilder
                 'headers'   =>  $headers,
                 'body' => json_encode($body),
             ],
-            'options'   =>  [],
+            'options'   =>  $this->guzzleOptions,
         ];
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
@@ -192,7 +197,7 @@ class QueryBuilder
                 'headers'   =>  $headers,
                 'body' => json_encode($body),
             ],
-            'options'   =>  [],
+            'options'   =>  $this->guzzleOptions,
         ];
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
@@ -212,7 +217,7 @@ class QueryBuilder
                 'headers'   =>  $headers,
                 'body' => json_encode($body),
             ],
-            'options'   =>  [],
+            'options'   =>  $this->guzzleOptions,
         ];
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
@@ -232,7 +237,7 @@ class QueryBuilder
                 'headers'   =>  $headers,
                 'body' => json_encode($body),
             ],
-            'options'   =>  [],
+            'options'   =>  $this->guzzleOptions,
         ];
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
@@ -250,7 +255,7 @@ class QueryBuilder
             'params'    =>  [
                 'headers'   =>  $headers,
             ],
-            'options'   =>  [],
+            'options'   =>  $this->guzzleOptions,
         ];
         $client = new GuzzleClient($guzzleparams['options']);
         $response = $client->request($guzzleparams['verb'], $guzzleparams['url'], $guzzleparams['params']);
