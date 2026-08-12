@@ -63,7 +63,12 @@ class QueryBuilder
             $url = $this->buildUrl();
         }
 
-        $response = $client->request('GET', $url, $guzzleparams);
+        try {
+            $response = $client->request('GET', $url, $guzzleparams);
+        } catch (\GuzzleHttp\Exception\GuzzleException $e) {
+            \Illuminate\Support\Facades\Log::warning("QueryBuilder::get() request to {$url} failed: " . $e->getMessage());
+            return null;
+        }
         $body = $response->getBody()->getContents();
         $object = json_decode($body);
         //If limit of 1 is set (by using 'first' method) fetch the first record and return it without proceeding to loop
@@ -88,7 +93,12 @@ class QueryBuilder
             ];
             while ($url)
             {
-                $response = $client->request('GET', $url, $guzzleparams);
+                try {
+                    $response = $client->request('GET', $url, $guzzleparams);
+                } catch (\GuzzleHttp\Exception\GuzzleException $e) {
+                    \Illuminate\Support\Facades\Log::warning("QueryBuilder::get() pagination request to {$url} failed: " . $e->getMessage());
+                    break;
+                }
                 $body = $response->getBody()->getContents();
                 $object = json_decode($body);
                 $url = $object->next;

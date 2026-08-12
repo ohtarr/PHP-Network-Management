@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Log;
 use App\Models\Device\Device;
 use App\Jobs\GitCreateRunFileJob;
 use App\Jobs\GitCommitRunningConfigsJob;
@@ -51,8 +52,15 @@ class GitCommitRunningConfigs extends Command
         }
 
         Bus::batch($jobs)
+            ->allowFailures()
             ->then(function (\Illuminate\Bus\Batch $batch) use ($repoPath) {
                 GitCommitRunningConfigsJob::dispatch($repoPath);
+            })
+            ->catch(function (\Illuminate\Bus\Batch $batch, \Throwable $e) {
+                Log::warning("GitCommitRunningConfigs: batch '{$batch->id}' had a job failure: " . $e->getMessage());
+            })
+            ->finally(function (\Illuminate\Bus\Batch $batch) {
+                Log::info("GitCommitRunningConfigs: batch '{$batch->id}' finished — {$batch->totalJobs} total, {$batch->failedJobs} failed.");
             })
             ->name('GitCommitRunningConfigs')
             ->dispatch();
