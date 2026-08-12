@@ -1078,7 +1078,7 @@ class Device extends Model
         $nb = new $this->netbox_type;
         if($this->netbox_id)
         {
-            return $nb->where('id',$this->netbox_id)->first();
+            return $nb->where('id',$this->netbox_id)->where('exclude','config_context')->first();
         }
     }
 
@@ -1094,7 +1094,7 @@ class Device extends Model
             return null;
         }
         $nb = new $this->netbox_type;
-        return $nb->where('name__ic', $this->getName())->first();
+        return $nb->where('name__ic', $this->getName())->where('exclude','config_context')->first();
     }
 
     public function getNetboxDevice()
