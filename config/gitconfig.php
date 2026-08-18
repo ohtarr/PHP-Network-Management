@@ -58,6 +58,12 @@ return [
         '/^\s*"junos:commit-localtime"\s*:/',
         // JSON/NETCONF output: "sha-256" : "a1e456..."  — commit checksum
         '/^\s*"sha-256"\s*:/',
+        //junos automatic download start-time
+        '/^\s*set services application-identification download automatic start-time /',
+        //junos system login user mist
+        '/^\s*set system login user mist authentication /',
+        // "Sun Aug 16 02:12:56.724 GMT"  — timestamp banner at top of running config
+        '/^[A-Z][a-z]{2} [A-Z][a-z]{2} +\d{1,2} \d{2}:\d{2}:\d{2}(\.\d+)? [A-Za-z]{2,5}\s*$/',
 
         // ---------------------------------------------------------------
         // Cisco NX-OS
