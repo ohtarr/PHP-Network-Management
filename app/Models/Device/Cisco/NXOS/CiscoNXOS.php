@@ -54,8 +54,11 @@ class CiscoNXOS extends Cisco
     public function getName()
     {
         $reg = "/hostname (\S+)/";
-        $run = $this->getLatestOutputs('run')->data;
-        if (preg_match($reg, $run, $hits)) {
+        $output = $this->getLatestOutputs('run');
+        if (!$output || empty($output->data)) {
+            return null;
+        }
+        if (preg_match($reg, $output->data, $hits)) {
             return $hits[1];
         }
     }
@@ -68,8 +71,11 @@ class CiscoNXOS extends Cisco
     {
         //Reg to grab the serial from the show inventory.
         $reg = "/SN:\s+(\S+)/";
-        $inv = $this->getLatestOutputs('inventory')->data;
-        if (preg_match($reg, $inv, $hits)) {
+        $output = $this->getLatestOutputs('inventory');
+        if (!$output || empty($output->data)) {
+            return null;
+        }
+        if (preg_match($reg, $output->data, $hits)) {
             return $hits[1];
         }
     }
@@ -82,9 +88,50 @@ class CiscoNXOS extends Cisco
     {
         //Reg to grab the model from the show inventory.
         $reg = "/PID:\s+(\S+)/";
-        $inv = $this->getLatestOutputs('inventory')->data;
-        if (preg_match($reg, $inv, $hits)) {
+        $output = $this->getLatestOutputs('inventory');
+        if (!$output || empty($output->data)) {
+            return null;
+        }
+        if (preg_match($reg, $output->data, $hits)) {
             return $hits[1];
         }
+    }
+
+    /*
+     Find the MAC address of this device from OUTPUTs.
+     Prefers the management interface (mgmt0); falls back to the first
+     interface with a MAC in the latest 'show interface' output.
+     Returns string (lowercase, no separators) or null.
+     */
+    public function getMac()
+    {
+        $output = $this->getLatestOutputs('interfaces');
+        if (!$output || empty($output->data)) {
+            return null;
+        }
+
+        $currentIf = null;
+        $macs = [];
+        foreach (explode("\n", $output->data) as $line) {
+            if (preg_match('/^\s*(\S+)\s+is\s+(?:administratively\s+)?(?:up|down)/i', $line, $m)) {
+                $currentIf = $m[1];
+                continue;
+            }
+            if ($currentIf && !isset($macs[$currentIf]) && preg_match('/address(?:\s+is|:)\s+([0-9a-fA-F.:\-]+)/i', $line, $m)) {
+                $macs[$currentIf] = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $m[1]));
+            }
+        }
+
+        if (empty($macs)) {
+            return null;
+        }
+
+        foreach ($macs as $ifName => $mac) {
+            if (stripos($ifName, 'mgmt0') === 0) {
+                return $mac;
+            }
+        }
+
+        return reset($macs);
     }
 }

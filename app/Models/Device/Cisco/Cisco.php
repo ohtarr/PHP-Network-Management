@@ -234,7 +234,8 @@ class Cisco extends Device
 
                 // Device ID — strip any trailing parenthetical (e.g. serial number)
                 if (preg_match('/^Device ID:\s*(\S+)/m', $block, $m)) {
-                    $entry['name'] = preg_replace('/\(.*\)$/', '', trim($m[1]));
+                    $name = preg_replace('/\(.*\)$/', '', trim($m[1]));
+                    $entry['name'] = explode('.', $name)[0];
                 }
 
                 // Local interface and remote port on the same line:
@@ -271,7 +272,7 @@ class Cisco extends Device
 
                 // System Name
                 if (preg_match('/System Name:\s*(\S+)/i', $block, $m)) {
-                    $entry['name'] = trim($m[1]);
+                    $entry['name'] = explode('.', trim($m[1]))[0];
                 }
 
                 // Chassis ID (MAC address) — may be colon- or dot-separated

@@ -606,7 +606,9 @@ class Device extends Model
     /*
     This method executes all scan_outputs for a device and returns the values.
     The outputs are NOT saved to the database.
-    Supports 'ssh' and 'sftp' methods defined in $scan_outputs.
+    Supports 'ssh', 'sftp', and 'callback' methods defined in $scan_outputs.
+    For 'callback', 'input' names a local method to call on $this; non-string
+    return values are JSON-encoded before being stored.
     Each entry may include an optional 'include' key (bool, default true).
     When 'include' => false, the command still executes but its output is excluded from the return value.
 
@@ -631,11 +633,12 @@ class Device extends Model
             );
         }
 
-        // Separate SSH and SFTP definitions
-        $sshCommands = [];   // key => command string (for batching)
-        $sshInclude  = [];   // key => bool
-        $sshTimeouts = [];   // key => int|null
-        $sftpDefs    = [];   // key => definition array
+        // Separate SSH, SFTP, and callback definitions
+        $sshCommands  = [];   // key => command string (for batching)
+        $sshInclude   = [];   // key => bool
+        $sshTimeouts  = [];   // key => int|null
+        $sftpDefs     = [];   // key => definition array
+        $callbackDefs = [];   // key => definition array
 
         foreach ($outputs as $key => $definition) {
             $method  = $definition['method']  ?? 'ssh';
@@ -649,6 +652,8 @@ class Device extends Model
 
             if ($method === 'sftp') {
                 $sftpDefs[$key] = $definition;
+            } elseif ($method === 'callback') {
+                $callbackDefs[$key] = $definition;
             } else {
                 $sshCommands[$key] = $input;
                 $sshInclude[$key]  = $include;
@@ -678,6 +683,32 @@ class Device extends Model
         foreach ($sftpDefs as $key => $definition) {
             $include = $definition['include'] ?? true;
             $result  = $this->sftpGetFile($definition['input']);
+            if ($include) {
+                $output[$key] = $result;
+            }
+        }
+
+        // Run callback definitions individually: 'input' names a local method to call on $this
+        foreach ($callbackDefs as $key => $definition) {
+            $include    = $definition['include'] ?? true;
+            $methodName = $definition['input'];
+
+            if (!method_exists($this, $methodName)) {
+                Log::warning("Device::getOutputs() callback method '{$methodName}' does not exist for key '{$key}'.", ['device_id' => $this->id]);
+                continue;
+            }
+
+            try {
+                $result = $this->$methodName();
+            } catch (\Throwable $e) {
+                Log::warning("Device::getOutputs() callback method '{$methodName}' threw for key '{$key}': {$e->getMessage()}", ['device_id' => $this->id]);
+                continue;
+            }
+
+            if ($result !== null && !is_string($result)) {
+                $result = json_encode($result);
+            }
+
             if ($include) {
                 $output[$key] = $result;
             }

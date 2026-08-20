@@ -23,7 +23,7 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 //Route::apiResource('/rooms', App\Models\Location\Room\RoomController::class);
 //Route::apiResource('/sites', App\Models\Location\Site\SiteController::class);
 Route::apiResource('/depot-orders', App\Http\Controllers\DepotOrder\DepotOrderController::class);
-Route::apiResource('/netbox/orders', App\Http\Controllers\Netbox\Orders\OrdersController::class);
+Route::apiResource('/netbox/orders', App\Http\Controllers\Netbox\PLUGINS\CUSTOMOBJECTS\OrdersController::class);
 Route::apiResource('/devices/aruba', App\Models\Device\Aruba\ArubaController::class);
 Route::apiResource('/devices/cisco/ios', App\Models\Device\Cisco\IOS\CiscoIOSController::class);
 Route::apiResource('/devices/cisco/iosxe', App\Models\Device\Cisco\IOSXE\CiscoIOSXEController::class);
@@ -35,8 +35,9 @@ Route::apiResource('/devices/opengear', App\Models\Device\Opengear\OpengearContr
 Route::apiResource('/devices/ubiquiti', App\Models\Device\Ubiquiti\UbiquitiController::class);
 Route::apiResource('/devices', App\Models\Device\DeviceController::class);
 Route::apiResource('/servicenow/incidents', App\Models\ServiceNow\IncidentController::class);
-Route::apiResource('/netbox/devices', App\Http\Controllers\Netbox\Devices\DevicesController::class)->names('netbox.devices');
-Route::apiResource('/netbox/sites', App\Http\Controllers\Netbox\Sites\SitesController::class)->names('netbox.sites');
+Route::apiResource('/netbox/devices', App\Http\Controllers\Netbox\DCIM\DevicesController::class)->names('netbox.devices');
+Route::apiResource('/netbox/sites', App\Http\Controllers\Netbox\DCIM\SitesController::class)->names('netbox.sites');
+Route::apiResource('/netbox/prefixes', App\Http\Controllers\Netbox\DCIM\PrefixesController::class)->names('netbox.prefixes');
 
 //Route::get('/mist/device', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
 //Route::get('/mist/device/{deviceid}/', [App\Models\Mist\MistController::class, 'getDeviceInventory']);
@@ -98,6 +99,7 @@ Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsC
 Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsController::class, 'getOpengearStatus']);
 
 Route::get('diagrams', [App\Models\Diagram\DiagramController::class, 'index']);
+Route::get('diagrams/generate/{site_id}', [App\Models\Diagram\DiagramController::class, 'generate']);
 Route::get('diagrams/{id}', [App\Models\Diagram\DiagramController::class, 'find']);
 
 Route::get('logs', [App\Http\Controllers\Log\LogController::class, 'index']);

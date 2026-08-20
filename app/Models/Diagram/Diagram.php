@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Collection;
 use App\Models\Mist\Site;
 use App\Models\Netbox\DCIM\Sites as NetboxSites;
+use App\Models\Netbox\DCIM\Devices as NetboxDevices;
+use App\Models\Netbox\DCIM\VirtualChassis;
+use App\Models\Device\Cisco\Cisco;
+use App\Models\Device\Juniper\Juniper;
 
 class Diagram extends Model
 {
@@ -22,34 +26,149 @@ class Diagram extends Model
         'data' => 'array',
     ];
 
+    protected static array $siteCache = [];
+    protected static array $deviceCache = [];
+
     // -------------------------------------------------------------------------
     // Public API
     // -------------------------------------------------------------------------
 
     /**
-     * Resolve a Netbox site ID to its matching Mist site, fetch all device stats,
-     * and normalize each device into the standard format with neighbor information.
+     * Fetch (and memoize for the lifetime of the request) the Netbox site
+     * record for a given site ID, so repeated lookups within one generate()
+     * call don't each cost a Netbox HTTP round trip.
+     *
+     * @param  int  $netboxSiteId  Netbox site integer ID
+     * @return NetboxSites
+     * @throws \Exception if the Netbox site cannot be found
+     */
+    protected static function getNetboxSite(int $netboxSiteId): NetboxSites
+    {
+        if (!isset(static::$siteCache[$netboxSiteId])) {
+            $site = NetboxSites::find($netboxSiteId);
+            if (!isset($site->id)) {
+                throw new \Exception("Netbox site with ID {$netboxSiteId} not found.");
+            }
+            static::$siteCache[$netboxSiteId] = $site;
+        }
+        return static::$siteCache[$netboxSiteId];
+    }
+
+    /**
+     * Fetch (and memoize for the lifetime of the request) the full,
+     * unfiltered list of Netbox devices at a site, so getNetboxDevices(),
+     * getCiscoDevices(), and getJuniperDevices() can share a single fetch
+     * instead of each issuing their own paginated Netbox HTTP call.
+     *
+     * @param  int  $netboxSiteId  Netbox site integer ID
+     * @return Collection
+     */
+    protected static function getAllNetboxDevices(int $netboxSiteId): Collection
+    {
+        if (!isset(static::$deviceCache[$netboxSiteId])) {
+            static::$deviceCache[$netboxSiteId] = NetboxDevices::where('site_id', $netboxSiteId)->get();
+        }
+        return static::$deviceCache[$netboxSiteId];
+    }
+
+    /**
+     * Fetch all addressable devices at a Netbox site and return them as the
+     * base node list for diagram generation.
+     *
+     * Two passes are made:
+     *   1. Virtual Chassis — each VC is treated as a single logical device.
+     *      The node's netbox_id is set to the master device's Netbox ID
+     *      (falls back to the VC's own ID if no master is set).
+     *   2. Standalone devices — Netbox devices that are NOT VC members.
+     *
+     * A node is only created when BOTH a name and an IP address are present.
      *
      * Returns an array with one key:
-     *   - 'devices' : Collection of normalized device arrays
-     *
-     * Normalized device format:
-     *   id, name, vendor, model, role, status[, ip][, version][, uptimeSeconds][, mgmtUrl], neighbors
-     *
-     * Each neighbor entry contains:
-     *   name, mac, local_port, remote_port
+     *   - 'devices' : Collection of base node arrays, each containing:
+     *       netbox_id, name, ip
      *
      * @param  int  $netboxSiteId  Netbox site integer ID
      * @return array{devices: Collection}
+     * @throws \Exception if the Netbox site cannot be found
+     */
+    public static function getNetboxDevices(int $netboxSiteId): array
+    {
+        // 1. Look up the Netbox site
+        $netboxSite = static::getNetboxSite($netboxSiteId);
+
+        $devices = collect();
+
+        // 2. Virtual Chassis — one logical node per VC
+        $virtualChassisList = VirtualChassis::where('site_id', $netboxSiteId)->get();
+        foreach ($virtualChassisList as $vc) {
+            if (empty($vc->name)) {
+                continue;
+            }
+            $ip = $vc->getIpAddress();
+            if (!$ip) {
+                continue;
+            }
+            // Use the master device's Netbox ID as the node's netbox_id so that
+            // Cisco enrichment (which keys by netbox_id) can match correctly.
+            $netboxId = isset($vc->master->id) ? $vc->master->id : $vc->id;
+            $roleInfo = static::resolveRole($vc->name);
+
+            $devices->push([
+                'netbox_id' => $netboxId,
+                'name'      => $vc->name,
+                'ip'        => $ip,
+                'role'      => $roleInfo['role'],
+                'priority'  => $roleInfo['priority'],
+            ]);
+        }
+
+        // 3. Standalone devices — exclude VC members
+        $standaloneDevices = static::getAllNetboxDevices($netboxSiteId)
+            ->filter(fn($d) => !isset($d->virtual_chassis->id));
+        foreach ($standaloneDevices as $nbDevice) {
+            if (empty($nbDevice->name)) {
+                continue;
+            }
+            $ip = $nbDevice->getIpAddress();
+            if (!$ip) {
+                continue;
+            }
+            $roleInfo = static::resolveRole($nbDevice->name);
+
+            $devices->push([
+                'netbox_id' => $nbDevice->id,
+                'name'      => $nbDevice->name,
+                'ip'        => $ip,
+                'role'      => $roleInfo['role'],
+                'priority'  => $roleInfo['priority'],
+            ]);
+        }
+
+        return [
+            'devices' => $devices,
+        ];
+    }
+
+    /**
+     * Resolve a Netbox site ID to its matching Mist site, fetch all device stats,
+     * and return enrichment data keyed by device name (lowercase).
+     *
+     * Returns an array with one key:
+     *   - 'enrichments' : array keyed by device name (lowercase), each entry containing:
+     *       mist_id, mac, vendor, model, role, priority, status
+     *       [, version][, uptimeSeconds][, mgmtUrl], neighbors
+     *
+     * Each neighbor entry contains:
+     *   name, mac, local_port, remote_port, media_type
+     *
+     * @param  int  $netboxSiteId  Netbox site integer ID
+     * @return array{enrichments: array}
      * @throws \Exception if the Netbox site or matching Mist site cannot be found
      */
     public static function getMistDevices(int $netboxSiteId): array
     {
         // 1. Look up the Netbox site
-        $netboxSite = NetboxSites::find($netboxSiteId);
-        if (!isset($netboxSite->id)) {
-            throw new \Exception("Netbox site with ID {$netboxSiteId} not found.");
-        }
+        $netboxSite = static::getNetboxSite($netboxSiteId);
 
         // 2. Find the matching Mist site by name
         $mistSite = $netboxSite->getMistSite();
@@ -77,126 +196,307 @@ class Diagram extends Model
             }
         }
 
-        // 6. Normalize each enriched device into the standard output format
-        $devices = $enrichedDevices
-            ->filter(fn($d) => isset($d->id))
-            ->map(function ($d) use ($macToName) {
-                $model    = $d->model ?? null;
-                $status   = isset($d->status) && $d->status === 'connected' ? 'online' : 'offline';
-                $roleInfo = static::resolveRole($d->name ?? '');
+        // 6. Build enrichment map keyed by device name (lowercase)
+        $enrichments = [];
+        foreach ($enrichedDevices as $d) {
+            if (!isset($d->id) || empty($d->name)) {
+                continue;
+            }
 
-                $node = [
-                    'id'       => $d->id,
-                    'name'     => $d->name ?? null,
-                    'mac'      => isset($d->mac) ? preg_replace('/[^a-z0-9]/', '', strtolower($d->mac)) : null,
-                    'vendor'   => 'juniper',
-                    'model'    => $model,
-                    'role'     => $roleInfo['role'],
-                    'priority' => $roleInfo['priority'],
-                    'status'   => $status,
-                ];
+            $model    = $d->model ?? null;
+            $status   = isset($d->status) && $d->status === 'connected' ? 'online' : 'offline';
+            $roleInfo = static::resolveRole($d->name ?? '');
 
-                if (isset($d->ip_stat->ip)) {
-                    $node['ip'] = $d->ip_stat->ip;
-                }
-                if (isset($d->version)) {
-                    $node['version'] = $d->version;
-                }
-                if (isset($d->uptime)) {
-                    $node['uptimeSeconds'] = $d->uptime;
-                }
-                if (isset($d->id)) {
-                    $node['mgmtUrl'] = 'https://manage.mist.com/admin/?org_id='
-                        . Site::getOrgId() . '#!ap/' . $d->id;
-                }
+            $entry = [
+                'name'     => $d->name,
+                'mist_id'  => $d->id,
+                'mac'      => isset($d->mac) ? preg_replace('/[^a-z0-9]/', '', strtolower($d->mac)) : null,
+                'vendor'   => 'juniper',
+                'model'    => $model,
+                'role'     => $roleInfo['role'],
+                'priority' => $roleInfo['priority'],
+                'status'   => $status,
+            ];
 
-                // Build neighbors by traversing custom->vc_members->pics->ports
-                // Each port with a neighbor_mac set represents an LLDP neighborship.
-                $neighbors = [];
-                if (isset($d->custom->vc_members) && is_array($d->custom->vc_members)) {
-                    foreach ($d->custom->vc_members as $vcMember) {
-                        if (!isset($vcMember->pics) || !is_array($vcMember->pics)) {
+            if (isset($d->version)) {
+                $entry['version'] = $d->version;
+            }
+            if (isset($d->uptime)) {
+                $entry['uptimeSeconds'] = $d->uptime;
+            }
+            if (isset($d->id)) {
+                $entry['mgmtUrl'] = 'https://manage.mist.com/admin/?org_id='
+                    . Site::getOrgId() . '#!ap/' . $d->id;
+            }
+
+            // Build neighbors by traversing custom->vc_members->pics->ports
+            $neighbors = [];
+            if (isset($d->custom->vc_members) && is_array($d->custom->vc_members)) {
+                foreach ($d->custom->vc_members as $vcMember) {
+                    if (!isset($vcMember->pics) || !is_array($vcMember->pics)) {
+                        continue;
+                    }
+                    foreach ($vcMember->pics as $pic) {
+                        if (!isset($pic->ports) || !is_array($pic->ports)) {
                             continue;
                         }
-                        foreach ($vcMember->pics as $pic) {
-                            if (!isset($pic->ports) || !is_array($pic->ports)) {
+                        foreach ($pic->ports as $port) {
+                            if (!isset($port->neighbor_mac) || empty($port->neighbor_mac)) {
                                 continue;
                             }
-                            foreach ($pic->ports as $port) {
-                                if (!isset($port->neighbor_mac) || empty($port->neighbor_mac)) {
-                                    continue;
-                                }
-                                $peerMacNorm = preg_replace('/[^a-z0-9]/', '', strtolower($port->neighbor_mac));
-                                $neighbors[] = [
-                                    'name'        => isset($port->neighbor_system_name)
-                                                        ? strtolower($port->neighbor_system_name)
-                                                        : ($macToName[$peerMacNorm] ?? null),
-                                    'mac'         => $peerMacNorm,
-                                    'local_port'  => $port->port_id ?? null,
-                                    'remote_port' => $port->neighbor_port_desc ?? null,
-                                    'media_type'  => $port->media_type ?? null,
-                                ];
-                            }
+                            $peerMacNorm = preg_replace('/[^a-z0-9]/', '', strtolower($port->neighbor_mac));
+                            $neighbors[] = [
+                                'name'        => isset($port->neighbor_system_name)
+                                                    ? strtolower($port->neighbor_system_name)
+                                                    : ($macToName[$peerMacNorm] ?? null),
+                                'mac'         => $peerMacNorm,
+                                'local_port'  => $port->port_id ?? null,
+                                'remote_port' => $port->neighbor_port_desc ?? null,
+                                'media_type'  => $port->media_type ?? null,
+                            ];
                         }
                     }
                 }
-                $node['neighbors'] = $neighbors;
+            }
+            $entry['neighbors'] = $neighbors;
 
-                return $node;
-            })->values();
+            $enrichments[strtolower($d->name)] = $entry;
+        }
 
         return [
-            'devices' => $devices,
+            'enrichments' => $enrichments,
+        ];
+    }
+
+    /**
+     * Resolve a Netbox site ID to its Cisco devices stored in the local devices table,
+     * call getNeighbors() on each, and return enrichment data keyed by netbox_id.
+     *
+     * Returns an array with one key:
+     *   - 'enrichments' : array keyed by netbox_id (integer), each entry containing:
+     *       netman2_id, vendor, model, status, neighbors
+     *
+     * Each neighbor entry contains:
+     *   name, mac, local_port, remote_port, media_type
+     *
+     * Role/priority are intentionally NOT included here: they are already
+     * resolved once in getNetboxDevices() from the authoritative Netbox device
+     * name. Recomputing them from this device's locally-collected hostname
+     * (Cisco::getName(), which depends on run data having been collected) would
+     * let a missing/stale local hostname silently overwrite a correct role via
+     * the array_merge() in generate().
+     *
+     * @param  int  $netboxSiteId  Netbox site integer ID
+     * @return array{enrichments: array}
+     * @throws \Exception if the Netbox site cannot be found
+     */
+    public static function getCiscoDevices(int $netboxSiteId): array
+    {
+        // 1. Look up the Netbox site
+        $netboxSite = static::getNetboxSite($netboxSiteId);
+
+        // 2. Fetch all Netbox devices at this site
+        $netboxDevices = static::getAllNetboxDevices($netboxSiteId);
+
+        $enrichments = [];
+
+        foreach ($netboxDevices as $nbDevice) {
+            // Find the local Cisco model record linked to this Netbox device
+            $ciscoDevice = Cisco::where('netbox_id', $nbDevice->id)->first();
+            if (!$ciscoDevice) {
+                continue;
+            }
+
+            $model = $ciscoDevice->getModel();
+
+            $entry = [
+                'netman_id'  => $ciscoDevice->id,
+                'vendor'     => 'cisco',
+                'model'      => $model,
+                'status'     => 'online',
+                'neighbors'  => $ciscoDevice->getNeighbors(),
+            ];
+
+            // Key by the Netbox device ID so generate() can match by netbox_id
+            $enrichments[$nbDevice->id] = $entry;
+        }
+
+        return [
+            'enrichments' => $enrichments,
+        ];
+    }
+
+    /**
+     * Resolve a Netbox site ID to its Juniper devices stored in the local devices table,
+     * call getNeighbors() on each, and return enrichment data keyed by netbox_id.
+     *
+     * Returns an array with one key:
+     *   - 'enrichments' : array keyed by netbox_id (integer), each entry containing:
+     *       netman_id, vendor, model, status, neighbors
+     *
+     * Each neighbor entry contains:
+     *   name, mac, local_port, remote_port
+     *   (media_type is currently omitted by Juniper::getNeighbors())
+     *
+     * Role/priority are intentionally NOT included here: they are already
+     * resolved once in getNetboxDevices() from the authoritative Netbox device
+     * name. Recomputing them from this device's locally-collected hostname
+     * (Juniper::getName(), which depends on run data having been collected)
+     * would let a missing/stale local hostname silently overwrite a correct
+     * role via the array_merge() in generate().
+     *
+     * @param  int  $netboxSiteId  Netbox site integer ID
+     * @return array{enrichments: array}
+     * @throws \Exception if the Netbox site cannot be found
+     */
+    public static function getJuniperDevices(int $netboxSiteId): array
+    {
+        // 1. Look up the Netbox site
+        $netboxSite = static::getNetboxSite($netboxSiteId);
+
+        // 2. Fetch all Netbox devices at this site
+        $netboxDevices = static::getAllNetboxDevices($netboxSiteId);
+
+        $enrichments = [];
+
+        foreach ($netboxDevices as $nbDevice) {
+            // Find the local Juniper model record linked to this Netbox device
+            $juniperDevice = Juniper::where('netbox_id', $nbDevice->id)->first();
+            if (!$juniperDevice) {
+                continue;
+            }
+
+            $model = $juniperDevice->getModel();
+
+            $entry = [
+                'netman_id'  => $juniperDevice->id,
+                'vendor'     => 'juniper',
+                'model'      => $model,
+                'status'     => 'online',
+                'neighbors'  => $juniperDevice->getNeighbors2(),
+            ];
+
+            // Key by the Netbox device ID so generate() can match by netbox_id
+            $enrichments[$nbDevice->id] = $entry;
+        }
+
+        return [
+            'enrichments' => $enrichments,
         ];
     }
 
     /**
      * Generate a full diagram payload for a given Netbox site ID.
      *
-     * Calls all getter methods to obtain normalized devices with neighbor info,
-     * compiles the full device list, builds LLDP-based links across the entire
-     * compiled set, then assembles the final diagram structure.
+     * 1. Builds a base node list from getNetboxDevices() (netbox_id, name, ip).
+     * 2. Enriches nodes with Mist data from getMistDevices() (matched by name).
+     * 3. Enriches nodes with Cisco data from getCiscoDevices() (matched by netbox_id).
+     * 4. Enriches nodes with Juniper data from getJuniperDevices() (matched by netbox_id).
+     * 5. Builds LLDP-based links across the full node set.
+     * 6. Assembles and returns the final diagram structure.
      *
      * @param  int  $netboxSiteId  Netbox site integer ID
      * @return array{sitecode: string, nodes: array, links: array, unlinked: array}
-     * @throws \Exception if the Netbox site or matching Mist site cannot be found
+     * @throws \Exception if the Netbox site cannot be found
      */
     public static function generate(int $netboxSiteId): array
     {
         // 1. Look up the Netbox site (needed for sitecode in the return payload)
-        $netboxSite = NetboxSites::find($netboxSiteId);
-        if (!isset($netboxSite->id)) {
-            throw new \Exception("Netbox site with ID {$netboxSiteId} not found.");
+        $netboxSite = static::getNetboxSite($netboxSiteId);
+
+        // 2. Build the base node list from Netbox (netbox_id, name, ip)
+        $netboxResult = static::getNetboxDevices($netboxSiteId);
+        $allDevices   = $netboxResult['devices'];
+
+        // Build a name (lowercase) -> collection index map for enrichment merging
+        $nameToIndex     = [];
+        $netboxIdToIndex = [];
+        foreach ($allDevices as $index => $node) {
+            if (!empty($node['name'])) {
+                $nameToIndex[strtolower($node['name'])] = $index;
+            }
+            if (!empty($node['netbox_id'])) {
+                $netboxIdToIndex[$node['netbox_id']] = $index;
+            }
+        }
+/*
+        // 3. Enrich nodes with Mist data (matched by device name)
+        //    If no existing node matches, create a new node from the Mist data (no netbox_id).
+        try {
+            $mistResult = static::getMistDevices($netboxSiteId);
+            foreach ($mistResult['enrichments'] as $nameLower => $enrichment) {
+                if (isset($nameToIndex[$nameLower])) {
+                    // Merge into existing Netbox node
+                    $idx              = $nameToIndex[$nameLower];
+                    $allDevices[$idx] = array_merge($allDevices[$idx], $enrichment);
+                } else {
+                    // No Netbox node exists — create a new node from Mist data alone
+                    $newNode = $enrichment;
+                    // Ensure 'name' is set (enrichment key is lowercase; use the enrichment's name field if present)
+                    if (empty($newNode['name'])) {
+                        $newNode['name'] = $nameLower;
+                    }
+                    $newIndex                  = $allDevices->count();
+                    $nameToIndex[$nameLower]   = $newIndex;
+                    $allDevices->push($newNode);
+                }
+            }
+        } catch (\Exception $e) {
+            // Mist may not be configured for this site — continue without it
+        }
+/**/
+        // 4. Enrich nodes with Cisco data (matched by netbox_id)
+        try {
+            $ciscoResult = static::getCiscoDevices($netboxSiteId);
+            foreach ($ciscoResult['enrichments'] as $netboxId => $enrichment) {
+                if (!isset($netboxIdToIndex[$netboxId])) {
+                    continue;
+                }
+                $idx              = $netboxIdToIndex[$netboxId];
+                $allDevices[$idx] = array_merge($allDevices[$idx], $enrichment);
+            }
+        } catch (\Exception $e) {
+            // No Cisco devices found — continue without them
         }
 
-        // 2. Run all getter methods and compile devices into one collection
-        $allDevices = collect();
-
-        $mistResult = static::getMistDevices($netboxSiteId);
-        $allDevices = $allDevices->merge($mistResult['devices']);
+        // 5. Enrich nodes with Juniper data (matched by netbox_id)
+        try {
+            $juniperResult = static::getJuniperDevices($netboxSiteId);
+            foreach ($juniperResult['enrichments'] as $netboxId => $enrichment) {
+                if (!isset($netboxIdToIndex[$netboxId])) {
+                    continue;
+                }
+                $idx              = $netboxIdToIndex[$netboxId];
+                $allDevices[$idx] = array_merge($allDevices[$idx], $enrichment);
+            }
+        } catch (\Exception $e) {
+            // No Juniper devices found — continue without them
+        }
 
         // Future getter methods can be added here, e.g.:
-        // $otherResult = static::getOtherDevices($netboxSiteId);
-        // $allDevices  = $allDevices->merge($otherResult['devices']);
+        // try {
+        //     $otherResult = static::getOtherDevices($netboxSiteId);
+        //     foreach ($otherResult['enrichments'] as $key => $enrichment) { ... }
+        // } catch (\Exception $e) {}
 
-        // 3. Build LLDP links from the full compiled device list
+        // 6. Build LLDP links from the full enriched device list
         $links = static::buildLinks($allDevices);
 
-        // 4. Build nodes array from the compiled device collection
+        // 7. Build nodes array from the compiled device collection
         $nodes = $allDevices->values()->all();
 
-        // 5. Determine unlinked devices (appear in neither source nor target of any link)
-        $linkedDeviceIds = [];
+        // 8. Determine unlinked devices (appear in neither source nor target of any link)
+        $linkedDeviceNames = [];
         foreach ($links as $link) {
-            $linkedDeviceIds[$link['source']['deviceId']] = true;
-            $linkedDeviceIds[$link['target']['deviceId']] = true;
+            $linkedDeviceNames[$link['source']['deviceName']] = true;
+            $linkedDeviceNames[$link['target']['deviceName']] = true;
         }
 
         $unlinked = [];
         foreach ($allDevices as $device) {
-            $id = $device['id'];
-            if (!isset($linkedDeviceIds[$id])) {
-                $unlinked[] = $id;
+            $name = $device['name'];
+            if (!isset($linkedDeviceNames[$name])) {
+                $unlinked[] = $name;
             }
         }
 
@@ -225,7 +525,7 @@ class Diagram extends Model
      * to map to the same role. Add new tokens to any role array as needed.
      *
      * @param  string  $name  Device name
-     * @return string         Human-readable role, or 'unknown' if no match
+     * @return array          ['role' => string, 'priority' => int|null]
      */
     protected static function resolveRole(string $name): array
     {
@@ -241,6 +541,7 @@ class Diagram extends Model
             'Aggregation'     => ['priority' => 40, 'names' => ['AGG']],
             'Access'          => ['priority' => 50, 'names' => ['SWA', 'SWM']],
             'Wireless Bridge' => ['priority' => 60, 'names' => ['WBR']],
+            'Console Server'  => ['priority' => 100, 'names' => ['OOB']],
         ];
 
         // Invert to token => ['role' => ..., 'priority' => ...] for O(1) lookup
@@ -258,13 +559,13 @@ class Diagram extends Model
      * Build LLDP-based links from a collection of normalized device nodes.
      *
      * Each device node is expected to have:
-     *   - 'id'        : unique device identifier
-     *   - 'name'      : device name (used to resolve neighbor device IDs)
+     *   - 'name'      : device name (used to resolve neighbor device names)
      *   - 'neighbors' : array of neighbor entries, each with:
      *       - 'name'        : peer device name (normalized, lowercase)
      *       - 'mac'         : peer device MAC (normalized, lowercase alphanumeric)
      *       - 'local_port'  : local port name
      *       - 'remote_port' : remote port name on the peer
+     *       - 'media_type'  : physical media type
      *
      * Bidirectional pairs are deduplicated so each physical link appears once.
      *
@@ -280,67 +581,68 @@ class Diagram extends Model
         // Convert to array once so we can iterate multiple times safely
         $deviceList = is_array($devices) ? $devices : iterator_to_array($devices, false);
 
-        // Build name -> id lookup map from the normalized device nodes.
-        // Also build mac -> id from each device's own 'mac' field (if present).
-        $nameToId = [];
-        $macToId  = [];
+        // Build name -> name lookup map and mac -> name lookup map from the normalized device nodes.
+        $nameSet   = [];
+        $macToName = [];
         foreach ($deviceList as $device) {
-            if (!isset($device['id'])) {
+            if (empty($device['name'])) {
                 continue;
             }
-            if (!empty($device['name'])) {
-                $nameToId[strtolower($device['name'])] = $device['id'];
-            }
+            $nameSet[strtolower($device['name'])] = $device['name'];
             if (!empty($device['mac'])) {
-                $macToId[preg_replace('/[^a-z0-9]/', '', strtolower($device['mac']))] = $device['id'];
+                $macToName[preg_replace('/[^a-z0-9]/', '', strtolower($device['mac']))] = $device['name'];
             }
         }
 
-        // Supplement mac -> id from neighbor entries: a neighbor's mac can be cross-
-        // referenced to a device ID via the name->id map already built above.
+        // Supplement mac -> name from neighbor entries: a neighbor's mac can be cross-
+        // referenced to a device name via the name set already built above.
         foreach ($deviceList as $device) {
             if (!isset($device['neighbors']) || !is_array($device['neighbors'])) {
                 continue;
             }
             foreach ($device['neighbors'] as $neighbor) {
                 if (!empty($neighbor['mac']) && !empty($neighbor['name'])) {
-                    $peerId = $nameToId[strtolower($neighbor['name'])] ?? null;
-                    if ($peerId && !isset($macToId[$neighbor['mac']])) {
-                        $macToId[$neighbor['mac']] = $peerId;
+                    $peerNameKey = strtolower($neighbor['name']);
+                    if (isset($nameSet[$peerNameKey]) && !isset($macToName[$neighbor['mac']])) {
+                        $macToName[$neighbor['mac']] = $nameSet[$peerNameKey];
                     }
                 }
             }
         }
 
         foreach ($deviceList as $device) {
-            if (!isset($device['id']) || !isset($device['neighbors']) || !is_array($device['neighbors'])) {
+            if (empty($device['name']) || !isset($device['neighbors']) || !is_array($device['neighbors'])) {
                 continue;
             }
 
-            $sourceDeviceId = $device['id'];
+            $sourceDeviceName = $device['name'];
 
             foreach ($device['neighbors'] as $neighbor) {
-                // Resolve target device ID by name first, then fall back to MAC
-                $targetDeviceId = null;
+                // Resolve target device name by name first, then fall back to MAC
+                $targetDeviceName = null;
                 if (!empty($neighbor['name'])) {
-                    $targetDeviceId = $nameToId[strtolower($neighbor['name'])] ?? null;
+                    $targetDeviceName = $nameSet[strtolower($neighbor['name'])] ?? null;
                 }
-                if (!$targetDeviceId && !empty($neighbor['mac'])) {
-                    $targetDeviceId = $macToId[$neighbor['mac']] ?? null;
+                if (!$targetDeviceName && !empty($neighbor['mac'])) {
+                    $targetDeviceName = $macToName[$neighbor['mac']] ?? null;
                 }
 
-                if (!$targetDeviceId) {
+                if (!$targetDeviceName) {
                     continue;
                 }
 
                 $sourcePort = $neighbor['local_port']  ?? null;
                 $targetPort = $neighbor['remote_port'] ?? null;
 
-                // Deduplicate: treat A->B and B->A as the same link per port pair
+                // Deduplicate: treat A->B and B->A as the same link. Key on the pair of
+                // (device, port) endpoints rather than device names alone, so that when
+                // traversed from the other side (source/target and their ports swapped),
+                // the sorted endpoint pair still comes out identical.
+                $sourceEndpoint = $sourceDeviceName . '#' . ($sourcePort ?? '');
+                $targetEndpoint = $targetDeviceName . '#' . ($targetPort ?? '');
                 $pairKey = implode('|', [
-                    min($sourceDeviceId, $targetDeviceId),
-                    max($sourceDeviceId, $targetDeviceId),
-                    $sourcePort ?? '',
+                    min($sourceEndpoint, $targetEndpoint),
+                    max($sourceEndpoint, $targetEndpoint),
                 ]);
 
                 if (isset($seenLinks[$pairKey])) {
@@ -353,15 +655,14 @@ class Diagram extends Model
                 $links[] = [
                     'id'            => 'link-' . $linkCounter++,
                     'source'        => [
-                        'deviceId'  => $sourceDeviceId,
-                        'port'      => $sourcePort,
+                        'deviceName' => $sourceDeviceName,
+                        'port'       => $sourcePort,
                     ],
                     'target'        => [
-                        'deviceId'  => $targetDeviceId,
-                        'port'      => $targetPort,
+                        'deviceName' => $targetDeviceName,
+                        'port'       => $targetPort,
                     ],
                     'medium'        => $medium,
-                    'discoveredVia' => 'lldp',
                 ];
             }
         }

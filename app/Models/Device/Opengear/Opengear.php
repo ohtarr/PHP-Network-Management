@@ -2,7 +2,7 @@
 
 namespace App\Models\Device\Opengear;
 
-use phpseclib\Net\SSH2;
+use \GuzzleHttp\Client as GuzzleClient;
 
 class Opengear extends \App\Models\Device\Device
 {
@@ -45,7 +45,25 @@ class Opengear extends \App\Models\Device\Device
             'method'	=>	'sftp',
             'input'		=>	'/etc/config/support_report',
         ],
+        'apidescription'=>	[
+            'method'	=>	'callback',
+            'input'		=>	'apiGetNodeDescription',
+        ],
+        'apiversion'	=>	[
+            'method'	=>	'callback',
+            'input'		=>	'apiGetSystemVersion',
+        ],
+        'apicellstats'	=>	[
+            'method'	=>	'callback',
+            'input'		=>	'apiGetCellStats',
+        ],
+        'apiserialports'=>	[
+            'method'	=>	'callback',
+            'input'		=>	'apiGetSerialPorts',
+        ],
     ];
+
+    protected $apiToken;
 
     /*
     Find the name of this device from DATA.
@@ -214,5 +232,86 @@ class Opengear extends \App\Models\Device\Device
     public function getMgmtIp()
     {
         return $this->getWiredIp();
+    }
+
+    public function getGuzzleClient()
+    {
+        return new GuzzleClient([
+            'base_uri'  =>   "https://" . $this->getIpAddress() . "/api/v1.7/",
+            'headers'   =>  [
+                'Accept'        => 'application/json',
+                'Content-Type'  =>  'application/json',
+                'Authorization' => 'Token ' . $this->getApiToken(),
+            ],
+            'verify' => false,
+        ]);
+    }
+
+    public function getApiToken()
+    {
+        if(!$this->apiToken)
+        {
+            $body = [
+                'username'  =>  env('OPENGEAR_USERNAME'),
+                'password'  =>  env('OPENGEAR_PASSWORD'),
+            ];
+            $client = new GuzzleClient([
+                'base_uri'  =>   "https://" . $this->getIpAddress() . "/api/v1.7/",
+                'headers'   =>  [
+                    'Accept'        => 'application/json',
+                    'Content-Type'  =>  'application/json',
+                ],
+                'verify' => false,
+            ]);
+            $path = "sessions";
+            $response = $client->request('post', $path, ['body' => json_encode($body)]);
+            $body = $response->getBody()->getContents();
+            $object = json_decode($body);
+            if($object->state == "authenticated")
+            {
+                $this->apiToken = $object->session;
+            }
+        }
+        return $this->apiToken;
+    }
+
+    public function apiGetNodeDescription()
+    {
+        $client = $this->getGuzzleClient();
+        $path = "nodeDescription";
+        $response = $client->request('get', $path);
+        $body = $response->getBody()->getContents();
+        $object = json_decode($body);
+        return $object;
+    }
+
+    public function apiGetSystemVersion()
+    {
+        $client = $this->getGuzzleClient();
+        $path = "system/version";
+        $response = $client->request('get', $path);
+        $body = $response->getBody()->getContents();
+        $object = json_decode($body);
+        return $object;
+    }
+
+    public function apiGetCellStats()
+    {
+        $client = $this->getGuzzleClient();
+        $path = "interfaces/cellmodem/status";
+        $response = $client->request('get', $path);
+        $body = $response->getBody()->getContents();
+        $object = json_decode($body);
+        return $object;
+    }
+
+    public function apiGetSerialPorts()
+    {
+        $client = $this->getGuzzleClient();
+        $path = "serialPorts";
+        $response = $client->request('get', $path);
+        $body = $response->getBody()->getContents();
+        $object = json_decode($body);
+        return $object;
     }
 }

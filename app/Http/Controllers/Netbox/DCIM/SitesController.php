@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Netbox\Sites;
+namespace App\Http\Controllers\Netbox\DCIM;
 
 use App\Http\Controllers\Controller;
 use App\Models\Netbox\DCIM\Sites;

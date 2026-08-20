@@ -85,6 +85,50 @@ class DiagramController extends Controller
 
     /**
      * @OA\Get(
+     *     path="/diagrams/generate/{site_id}",
+     *     tags={"Diagrams"},
+     *     summary="Generate a live diagram for a Netbox site",
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="site_id",
+     *         in="path",
+     *         required=true,
+     *         description="Netbox site integer ID",
+     *         @OA\Schema(type="integer", example=42)
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Generated diagram payload",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="sitecode", type="string", example="SITE01"),
+     *             @OA\Property(property="nodes", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="links", type="array", @OA\Items(type="object")),
+     *             @OA\Property(property="unlinked", type="array", @OA\Items(type="string"))
+     *         )
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized"),
+     *     @OA\Response(response=404, description="Netbox site or matching Mist site not found")
+     * )
+     *
+     * Generate a live diagram payload for the given Netbox site ID.
+     *
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $site_id
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function generate(Request $request, int $site_id)
+    {
+        try {
+            $diagram = Diagram::generate($site_id);
+        } catch (\Exception $e) {
+            return response()->json(['error' => $e->getMessage()], 404);
+        }
+
+        return response()->json($diagram);
+    }
+
+    /**
+     * @OA\Get(
      *     path="/diagrams/{id}",
      *     tags={"Diagrams"},
      *     summary="Retrieve a single diagram by ID",

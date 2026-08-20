@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Http\Controllers\Netbox\Orders;
+namespace App\Http\Controllers\Netbox\PLUGINS\CUSTOMOBJECTS;
 
 use App\Http\Controllers\Controller;
 use App\Models\Netbox\PLUGINS\CUSTOMOBJECTS\Orders;

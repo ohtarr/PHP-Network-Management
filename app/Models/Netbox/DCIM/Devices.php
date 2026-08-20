@@ -11,8 +11,9 @@ use App\Models\Netbox\DCIM\Racks;
 use App\Models\Netbox\DCIM\ModuleBays;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\IpAddresses;
-use App\Models\Mist\Device;
+use App\Models\Mist\Device as MistDevice;
 use App\Models\Gizmo\Dhcp;
+use App\Models\Device\Device;
 
 #[\AllowDynamicProperties]
 class Devices extends BaseModel
@@ -186,7 +187,7 @@ class Devices extends BaseModel
     {
         if(isset($this->serial) && $this->serial)
         {
-            return Device::findByserial($this->serial);
+            return MistDevice::findByserial($this->serial);
         }
     }
 
@@ -194,8 +195,13 @@ class Devices extends BaseModel
     {
         if(isset($this->name) && $this->name)
         {
-            return Device::findByName($this->name);
+            return MistDevice::findByName($this->name);
         }
+    }
+
+    public function getNetboxDevice()
+    {
+        return Device::where('netbox_type', static::class)->where('netbox_id', $this->id)->first();
     }
 
     public function renameInterfaces($vcposition)
