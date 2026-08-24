@@ -279,8 +279,18 @@ class Opengear extends \App\Models\Device\Device
         return $interfaces;
     }
 
-    //Parse out the wired IP of eth0 from the support_report.  Returns a string.
     public function getWiredIp()
+    {
+        return $this->getWiredIpFromApi() ?: $this->getWiredIpFromOutput();
+    }
+
+    protected function getWiredIpFromApi()
+    {
+        return $this->getIpFromApiInterfaceName('Network');
+    }
+
+    //Parse out the wired IP of eth0 from the support_report.  Returns a string.
+    protected function getWiredIpFromOutput()
     {
         $intname = 'eth0';
         $interfaces = $this->getInterfaces();
@@ -290,8 +300,18 @@ class Opengear extends \App\Models\Device\Device
         }
     }
 
-    //Parse out the wireless IP of wwan0 from the support_report.  Returns a string.
     public function getWirelessIp()
+    {
+        return $this->getWirelessIpFromApi() ?: $this->getWirelessIpFromOutput();
+    }
+
+    protected function getWirelessIpFromApi()
+    {
+        return $this->getIpFromApiInterfaceName('Internal Cellular Modem');
+    }
+
+    //Parse out the wireless IP of wwan0 from the support_report.  Returns a string.
+    protected function getWirelessIpFromOutput()
     {
         $intname = 'wwan0';
         $interfaces = $this->getInterfaces();
@@ -299,6 +319,21 @@ class Opengear extends \App\Models\Device\Device
         {
             return $interfaces[$intname]['ip'];
         }
+    }
+
+    protected function getIpFromApiInterfaceName(string $name)
+    {
+        $output = $this->getLatestOutputs('apidescription');
+        if (!$output) {
+            return null;
+        }
+        $interfaces = $output->dataArray['interfaces'] ?? [];
+        foreach ($interfaces as $interface) {
+            if (($interface['name'] ?? null) === $name) {
+                return $interface['ipv4_addresses'][0] ?? null;
+            }
+        }
+        return null;
     }
 
     //Ping the wired IP and returns either FALSE or a float value of the latency.
