@@ -72,6 +72,20 @@ class Opengear extends \App\Models\Device\Device
 
     public function getName()
     {
+        return $this->getNameFromApi() ?: $this->getNameFromOutput();
+    }
+
+    protected function getNameFromApi()
+    {
+        $output = $this->getLatestOutputs('apidescription');
+        if (!$output) {
+            return null;
+        }
+        return $output->dataArray['hostname'] ?? null;
+    }
+
+    protected function getNameFromOutput()
+    {
         $run = $this->getLatestOutputs('run');
         if(!isset($run->data))
         {
@@ -88,6 +102,20 @@ class Opengear extends \App\Models\Device\Device
     Returns string (device serial).
     */
     public function getSerial()
+    {
+        return $this->getSerialFromApi() ?: $this->getSerialFromOutput();
+    }
+
+    protected function getSerialFromApi()
+    {
+        $output = $this->getLatestOutputs('apidescription');
+        if (!$output) {
+            return null;
+        }
+        return $output->dataArray['serial_number'] ?? null;
+    }
+
+    protected function getSerialFromOutput()
     {
         $output = $this->getLatestOutputs('support_report');
         if(!isset($output->data))
@@ -107,6 +135,20 @@ class Opengear extends \App\Models\Device\Device
     */
     public function getModel()
     {
+        return $this->getModelFromApi() ?: $this->getModelFromOutput();
+    }
+
+    protected function getModelFromApi()
+    {
+        $output = $this->getLatestOutputs('apidescription');
+        if (!$output) {
+            return null;
+        }
+        return $output->dataArray['model_number'] ?? null;
+    }
+
+    protected function getModelFromOutput()
+    {
         $output = $this->getLatestOutputs('support_report');
         if(!isset($output->data))
         {
@@ -124,6 +166,20 @@ class Opengear extends \App\Models\Device\Device
 
     public function getIccid()
     {
+        return $this->getIccidFromApi() ?: $this->getIccidFromOutput();
+    }
+
+    protected function getIccidFromApi()
+    {
+        $output = $this->getLatestOutputs('apicellstats');
+        if (!$output) {
+            return null;
+        }
+        return $output->dataArray['links'][0]['wwan']['iccid'] ?? null;
+    }
+
+    protected function getIccidFromOutput()
+    {
         $output = $this->getLatestOutputs('support_report');
         if(!isset($output->data))
         {
@@ -137,6 +193,20 @@ class Opengear extends \App\Models\Device\Device
 
     public function getImei()
     {
+        return $this->getImeiFromApi() ?: $this->getImeiFromOutput();
+    }
+
+    protected function getImeiFromApi()
+    {
+        $output = $this->getLatestOutputs('apicellstats');
+        if (!$output) {
+            return null;
+        }
+        return $output->dataArray['links'][0]['wwan']['imei'] ?? null;
+    }
+
+    protected function getImeiFromOutput()
+    {
         $output = $this->getLatestOutputs('support_report');
         if(!isset($output->data))
         {
@@ -149,6 +219,20 @@ class Opengear extends \App\Models\Device\Device
     }
 
     public function getVersion()
+    {
+        return $this->getVersionFromApi() ?: $this->getVersionFromOutput();
+    }
+
+    protected function getVersionFromApi()
+    {
+        $output = $this->getLatestOutputs('apiversion');
+        if (!$output) {
+            return null;
+        }
+        return $output->dataArray['system_version']['firmware_version'] ?? null;
+    }
+
+    protected function getVersionFromOutput()
     {
         $output = $this->getLatestOutputs('support_report');
         if(!isset($output->data))
