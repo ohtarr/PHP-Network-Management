@@ -330,10 +330,33 @@ class Opengear extends \App\Models\Device\Device
         $interfaces = $output->dataArray['interfaces'] ?? [];
         foreach ($interfaces as $interface) {
             if (($interface['name'] ?? null) === $name) {
-                return $interface['ipv4_addresses'][0] ?? null;
+                return $this->selectPreferredIpv4Address($interface['ipv4_addresses'] ?? []);
             }
         }
         return null;
+    }
+
+    //Opengear's "Network" interface can report addresses from multiple physical
+    //interfaces at once. The bogus one is almost always 192.168.0.1, and the real
+    //management IP almost always starts with "10.", so prefer that, then anything
+    //that isn't the known-bad address, before falling back to the first entry.
+    protected function selectPreferredIpv4Address(array $addresses)
+    {
+        if (empty($addresses)) {
+            return null;
+        }
+        $bareIps = array_map(fn($address) => explode('/', $address)[0], $addresses);
+        foreach ($bareIps as $index => $ip) {
+            if (str_starts_with($ip, '10.')) {
+                return $addresses[$index];
+            }
+        }
+        foreach ($bareIps as $index => $ip) {
+            if ($ip !== '192.168.0.1') {
+                return $addresses[$index];
+            }
+        }
+        return $addresses[0];
     }
 
     //Ping the wired IP and returns either FALSE or a float value of the latency.
