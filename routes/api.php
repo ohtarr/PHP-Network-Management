@@ -31,6 +31,7 @@ Route::apiResource('/devices/cisco/iosxr', App\Models\Device\Cisco\IOSXR\CiscoIO
 Route::apiResource('/devices/cisco/nxos', App\Models\Device\Cisco\NXOS\CiscoNXOSController::class);
 Route::apiResource('/devices/cisco', App\Models\Device\Cisco\CiscoController::class);
 Route::apiResource('/devices/juniper', App\Models\Device\Juniper\JuniperController::class);
+Route::get('/devices/opengear/summary', [App\Models\Device\Opengear\OpengearController::class, 'summary']);
 Route::apiResource('/devices/opengear', App\Models\Device\Opengear\OpengearController::class);
 Route::apiResource('/devices/ubiquiti', App\Models\Device\Ubiquiti\UbiquitiController::class);
 Route::apiResource('/devices', App\Models\Device\DeviceController::class);

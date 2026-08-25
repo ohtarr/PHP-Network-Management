@@ -245,6 +245,28 @@ class Opengear extends \App\Models\Device\Device
         }
     }
 
+    public static function getAllSummarized()
+    {
+        $opengears = static::all();
+        $final = [];
+        foreach($opengears as $og)
+        {
+            $tmp = [];
+            $tmp['netmanid'] = $og->id;
+            $tmp['netboxid'] = $og->netbox_id;
+            $tmp['name'] = $og->getName();
+            $tmp['model'] = $og->getModel();
+            $tmp['serial'] = $og->getSerial();
+            $tmp['wiredip'] = $og->getWiredIp();
+            $tmp['cellip'] = $og->getWirelessIp();
+            $tmp['version'] = $og->getVersion();
+            $tmp['imei'] = $og->getImei();
+            $tmp['iccid'] = $og->getIccid();
+            $final[] = $tmp;
+        }
+        return $final;
+    }
+
     public function getInterfaces()
     {
         $output = $this->getLatestOutputs('support_report');
