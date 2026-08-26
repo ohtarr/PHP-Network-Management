@@ -119,6 +119,25 @@ class SubnetV4 extends BaseModel
     }
 
     /**
+     * Update an existing DHCPv4 subnet.
+     * PATCH /api/dhcp/subnetv4
+     *
+     * @param  int    $id      The Kea subnet ID to update.
+     * @param  array  $params  Array properly formatted for PATCH to KEA DHCP api.
+     */
+    public static function update(int $id, array $params)
+    {
+        $params['id'] = $id;
+        $response = static::getQuery()->patch(static::getPath(), $params);
+        if(isset($response[0]->arguments->subnets[0]))
+        {
+            return static::hydrateOne($response[0]->arguments->subnets[0]);
+        } else {
+            return null;
+        }
+    }
+
+    /**
      * Delete a DHCPv4 subnet by its Kea subnet ID.
      * DELETE /api/dhcp/subnetv4/id/{id}
      *
@@ -195,6 +214,12 @@ class SubnetV4 extends BaseModel
                 }
             }
         }
+    }
+
+    public function getStatistics()
+    {
+        $path = "statistics/" . $this->id;
+        return static::getQuery()->get($path);
     }
 
 }

@@ -95,6 +95,12 @@ Route::get('management/search', [App\Http\Controllers\Management\ManagementContr
 Route::post('management/netbox/webhook/device', [App\Http\Controllers\Management\ManagementController::class, 'syncNetboxDevice'])->middleware('netbox.webhook');
 Route::post('management/netbox/webhook/virtual-machine', [App\Http\Controllers\Management\ManagementController::class, 'syncNetboxVirtualMachine'])->middleware('netbox.webhook');
 
+Route::get('dhcp/subnetv4', [App\Http\Controllers\Dhcp\DhcpController::class, 'index']);
+Route::post('dhcp/subnetv4', [App\Http\Controllers\Dhcp\DhcpController::class, 'store']);
+Route::delete('dhcp/subnetv4/{id}', [App\Http\Controllers\Dhcp\DhcpController::class, 'destroyById'])->where('id', '[0-9]+');
+Route::delete('dhcp/subnetv4/{subnet}/{length}', [App\Http\Controllers\Dhcp\DhcpController::class, 'destroyBySubnet']);
+Route::get('dhcp/sitesummary/{sitecode}', [App\Http\Controllers\Dhcp\DhcpController::class, 'sitesummary']);
+
 Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsController::class, 'siteSubnetReport']);
 Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsController::class, 'getOrphanedDhcpScopes']);
 Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsController::class, 'getOpengearStatus']);

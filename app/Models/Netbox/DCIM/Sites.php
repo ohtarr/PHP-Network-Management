@@ -841,4 +841,56 @@ class Sites extends BaseModel
         }
         return $scopeparams;
     }
+
+    public function getAllScopes()
+    {
+        $active = $this->getActivePrefixes();
+        foreach($active as $prefix)
+        {
+            $list[$prefix->prefix]['netbox_prefix'] = $prefix;
+        }
+        $scopes = $this->getGizmoDhcpScopesBySitecode();
+        foreach($scopes as $gizmoscope)
+        {
+            $list[$gizmoscope->scopeID . "/" . $gizmoscope->getBitmask()]['gizmo_scope'] = $gizmoscope;
+        }
+        $scopes = $this->getGizmoDhcpScopesByPrefixes();
+        foreach($scopes as $gizmoscope)
+        {
+            $list[$gizmoscope->scopeID . "/" . $gizmoscope->getBitmask()]['gizmo_scope'] = $gizmoscope;
+        }
+        $scopes = $this->getGizmoDhcpScopesBySupernets();
+        foreach($scopes as $gizmoscope)
+        {
+            $list[$gizmoscope->scopeID . "/" . $gizmoscope->getBitmask()]['gizmo_scope'] = $gizmoscope;
+        }
+        $scopes = $this->getKeaDhcpScopesBySupernets();
+        foreach($scopes as $keascope)
+        {
+            $list[$keascope->subnet]['kea_scope'] = $keascope;
+        }
+        $scopes = $this->getKeaDhcpScopesBySitecode();
+        foreach($scopes as $keascope)
+        {
+            $list[$keascope->subnet]['kea_scope'] = $keascope;
+        }
+        $scopes = $this->getKeaDhcpScopesByPrefixes();
+        foreach($scopes as $keascope)
+        {
+            $list[$keascope->subnet]['kea_scope'] = $keascope;
+        }
+        foreach($list as $key => $value)
+        {
+            if(isset($value['kea_scope']))
+            {
+                $list[$key]['kea_stats'] = $value['kea_scope']->getStatistics();
+            }
+            if(isset($value['gizmo_scope']))
+            {
+                $list[$key]['gizmo_stats'] = $value['gizmo_scope']->getStatistics();
+            }
+        }
+        return $list;
+    }
+
 }

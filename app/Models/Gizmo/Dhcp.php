@@ -241,7 +241,7 @@ class Dhcp extends Gizmo
         return $array;
     }
 
-    public function addReservation($mac, $ip, $description)
+/*     public function addReservation($mac, $ip, $description)
 	{
 		$body = [
 			"scopeID"	    =>  $this->scopeID,
@@ -269,8 +269,8 @@ class Dhcp extends Gizmo
         $array = json_decode($response,true);
 		return $array;
 	}
-
-    public function updateReservation($mac, $ip, $description)
+ */
+/*     public function updateReservation($mac, $ip, $description)
 	{
 		$body = [
 			"scopeID"	    =>  $this->scopeID,
@@ -297,9 +297,9 @@ class Dhcp extends Gizmo
         $response = $apiRequest->getBody()->getContents();
         $array = json_decode($response,true);
 		return $array;
-	}
+	} */
 
-    public static function deleteReservation($ip)
+/*     public static function deleteReservation($ip)
 	{
 		$body = [
             "IPAddress"     =>  $ip,
@@ -323,9 +323,9 @@ class Dhcp extends Gizmo
         $response = $apiRequest->getBody()->getContents();
         $array = json_decode($response,true);
 		return $array;
-	}
+	} */
 
-    public function addFailover($failovername)
+/*     public function addFailover($failovername)
 	{
 		$body = [
 			"scopeID"	        =>  $this->scopeID,
@@ -350,9 +350,9 @@ class Dhcp extends Gizmo
         $response = $apiRequest->getBody()->getContents();
         $array = json_decode($response,true);
 		return $array;
-	}
+	} */
 
-    public function deleteScopeFailover($failovername)
+/*     public function deleteScopeFailover($failovername)
 	{
 		$body = [
 			"scopeID"	        =>  $this->scopeID,
@@ -377,10 +377,10 @@ class Dhcp extends Gizmo
         $response = $apiRequest->getBody()->getContents();
         $array = json_decode($response,true);
 		return $array;
-	}
+	} */
 
 
-    public static function addScope($scopeparams)
+/*     public static function addScope($scopeparams)
 	{
 		$body = $scopeparams;
 		$verb = "POST";
@@ -403,9 +403,9 @@ class Dhcp extends Gizmo
         $response = $apiRequest->getBody()->getContents();
         $array = json_decode($response,true);
 		return $array;
-	}
+	} */
 
-    public function delete()
+/*     public function delete()
 	{
 		$body = ["scopeID" => $this->scopeID];
 		$verb = "DELETE";
@@ -427,7 +427,7 @@ class Dhcp extends Gizmo
         $response = $apiRequest->getBody()->getContents();
         $array = json_decode($response,true);
 		return $array;
-	}
+	} */
 
     public static function findOverlap($network, $bitmask)
     {
@@ -455,6 +455,14 @@ class Dhcp extends Gizmo
 			$bits += strlen(str_replace("0", "", decbin($octect)));
 		return $bits;
 	}
+
+    public function getBitmask()
+    {
+        if(isset($this->subnetMask))
+        {
+            return static::netmaskToBitmask($this->subnetMask);
+        }
+    }
 
     public static function findScopeByIp($ip)
     {
