@@ -101,6 +101,12 @@ Route::delete('dhcp/subnetv4/{id}', [App\Http\Controllers\Dhcp\DhcpController::c
 Route::delete('dhcp/subnetv4/{subnet}/{length}', [App\Http\Controllers\Dhcp\DhcpController::class, 'destroyBySubnet']);
 Route::get('dhcp/sitesummary/{sitecode}', [App\Http\Controllers\Dhcp\DhcpController::class, 'sitesummary']);
 
+Route::get('dhcp/reservationv4', [App\Http\Controllers\Dhcp\DhcpController::class, 'reservationIndex']);
+Route::post('dhcp/reservationv4', [App\Http\Controllers\Dhcp\DhcpController::class, 'reservationStore']);
+Route::patch('dhcp/reservationv4', [App\Http\Controllers\Dhcp\DhcpController::class, 'reservationUpdate']);
+Route::delete('dhcp/reservationv4/ip/{ip}', [App\Http\Controllers\Dhcp\DhcpController::class, 'reservationDestroyByIp']);
+Route::delete('dhcp/reservationv4/mac/{mac}', [App\Http\Controllers\Dhcp\DhcpController::class, 'reservationDestroyByMac']);
+
 Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsController::class, 'siteSubnetReport']);
 Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsController::class, 'getOrphanedDhcpScopes']);
 Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsController::class, 'getOpengearStatus']);
