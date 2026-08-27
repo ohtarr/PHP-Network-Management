@@ -107,6 +107,16 @@ Route::patch('dhcp/reservationv4', [App\Http\Controllers\Dhcp\DhcpController::cl
 Route::delete('dhcp/reservationv4/ip/{ip}', [App\Http\Controllers\Dhcp\DhcpController::class, 'reservationDestroyByIp']);
 Route::delete('dhcp/reservationv4/mac/{mac}', [App\Http\Controllers\Dhcp\DhcpController::class, 'reservationDestroyByMac']);
 
+Route::get('dhcp/leasev4', [App\Http\Controllers\Dhcp\DhcpController::class, 'leaseIndex']);
+Route::post('dhcp/leasev4', [App\Http\Controllers\Dhcp\DhcpController::class, 'leaseStore']);
+Route::patch('dhcp/leasev4', [App\Http\Controllers\Dhcp\DhcpController::class, 'leaseUpdate']);
+Route::delete('dhcp/leasev4/ip/{ip}', [App\Http\Controllers\Dhcp\DhcpController::class, 'leaseDestroyByIp']);
+
+Route::get('dhcp/gizmo', [App\Http\Controllers\Dhcp\DhcpController::class, 'gizmoIndex']);
+Route::get('dhcp/gizmo/{id}/reservations', [App\Http\Controllers\Dhcp\DhcpController::class, 'gizmoReservations']);
+Route::get('dhcp/gizmo/{id}/leases', [App\Http\Controllers\Dhcp\DhcpController::class, 'gizmoLeases']);
+Route::get('dhcp/gizmo/overlap/{network}/{bitmask}', [App\Http\Controllers\Dhcp\DhcpController::class, 'gizmoOverlap']);
+
 Route::get('reports/sitesubnets', [App\Http\Controllers\Reports\ReportsController::class, 'siteSubnetReport']);
 Route::get('reports/dhcp/orphanedscopes', [App\Http\Controllers\Reports\ReportsController::class, 'getOrphanedDhcpScopes']);
 Route::get('reports/opengear/status', [App\Http\Controllers\Reports\ReportsController::class, 'getOpengearStatus']);

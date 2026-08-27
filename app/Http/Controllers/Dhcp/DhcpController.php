@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dhcp;
 use App\Http\Controllers\Controller;
 use App\Models\Dhcp\SubnetV4;
 use App\Models\Dhcp\ReservationV4;
+use App\Models\Dhcp\LeaseV4;
 use Illuminate\Http\Request;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Gizmo\Dhcp as GizmoDhcp;
@@ -400,5 +401,314 @@ class DhcpController extends Controller
         ReservationV4::deleteByMac($mac);
 
         return response()->json(['message' => 'Reservation deleted successfully'], 200);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/dhcp/leasev4",
+     *     summary="Get DHCPv4 leases, filtered by ip, mac, or subnet",
+     *     tags={"Dhcp"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="ip",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by lease IP address",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="mac",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by lease MAC address",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="subnet",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by subnet network address, returning all leases in it",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of DHCPv4 leases",
+     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
+     *     ),
+     *     @OA\Response(response=422, description="One of ip, mac, or subnet is required")
+     * )
+     */
+    public function leaseIndex(Request $request)
+    {
+        if ($request->filled('ip')) {
+            $lease = LeaseV4::findByIp($request->query('ip'));
+            return response()->json($lease ? collect([$lease]) : collect());
+        }
+
+        if ($request->filled('mac')) {
+            $lease = LeaseV4::findByMac($request->query('mac'));
+            return response()->json($lease ? collect([$lease]) : collect());
+        }
+
+        if ($request->filled('subnet')) {
+            return response()->json(LeaseV4::allBySubnet($request->query('subnet')));
+        }
+
+        return response()->json(['message' => 'One of ip, mac, or subnet is required'], 422);
+    }
+
+    /**
+     * @OA\Post(
+     *     path="/dhcp/leasev4",
+     *     summary="Create a new DHCPv4 lease",
+     *     tags={"Dhcp"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"ipaddress","hwaddress","hostname"},
+     *             @OA\Property(property="ipaddress", type="string", example="10.1.2.3"),
+     *             @OA\Property(property="hwaddress", type="string", example="aa:bb:cc:dd:ee:ff"),
+     *             @OA\Property(property="hostname", type="string", example="printer-204")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=201,
+     *         description="Lease created successfully",
+     *         @OA\JsonContent(type="object")
+     *     )
+     * )
+     */
+    public function leaseStore(Request $request)
+    {
+        $validated = $request->validate([
+            'ipaddress' => 'required|string',
+            'hwaddress' => 'required|string',
+            'hostname' => 'required|string',
+        ]);
+
+        $lease = LeaseV4::create($validated['ipaddress'], $validated['hwaddress'], $validated['hostname']);
+
+        return response()->json($lease, 201);
+    }
+
+    /**
+     * @OA\Patch(
+     *     path="/dhcp/leasev4",
+     *     summary="Update an existing DHCPv4 lease",
+     *     tags={"Dhcp"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\RequestBody(
+     *         required=true,
+     *         @OA\JsonContent(
+     *             required={"ipaddress","hwaddress","hostname"},
+     *             @OA\Property(property="ipaddress", type="string", example="10.1.2.3"),
+     *             @OA\Property(property="hwaddress", type="string", example="aa:bb:cc:dd:ee:ff"),
+     *             @OA\Property(property="hostname", type="string", example="printer-204")
+     *         )
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Update result",
+     *         @OA\JsonContent(type="object")
+     *     )
+     * )
+     */
+    public function leaseUpdate(Request $request)
+    {
+        $validated = $request->validate([
+            'ipaddress' => 'required|string',
+            'hwaddress' => 'required|string',
+            'hostname' => 'required|string',
+        ]);
+
+        $lease = LeaseV4::update($validated['ipaddress'], $validated['hwaddress'], $validated['hostname']);
+
+        return response()->json($lease);
+    }
+
+    /**
+     * @OA\Delete(
+     *     path="/dhcp/leasev4/ip/{ip}",
+     *     summary="Delete a DHCPv4 lease by IP address",
+     *     tags={"Dhcp"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="ip",
+     *         in="path",
+     *         required=true,
+     *         description="The lease's IP address",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Lease deleted successfully",
+     *         @OA\JsonContent(
+     *             @OA\Property(property="message", type="string", example="Lease deleted successfully")
+     *         )
+     *     ),
+     *     @OA\Response(response=404, description="Lease not found")
+     * )
+     */
+    public function leaseDestroyByIp($ip)
+    {
+        $lease = LeaseV4::findByIp($ip);
+
+        if (!$lease) {
+            return response()->json(['message' => 'Lease not found'], 404);
+        }
+
+        LeaseV4::deleteByIp($ip);
+
+        return response()->json(['message' => 'Lease deleted successfully'], 200);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/dhcp/gizmo",
+     *     summary="Get Gizmo DHCP scopes, optionally filtered by id, sitecode, or containing ip",
+     *     tags={"Dhcp"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by Gizmo scope ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="sitecode",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by site code",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="ip",
+     *         in="query",
+     *         required=false,
+     *         description="Filter by IP address contained within a scope",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of Gizmo DHCP scopes",
+     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
+     *     )
+     * )
+     */
+    public function gizmoIndex(Request $request)
+    {
+        if ($request->filled('id')) {
+            $scope = GizmoDhcp::find($request->query('id'));
+            return response()->json($scope ? collect([$scope]) : collect());
+        }
+
+        if ($request->filled('sitecode')) {
+            return response()->json(GizmoDhcp::getScopesBySitecode($request->query('sitecode')));
+        }
+
+        if ($request->filled('ip')) {
+            $scope = GizmoDhcp::findScopeByIp($request->query('ip'));
+            return response()->json($scope ? collect([$scope]) : collect());
+        }
+
+        return response()->json(GizmoDhcp::all());
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/dhcp/gizmo/{id}/reservations",
+     *     summary="Get reservations for a Gizmo DHCP scope",
+     *     tags={"Dhcp"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="The Gizmo scope ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of reservations",
+     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
+     *     ),
+     *     @OA\Response(response=404, description="Scope not found")
+     * )
+     */
+    public function gizmoReservations($id)
+    {
+        $scope = GizmoDhcp::find($id);
+
+        if (!$scope) {
+            return response()->json(['message' => 'Scope not found'], 404);
+        }
+
+        return response()->json($scope->getReservations());
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/dhcp/gizmo/{id}/leases",
+     *     summary="Get leases for a Gizmo DHCP scope",
+     *     tags={"Dhcp"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="The Gizmo scope ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of leases",
+     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
+     *     ),
+     *     @OA\Response(response=404, description="Scope not found")
+     * )
+     */
+    public function gizmoLeases($id)
+    {
+        $scope = GizmoDhcp::find($id);
+
+        if (!$scope) {
+            return response()->json(['message' => 'Scope not found'], 404);
+        }
+
+        return response()->json($scope->getLeases());
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/dhcp/gizmo/overlap/{network}/{bitmask}",
+     *     summary="Get Gizmo DHCP scopes overlapping a given network range",
+     *     tags={"Dhcp"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="network",
+     *         in="path",
+     *         required=true,
+     *         description="The network address (e.g. 10.1.2.0)",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="bitmask",
+     *         in="path",
+     *         required=true,
+     *         description="The prefix length (e.g. 24)",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of overlapping Gizmo DHCP scopes",
+     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
+     *     )
+     * )
+     */
+    public function gizmoOverlap($network, $bitmask)
+    {
+        return response()->json(GizmoDhcp::findOverlap($network, $bitmask));
     }
 }

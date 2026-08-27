@@ -245,24 +245,58 @@ class Opengear extends \App\Models\Device\Device
         }
     }
 
+    public function getMac()
+    {
+        $mac = $this->getMacFromApi() ?: $this->getMacFromOutput();
+        if (!$mac) {
+            return null;
+        }
+        return strtolower(preg_replace('/[^a-zA-Z0-9]/', '', $mac));
+    }
+
+    protected function getMacFromApi()
+    {
+        $output = $this->getLatestOutputs('apidescription');
+        if (!$output) {
+            return null;
+        }
+        return $output->dataArray['mac_address'] ?? null;
+    }
+
+    protected function getMacFromOutput()
+    {
+        $intname = 'eth0';
+        $interfaces = $this->getInterfaces();
+        if(isset($interfaces[$intname]['mac']))
+        {
+            return $interfaces[$intname]['mac'];
+        }
+    }
+
+    public function getSummary()
+    {
+        $tmp = [];
+        $tmp['netmanid'] = $this->id;
+        $tmp['netboxid'] = $this->netbox_id;
+        $tmp['name'] = $this->getName();
+        $tmp['model'] = $this->getModel();
+        $tmp['serial'] = $this->getSerial();
+        $tmp['wiredip'] = $this->getWiredIp();
+        $tmp['cellip'] = $this->getWirelessIp();
+        $tmp['version'] = $this->getVersion();
+        $tmp['imei'] = $this->getImei();
+        $tmp['mac'] = $this->getMac();
+        $tmp['iccid'] = $this->getIccid();
+        return $tmp;
+    }
+
     public static function getAllSummarized()
     {
         $opengears = static::all();
         $final = [];
         foreach($opengears as $og)
         {
-            $tmp = [];
-            $tmp['netmanid'] = $og->id;
-            $tmp['netboxid'] = $og->netbox_id;
-            $tmp['name'] = $og->getName();
-            $tmp['model'] = $og->getModel();
-            $tmp['serial'] = $og->getSerial();
-            $tmp['wiredip'] = $og->getWiredIp();
-            $tmp['cellip'] = $og->getWirelessIp();
-            $tmp['version'] = $og->getVersion();
-            $tmp['imei'] = $og->getImei();
-            $tmp['iccid'] = $og->getIccid();
-            $final[] = $tmp;
+            $final[] = $og->getSummary();
         }
         return $final;
     }
