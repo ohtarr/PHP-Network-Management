@@ -44,6 +44,7 @@ use Illuminate\Routing\Controller as BaseController;
  * @OA\Tag(name="Logs", description="Application activity log endpoints")
  * @OA\Tag(name="DepotOrders", description="Depot order management")
  * @OA\Tag(name="Orders", description="Netbox custom order object management")
+ * @OA\Tag(name="Service-Now", description="ServiceNow CMDB/ITSM operations (incidents, locations, users, circuits)")
  */
 class Controller extends BaseController
 {

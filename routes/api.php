@@ -35,7 +35,10 @@ Route::get('/devices/opengear/summary', [App\Models\Device\Opengear\OpengearCont
 Route::apiResource('/devices/opengear', App\Models\Device\Opengear\OpengearController::class);
 Route::apiResource('/devices/ubiquiti', App\Models\Device\Ubiquiti\UbiquitiController::class);
 Route::apiResource('/devices', App\Models\Device\DeviceController::class);
-Route::apiResource('/servicenow/incidents', App\Models\ServiceNow\IncidentController::class);
+Route::apiResource('/servicenow/incidents', App\Http\Controllers\ServiceNowV2\IncidentController::class);
+Route::apiResource('/servicenow/locations', App\Http\Controllers\ServiceNowV2\LocationController::class);
+Route::apiResource('/servicenow/users', App\Http\Controllers\ServiceNowV2\UserController::class);
+Route::apiResource('/servicenow/circuits', App\Http\Controllers\ServiceNowV2\CircuitController::class);
 Route::apiResource('/netbox/devices', App\Http\Controllers\Netbox\DCIM\DevicesController::class)->names('netbox.devices');
 Route::apiResource('/netbox/sites', App\Http\Controllers\Netbox\DCIM\SitesController::class)->names('netbox.sites');
 Route::apiResource('/netbox/prefixes', App\Http\Controllers\Netbox\DCIM\PrefixesController::class)->names('netbox.prefixes');

@@ -7,6 +7,7 @@ use App\Models\Dhcp\SubnetV4;
 use App\Models\Dhcp\ReservationV4;
 use App\Models\Dhcp\LeaseV4;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Gizmo\Dhcp as GizmoDhcp;
 use App\Models\Netbox\DCIM\Sites;
@@ -16,6 +17,11 @@ class DhcpController extends Controller
     public function __construct()
     {
         $this->middleware('auth:api');
+    }
+
+    private function logAccess(string $message): void
+    {
+        Log::info($message, ['user' => auth()->user()?->userPrincipalName]);
     }
 
     /**
@@ -55,6 +61,8 @@ class DhcpController extends Controller
      */
     public function index(Request $request)
     {
+        $this->logAccess("Accessed subnetv4 index (id={$request->query('id')}, subnet={$request->query('subnet')}, mask={$request->query('mask')})");
+
         if ($request->filled('id')) {
             $subnet = SubnetV4::find((int) $request->query('id'));
             return response()->json($subnet ? collect([$subnet]) : collect());
@@ -91,6 +99,8 @@ class DhcpController extends Controller
      */
     public function store(Request $request)
     {
+        $this->logAccess("Accessed subnetv4 store");
+
         $subnet = SubnetV4::create($request->all());
 
         return response()->json($subnet, 201);
@@ -121,6 +131,8 @@ class DhcpController extends Controller
      */
     public function destroyById($id)
     {
+        $this->logAccess("Accessed subnetv4 destroyById (id={$id})");
+
         $subnet = SubnetV4::find($id);
 
         if (!$subnet || !isset($subnet->id)) {
@@ -164,6 +176,8 @@ class DhcpController extends Controller
      */
     public function destroyBySubnet($subnet, $length)
     {
+        $this->logAccess("Accessed subnetv4 destroyBySubnet (subnet={$subnet}, length={$length})");
+
         $found = SubnetV4::findBySubnet($subnet, $length);
 
         if (!$found || !isset($found->id)) {
@@ -198,6 +212,8 @@ class DhcpController extends Controller
      */
     public function sitesummary($sitecode)
     {
+        $this->logAccess("Accessed sitesummary (sitecode={$sitecode})");
+
         $site = Sites::where('name__ie', $sitecode)->first();
 
         if (!$site || !isset($site->id)) {
@@ -244,6 +260,8 @@ class DhcpController extends Controller
      */
     public function reservationIndex(Request $request)
     {
+        $this->logAccess("Accessed reservationv4 index (ip={$request->query('ip')}, mac={$request->query('mac')}, subnet={$request->query('subnet')})");
+
         if ($request->filled('ip')) {
             $reservation = ReservationV4::findByIp($request->query('ip'));
             return response()->json($reservation ? collect([$reservation]) : collect());
@@ -285,6 +303,8 @@ class DhcpController extends Controller
      */
     public function reservationStore(Request $request)
     {
+        $this->logAccess("Accessed reservationv4 store (ipaddress={$request->input('ipaddress')})");
+
         $validated = $request->validate([
             'ipaddress' => 'required|string',
             'hwaddress' => 'required|string',
@@ -320,6 +340,8 @@ class DhcpController extends Controller
      */
     public function reservationUpdate(Request $request)
     {
+        $this->logAccess("Accessed reservationv4 update (ipaddress={$request->input('ipaddress')})");
+
         $validated = $request->validate([
             'ipaddress' => 'required|string',
             'hwaddress' => 'required|string',
@@ -356,6 +378,8 @@ class DhcpController extends Controller
      */
     public function reservationDestroyByIp($ip)
     {
+        $this->logAccess("Accessed reservationv4 destroyByIp (ip={$ip})");
+
         $reservation = ReservationV4::findByIp($ip);
 
         if (!$reservation) {
@@ -392,6 +416,8 @@ class DhcpController extends Controller
      */
     public function reservationDestroyByMac($mac)
     {
+        $this->logAccess("Accessed reservationv4 destroyByMac (mac={$mac})");
+
         $reservation = ReservationV4::findByMac($mac);
 
         if (!$reservation) {
@@ -440,6 +466,8 @@ class DhcpController extends Controller
      */
     public function leaseIndex(Request $request)
     {
+        $this->logAccess("Accessed leasev4 index (ip={$request->query('ip')}, mac={$request->query('mac')}, subnet={$request->query('subnet')})");
+
         if ($request->filled('ip')) {
             $lease = LeaseV4::findByIp($request->query('ip'));
             return response()->json($lease ? collect([$lease]) : collect());
@@ -481,6 +509,8 @@ class DhcpController extends Controller
      */
     public function leaseStore(Request $request)
     {
+        $this->logAccess("Accessed leasev4 store (ipaddress={$request->input('ipaddress')})");
+
         $validated = $request->validate([
             'ipaddress' => 'required|string',
             'hwaddress' => 'required|string',
@@ -516,6 +546,8 @@ class DhcpController extends Controller
      */
     public function leaseUpdate(Request $request)
     {
+        $this->logAccess("Accessed leasev4 update (ipaddress={$request->input('ipaddress')})");
+
         $validated = $request->validate([
             'ipaddress' => 'required|string',
             'hwaddress' => 'required|string',
@@ -552,6 +584,8 @@ class DhcpController extends Controller
      */
     public function leaseDestroyByIp($ip)
     {
+        $this->logAccess("Accessed leasev4 destroyByIp (ip={$ip})");
+
         $lease = LeaseV4::findByIp($ip);
 
         if (!$lease) {
@@ -599,6 +633,8 @@ class DhcpController extends Controller
      */
     public function gizmoIndex(Request $request)
     {
+        $this->logAccess("Accessed gizmo index (id={$request->query('id')}, sitecode={$request->query('sitecode')}, ip={$request->query('ip')})");
+
         if ($request->filled('id')) {
             $scope = GizmoDhcp::find($request->query('id'));
             return response()->json($scope ? collect([$scope]) : collect());
@@ -639,6 +675,8 @@ class DhcpController extends Controller
      */
     public function gizmoReservations($id)
     {
+        $this->logAccess("Accessed gizmo reservations (id={$id})");
+
         $scope = GizmoDhcp::find($id);
 
         if (!$scope) {
@@ -671,6 +709,8 @@ class DhcpController extends Controller
      */
     public function gizmoLeases($id)
     {
+        $this->logAccess("Accessed gizmo leases (id={$id})");
+
         $scope = GizmoDhcp::find($id);
 
         if (!$scope) {
@@ -709,6 +749,8 @@ class DhcpController extends Controller
      */
     public function gizmoOverlap($network, $bitmask)
     {
+        $this->logAccess("Accessed gizmo overlap (network={$network}, bitmask={$bitmask})");
+
         return response()->json(GizmoDhcp::findOverlap($network, $bitmask));
     }
 }
