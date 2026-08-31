@@ -3,6 +3,7 @@
 namespace App\Models\Dhcp;
 
 use App\Models\Dhcp\QueryBuilder;
+use Illuminate\Support\Collection;
 
 class BaseModel
 {
@@ -35,6 +36,6 @@ class BaseModel
                 $objects[] = static::hydrateOne($item);
             }
         }
-        return collect($objects);
+        return new Collection($objects);
     }
 }

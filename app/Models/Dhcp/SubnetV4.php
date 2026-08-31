@@ -3,6 +3,7 @@
 namespace App\Models\Dhcp;
 
 use App\Models\Dhcp\BaseModel;
+use App\Models\Dhcp\SubnetV4Collection as Collection;
 use GuzzleHttp\Client as GuzzleHttpClient;
 use App\Models\Azure\Azure;
 use IPv4\Subnet as SubnetCalculator;
@@ -27,6 +28,16 @@ class SubnetV4 extends BaseModel
     {
         return SubnetCalculator::fromCidr($this->subnet)->mask()->asQuads();
     }
+
+    /**
+     * Override hydrateMany to return a SubnetV4Collection instead of a plain Collection.
+     * The Collection alias in this file resolves to SubnetV4Collection.
+     */
+    public static function hydrateMany($response): Collection
+    {
+        return new Collection(parent::hydrateMany($response)->all());
+    }
+
 
     public static function all()
     {
@@ -194,7 +205,7 @@ class SubnetV4 extends BaseModel
                 $overlaps[] = $scope;
             }
         }
-        return collect($overlaps);
+        return new Collection($overlaps);
     }
 
     public function getReservations()

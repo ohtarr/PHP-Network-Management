@@ -12,7 +12,8 @@ use App\Models\Netbox\DCIM\ModuleBays;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Mist\Device as MistDevice;
-use App\Models\Gizmo\Dhcp;
+use App\Models\Dhcp\SubnetV4;
+use App\Models\Dhcp\ReservationV4;
 use App\Models\Device\Device;
 
 #[\AllowDynamicProperties]
@@ -199,7 +200,7 @@ class Devices extends BaseModel
         }
     }
 
-    public function getNetboxDevice()
+    public function getNetmanDevice()
     {
         return Device::where('netbox_type', static::class)->where('netbox_id', $this->id)->first();
     }
@@ -305,23 +306,15 @@ class Devices extends BaseModel
         {
             return $this->custom_fields->dhcp_id;
         }
-
-        if(isset($this->device_type->manufacturer->name) && $this->device_type->manufacturer->name == "Juniper")
+        $nmdevice = $this->getNetmanDevice();
+        if(isset($nmdevice->id))
         {
-            $mistdevice = $this->getMistDeviceBySerial();
-            if(isset($mistdevice->mac) && $mistdevice->mac)
+            $mac = $nmdevice->getMac();
+            if($mac)
             {
-                return $mistdevice->generateDhcpId($irb);
+                return $mac;
             }
         }
-        if(!$this->name)
-        {
-            return null;
-        }
-        //convert device name to hex and return it.
-        $hex = bin2hex($this->name);
-        $formattedHex = chunk_split($hex, 2, '-');
-        return rtrim($formattedHex, '-');
     }
 
     public function getDhcpReservationByIp()
@@ -329,7 +322,7 @@ class Devices extends BaseModel
         $ip = $this->getIpAddress();
         if(isset($ip) && $ip)
         {
-            return Dhcp::getReservationByIp($ip);
+            return ReservationV4::findByIp($ip);
         }
     }
 
@@ -338,7 +331,7 @@ class Devices extends BaseModel
         $dhcpid = $this->generateDhcpId();
         if(isset($dhcpid) && $dhcpid)
         {
-            return Dhcp::getReservationsByMac($dhcpid);
+            return ReservationV4::findByMac($dhcpid);
         }
     }
 
@@ -359,29 +352,26 @@ class Devices extends BaseModel
         {
             return null;
         }
-        $scope = Dhcp::findScopeByIp($ip);
-        if(!(isset($scope) && $scope))
-        {
-            return null;
-        }
         return [
-            'scopeId'   =>  $scope->scopeID,
-            'clientId'  =>  $dhcpid,
-            'ipAddress' =>  $ip,
-            'description'   =>  "NETMAN-" . $this->name,
+            'ipaddress'   =>  $ip,
+            'hwaddress'   =>  $dhcpid,
+            'description' =>  "NETMAN-" . $this->name,
         ];
-        //return $scope->addReservation($dhcpid, $ip, 'NETMAN-' . $this->name);
     }
 
     public function createDhcpReservation()
     {
         $params = $this->generateDhcpReservation();
-        $scope = Dhcp::find($params['scopeId']);
+        if(!(isset($params) && $params))
+        {
+            return null;
+        }
+        $scope = SubnetV4::findByIp($params['ipaddress']);
         if(!(isset($scope) && $scope))
         {
             return null;
         }
-        return $scope->addReservation($params['clientId'], $params['ipAddress'], $params['description']);
+        return ReservationV4::create($params['ipaddress'], $params['hwaddress'], $params['description']);
     }
     
 }

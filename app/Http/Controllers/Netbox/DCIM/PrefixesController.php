@@ -201,6 +201,38 @@ class PrefixesController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/netbox/prefixes/{id}/dhcp/generate",
+     *     summary="Generate Kea DHCP scope parameters for a Netbox IPAM prefix",
+     *     tags={"Netbox Prefixes"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="The prefix ID",
+     *         @OA\Schema(type="integer")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Generated Kea DHCP scope parameters",
+     *         @OA\JsonContent(type="object")
+     *     ),
+     *     @OA\Response(response=404, description="Prefix not found")
+     * )
+     */
+    public function generateDhcpParams($id)
+    {
+        $prefix = Prefixes::find($id);
+
+        if (!$prefix || !isset($prefix->id)) {
+            return response()->json(['message' => 'Prefix not found'], 404);
+        }
+
+        return response()->json($prefix->generateKeaDhcpScopeParams());
+    }
+
+    /**
      * @OA\Post(
      *     path="/netbox/prefixes",
      *     summary="Create a new Netbox IPAM prefix",

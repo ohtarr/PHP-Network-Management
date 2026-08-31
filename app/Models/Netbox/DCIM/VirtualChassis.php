@@ -5,7 +5,7 @@ namespace App\Models\Netbox\DCIM;
 use App\Models\Netbox\BaseModel;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\IPAM\Prefixes;
-use App\Models\Gizmo\Dhcp;
+use App\Models\Dhcp\SubnetV4;
 use App\Models\Mist\Device;
 
 #[\AllowDynamicProperties]
@@ -88,16 +88,10 @@ class VirtualChassis extends BaseModel
         {
             return null;
         }
-        $scope = Dhcp::findScopeByIp($ip);
-        if(!(isset($scope) && $scope))
-        {
-            return null;
-        }
         return [
-            'scopeId'   =>  $scope->scopeID,
-            'clientId'  =>  $dhcpid,
-            'ipAddress' =>  $ip,
-            'description'   =>  "NETMAN-" . $this->name,
+            'ipaddress'   =>  $ip,
+            'hwaddress'   =>  $dhcpid,
+            'description' =>  "NETMAN-" . $this->name,
         ];
     }
 

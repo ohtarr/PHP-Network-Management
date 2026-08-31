@@ -41,6 +41,7 @@ Route::apiResource('/servicenow/users', App\Http\Controllers\ServiceNowV2\UserCo
 Route::apiResource('/servicenow/circuits', App\Http\Controllers\ServiceNowV2\CircuitController::class);
 Route::apiResource('/netbox/devices', App\Http\Controllers\Netbox\DCIM\DevicesController::class)->names('netbox.devices');
 Route::apiResource('/netbox/sites', App\Http\Controllers\Netbox\DCIM\SitesController::class)->names('netbox.sites');
+Route::get('/netbox/prefixes/{id}/dhcp/generate', [App\Http\Controllers\Netbox\DCIM\PrefixesController::class, 'generateDhcpParams']);
 Route::apiResource('/netbox/prefixes', App\Http\Controllers\Netbox\DCIM\PrefixesController::class)->names('netbox.prefixes');
 
 //Route::get('/mist/device', [App\Models\Mist\MistController::class, 'getDeviceInventory']);

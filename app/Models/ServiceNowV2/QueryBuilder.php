@@ -3,6 +3,7 @@
 namespace App\Models\ServiceNowV2;
 
 use \GuzzleHttp\Client as GuzzleClient;
+use \GuzzleHttp\Exception\ClientException;
 
 class QueryBuilder
 {
@@ -89,7 +90,15 @@ class QueryBuilder
     {
         $client = static::getGuzzleClient();
         $params = ['query' => $this->format_query()];
-        $response = $client->request('GET', $this->buildUrl(), $params);
+        try {
+            $response = $client->request('GET', $this->buildUrl(), $params);
+        } catch (ClientException $e) {
+            //ServiceNow returns 404 (not 200 with an empty result) for a list query that matches zero rows.
+            if ($e->getResponse()->getStatusCode() === 404) {
+                return collect();
+            }
+            throw $e;
+        }
         $body = json_decode($response->getBody()->getContents(), true);
         return $this->hydrateMany($body['result']);
     }
@@ -102,7 +111,14 @@ class QueryBuilder
     public function find($id)
     {
         $client = static::getGuzzleClient();
-        $response = $client->request('GET', $this->buildUrl() . '/' . $id);
+        try {
+            $response = $client->request('GET', $this->buildUrl() . '/' . $id);
+        } catch (ClientException $e) {
+            if ($e->getResponse()->getStatusCode() === 404) {
+                return null;
+            }
+            throw $e;
+        }
         $body = json_decode($response->getBody()->getContents(), true);
         if (empty($body['result'])) {
             return null;

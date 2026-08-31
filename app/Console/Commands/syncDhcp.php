@@ -6,8 +6,8 @@ use Illuminate\Console\Command;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\Netbox\VIRTUALIZATION\VirtualMachines;
-use App\Models\Gizmo\Dhcp;
-use App\Models\Gizmo\DNS\Cname;
+use App\Models\Dhcp\SubnetV4;
+use App\Models\Dhcp\ReservationV4;
 
 class syncDhcp extends Command
 {
@@ -23,7 +23,7 @@ class syncDhcp extends Command
      *
      * @var string
      */
-    protected $description = 'Sync DHCP reservations from netbox to DNS';
+    protected $description = 'Sync DHCP reservations from netbox to KEA';
 
     /**
      * Execute the console command.
@@ -58,10 +58,10 @@ class syncDhcp extends Command
         if(!$this->netboxdevices)
         {
             print "Fetching Netbox Devices..." . PHP_EOL;
-            $devices = Devices::where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
-            $vcs = VirtualChassis::where('limit','1000')->get();
+            $devices = Devices::where('exclude','config_context')->where('fields','id,name,primary_ip,virtual_chassis,vc_position,vc_priority,custom_fields')->where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
+            $vcs = VirtualChassis::where('fields','id,name,master,member_count,members')->where('limit','9999')->get();
             $merged = $devices->merge($vcs);
-            print count($merged) . PHP_EOL;
+            print "Netbox Devices: " . count($merged) . PHP_EOL;
             $this->netboxdevices = $merged;
         }
         return $this->netboxdevices;
@@ -93,7 +93,7 @@ class syncDhcp extends Command
                     $reservations[] = $res;
                 }
             }
-            print count($reservations) . PHP_EOL;
+            print "Generated Reservations : " . count($reservations) . PHP_EOL;
             $this->generated = collect($reservations);
         }
         return $this->generated;
@@ -103,7 +103,7 @@ class syncDhcp extends Command
     {
         if(!$this->scopes)
         {
-            $this->scopes = Dhcp::all();
+            $this->scopes = SubnetV4::all();
         }
         return $this->scopes;
     }
@@ -117,12 +117,12 @@ class syncDhcp extends Command
     {
         if(!$this->reservations)
         {
-            print "Fetching ALL DHCP Reservations from Gizmo..." . PHP_EOL;
+            print "Fetching ALL DHCP Reservations from KEA..." . PHP_EOL;
             $scopes = $this->getDhcpScopes();
             $allres = [];
             foreach($scopes as $scope)
             {
-                print "PROCESSING SCOPE {$scope->scopeID}" . PHP_EOL;
+                print "PROCESSING SCOPE {$scope->subnet}" . PHP_EOL;
                 $reservations = $scope->getReservations();
                 foreach($reservations as $res)
                 {
@@ -147,11 +147,11 @@ class syncDhcp extends Command
     {
         if(!$this->nmreservations)
         {
-            print "Fetching NETMAN-managed DHCP Reservations from Gizmo..." . PHP_EOL;
+            print "Fetching NETMAN-managed DHCP Reservations from Kea..." . PHP_EOL;
             $nmres = [];
             foreach($this->getAllReservations() as $res)
             {
-                if(str_starts_with($res['description'], "NETMAN-"))
+                if(str_starts_with($res->usercontext->description, "NETMAN-"))
                 {
                     $nmres[] = $res;
                 }
@@ -159,6 +159,12 @@ class syncDhcp extends Command
             $this->nmreservations = collect($nmres);
         }
         return $this->nmreservations;
+    }
+
+    public function formatMacAddress($mac)
+    {
+        $hex = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $mac));
+        return implode(':', str_split($hex, 2));
     }
 
     public function reservationsToAdd()
@@ -169,7 +175,7 @@ class syncDhcp extends Command
             $match = null;
             foreach($this->getAllNetmanReservations() as $nmres)
             {
-                if($nmres['clientId'] == $gres['clientId'])
+                if($nmres->hwAddress == $this->formatMacAddress($gres['hwaddress']))
                 {
                     $match = $nmres;
                     break;
@@ -177,7 +183,10 @@ class syncDhcp extends Command
             }
             if(!$match)
             {
-                $add[] = $gres;
+                if($this->getDhcpScopes()->findByIp($gres['ipaddress']))
+                {
+                    $add[] = $gres;
+                }
             }
         }
         return collect($add);
@@ -188,21 +197,14 @@ class syncDhcp extends Command
         print "ADDING reservations..." . PHP_EOL;
         foreach($this->reservationsToAdd() as $res)
         {
-            print "Processing ADD Reservation {$res['clientId']} - {$res['ipAddress']} - {$res['description']}" . PHP_EOL;
-            $scope = null;
-            $scope = $this->findDhcpScopeCached($res['scopeId']);
-            if(!$scope)
-            {
-                print "No Scope found! skipping!" . PHP_EOL;
-                continue;
-            }
+            print "Processing ADD Reservation {$res['hwaddress']} - {$res['ipaddress']} - {$res['description']}" . PHP_EOL;
             try{
-                $res = $scope->addReservation($res['clientId'], $res['ipAddress'], $res['description']);
+                $result = ReservationV4::create($res['ipaddress'], $res['hwaddress'], $res['description']);
             } catch (\Exception $e) {
                 print $e->getMessage() . PHP_EOL;
                 continue;
             }
-            print_r($res);
+            print_r($result);
         }
     }
 
@@ -214,9 +216,9 @@ class syncDhcp extends Command
             $match = null;
             foreach($this->generateReservations() as $gres)
             {
-                if($nmres['clientId'] == $gres['clientId'])
+                if($nmres->hwAddress == $this->formatMacAddress($gres['hwaddress']))
                 {
-                    if($nmres['ipAddress'] == $gres['ipAddress'] && $nmres['description'] == $gres['description'])
+                    if($nmres->ipAddress == $gres['ipaddress'] && $nmres->usercontext->description == $gres['description'])
                     {
                         $match = $gres;
                     }
@@ -238,7 +240,7 @@ class syncDhcp extends Command
         {
             print "Processing DELETE Reservation {$res['clientId']} - {$res['ipAddress']} - {$res['description']}" . PHP_EOL;
             try{
-                print_r(Dhcp::deleteReservation($res['ipAddress']));
+                print_r(ReservationV4::deleteByIp($res['ipAddress']));
             } catch (\Exception $e) {
                 print "FAILED to delete reservation!" . PHP_EOL;
                 continue;
