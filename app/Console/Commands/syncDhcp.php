@@ -238,9 +238,9 @@ class syncDhcp extends Command
         print "DELETING reservations..." . PHP_EOL;
         foreach($this->reservationsToDelete() as $res)
         {
-            print "Processing DELETE Reservation {$res['clientId']} - {$res['ipAddress']} - {$res['description']}" . PHP_EOL;
+            print "Processing DELETE Reservation {$res->hwAddress} - {$res->ipAddress} - {$res->usercontext->description}" . PHP_EOL;
             try{
-                print_r(ReservationV4::deleteByIp($res['ipAddress']));
+                print_r(ReservationV4::deleteByIp($res->ipAddress));
             } catch (\Exception $e) {
                 print "FAILED to delete reservation!" . PHP_EOL;
                 continue;
