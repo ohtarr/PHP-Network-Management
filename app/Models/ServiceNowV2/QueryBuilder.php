@@ -10,6 +10,7 @@ class QueryBuilder
     protected $search = [];
     protected $limit;
     protected $offset;
+    protected $fields;
     public $model;
 
     public function buildUrl()
@@ -71,6 +72,12 @@ class QueryBuilder
         return $this;
     }
 
+    public function fields($fields)
+    {
+        $this->fields = is_array($fields) ? implode(',', $fields) : $fields;
+        return $this;
+    }
+
     public function format_query()
     {
         $query = [];
@@ -82,6 +89,9 @@ class QueryBuilder
         }
         if (isset($this->offset)) {
             $query['sysparm_offset'] = $this->offset;
+        }
+        if (isset($this->fields)) {
+            $query['sysparm_fields'] = $this->fields;
         }
         return $query;
     }

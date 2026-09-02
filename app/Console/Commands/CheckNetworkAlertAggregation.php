@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\ServiceNow\Incident;
+use App\Models\ServiceNowV2\Incident;
 use Illuminate\Support\Facades\Log;
 
 class CheckNetworkAlertAggregation extends Command

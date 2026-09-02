@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Models\Netbox\DCIM\Sites;
-use App\Models\ServiceNow\Location;
+use App\Models\ServiceNowV2\Location;
 
 class AuditNetboxSites extends Command
 {

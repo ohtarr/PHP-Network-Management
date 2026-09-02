@@ -15,7 +15,7 @@ use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Netbox\DCIM\DeviceTypes;
 use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\Netbox\DCIM\Manufacturers;
-use App\Models\ServiceNow\Location;
+use App\Models\ServiceNowV2\Location;
 use App\Models\Mist\Site;
 use App\Models\Mist\Device;
 use App\Models\Mist\SiteGroup;
@@ -70,7 +70,8 @@ class ProvisioningController extends Controller
     {
         $totalstatus = 1;
         $start = microtime(true);
-        $locs = Location::where('companyISNOTEMPTY')->where('u_network_demob_dateISEMPTY')->get();
+        //$locs = Location::where('companyISNOTEMPTY')->where('u_network_demob_dateISEMPTY')->get();
+        $locs = Location::where('u_network_demob_dateISEMPTY')->fields('name')->get();
         $end = microtime(true);
         if(!$locs)
         {
@@ -83,9 +84,9 @@ class ProvisioningController extends Controller
         }
         foreach($locs as $loc)
         {
-            if($loc['name'])
+            if($loc->name)
             {
-                $sitecodes[] = $loc['name'];
+                $sitecodes[] = $loc->name;
             }
         }
         sort($sitecodes);
@@ -112,7 +113,8 @@ class ProvisioningController extends Controller
     public function getSnowLocation($sitecode)
     {
         $start = microtime(true);
-        $loc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->get();
+        //$loc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->get();
+        $loc = Location::where('name', $sitecode)->first();
         $end = microtime(true);
         if($loc)
         {
@@ -169,7 +171,8 @@ class ProvisioningController extends Controller
         $totalstatus = 1;
         //Attempt to get existing snow location.
         $start = microtime(true);
-        $snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
+        //$snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
+        $snowloc = Location::where('name', $sitecode)->first();
         $end = microtime(true);
         if(!$snowloc)
         {
@@ -179,11 +182,11 @@ class ProvisioningController extends Controller
             $return['log'] = $this->logs;
             return response()->json($return);
         } else {
-            $this->addLog(1, "Found SNOW location ID {$snowloc->sys_id} in" . round($end - $start,1) . "seconds.");
+            $this->addLog(1, "Found SNOW location ID {$snowloc->sys_id} in " . round($end - $start,1) . "seconds.");
         }
 
         //Attempt to get existing netbox site.
-        $netboxsite = Sites::where('name__ie', $sitecode)->first();
+        $netboxsite = Sites::where('name__ie', $sitecode)->where('brief',1)->first();
         if(isset($netboxsite->id))
         {
             $this->addLog(1, "Netbox SITE ID {$netboxsite->id} already exists.");
@@ -378,7 +381,7 @@ class ProvisioningController extends Controller
      */
     public function getKeaDhcpScopes($sitecode)
     {
-        $site = Sites::where('name__ic', $sitecode)->first();
+        $site = Sites::where('name__ic', $sitecode)->where('brief',1)->first();
         if(!isset($site->id))
         {
             return null;
@@ -400,7 +403,7 @@ class ProvisioningController extends Controller
      */
     public function getGizmoDhcpScopes($sitecode)
     {
-        $site = Sites::where('name__ic', $sitecode)->first();
+        $site = Sites::where('name__ic', $sitecode)->where('brief',1)->first();
         if(!isset($site->id))
         {
             return null;
@@ -430,7 +433,7 @@ class ProvisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
 
-        $site = Sites::where('name__ic', $sitecode)->first();
+        $site = Sites::where('name__ic', $sitecode)->where('brief',1)->first();
         if(!isset($site->id))
         {
             $this->addLog(0, "Unable to find site with name {$sitecode}.");
@@ -533,7 +536,7 @@ class ProvisioningController extends Controller
             abort(401, 'You are not authorized');
         }
 
-        $site = Sites::where('name__ic', $sitecode)->first();
+        $site = Sites::where('name__ic', $sitecode)->where('brief',1)->first();
         if (!isset($site->id))
         {
             $this->addLog(0, "Unable to find site with name {$sitecode}.");
@@ -637,7 +640,7 @@ class ProvisioningController extends Controller
         $sitecode = strtoupper($sitecode);
         $submitted = $request->collect();
 
-        $netboxsite = Sites::where('name__ie', $sitecode)->first();
+        $netboxsite = Sites::where('name__ie', $sitecode)->where('brief',1)->first();
         if(isset($netboxsite->id))
         {
             $this->addLog(1, "Netbox SITE ID {$netboxsite->id} found.");
@@ -660,7 +663,8 @@ class ProvisioningController extends Controller
             return response()->json($return);
         }
         //Stupid code to check for duplicate SITES with same name in SNOW, cuz that exists for some reason.
-        $snowlocs = Location::where('companyISNOTEMPTY')->where('name',$sitecode)->get();
+        //$snowlocs = Location::where('companyISNOTEMPTY')->where('name',$sitecode)->get();
+        $snowlocs = Location::where('name',$sitecode)->fields('sys_id,name')->get();
         if($snowlocs->count() > 1)
         {
             $this->addLog(0, "Multiple SNOW Locations for site {$sitecode}, Please fix.");
@@ -793,7 +797,7 @@ class ProvisioningController extends Controller
 
         $totalstatus = 1;
         $newdevices = [];
-        $site = Sites::where('name__ic',$sitecode)->first();
+        $site = Sites::where('name__ic',$sitecode)->where('brief',1)->first();
         if(!isset($site->id))
         {
             $this->addLog(0, "SITE not found.");
@@ -1055,7 +1059,7 @@ class ProvisioningController extends Controller
         }
 
         $totalstatus = 1;
-        $netboxsite = Sites::where('name__ic',$sitecode)->first();
+        $netboxsite = Sites::where('name__ic',$sitecode)->where('brief',1)->first();
         if(!isset($netboxsite->id))
         {
             $this->addLog(0, "SITE {$sitecode} not found.");
@@ -1217,7 +1221,7 @@ class ProvisioningController extends Controller
      */
     public function getAvailableProvIps($sitecode, $qty = 50)
     {
-        $netboxsite = Sites::where('name__ic',$sitecode)->first();
+        $netboxsite = Sites::where('name__ic',$sitecode)->where('brief',1)->first();
         if(!isset($netboxsite->id))
         {
             $this->addLog(0, "SITE {$sitecode} not found.");
@@ -1260,7 +1264,7 @@ class ProvisioningController extends Controller
      */
     public function generateSiteDhcpParams($sitecode)
     {
-        $site = Sites::where('name__ic',$sitecode)->first();
+        $site = Sites::where('name__ic',$sitecode)->where('brief',1)->first();
         if(isset($site->id))
         {
             $this->addLog(1, "Found site with ID: {$site->id}");

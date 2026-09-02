@@ -44,6 +44,20 @@ class CircuitController extends ControllerTemplate
      *         @OA\Schema(type="string")
      *     ),
      *     @OA\Parameter(
+     *         name="sysparm_fields",
+     *         in="query",
+     *         required=false,
+     *         description="Comma-separated list of fields to return (sysparm_fields), to limit the response to specific columns.",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="fields",
+     *         in="query",
+     *         required=false,
+     *         description="Alias for sysparm_fields. Comma-separated list of fields to return. Ignored if sysparm_fields is also provided.",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
      *         name="limit",
      *         in="query",
      *         required=false,

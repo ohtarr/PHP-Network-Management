@@ -11,7 +11,7 @@ use App\Models\Netbox\IPAM\AsnRanges;
 use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\DCIM\VirtualChassis;
-use App\Models\ServiceNow\Location;
+use App\Models\ServiceNowV2\Location;
 use App\Models\Mist\Site;
 use App\Models\Mist\Device;
 use App\Models\Gizmo\Dhcp;
@@ -71,7 +71,7 @@ class DeprovisioningController extends Controller
     {
         $netboxsites = Sites::all();
         $totalstatus = 1;
-        $locs = Location::where('companyISNOTEMPTY')->where('u_network_mob_dateISNOTEMPTY')->where('u_network_demob_date', '>=', Carbon::now()->subDays($days)->toDateString())->get();
+        $locs = Location::where('u_network_mob_dateISNOTEMPTY')->where('u_network_demob_date', '>=', Carbon::now()->subDays($days)->toDateString())->fields('name')->get();
         if(!$locs)
         {
             $this->addLog(0, "Unable to find valid SNOW location.");
@@ -84,12 +84,12 @@ class DeprovisioningController extends Controller
         foreach($locs as $loc)
         {
             unset($netboxsite);
-            if($loc['name'])
+            if($loc->name)
             {
-                $netboxsite = $netboxsites->where('name', $loc['name'])->first();
+                $netboxsite = $netboxsites->where('name', $loc->name)->first();
                 if(isset($netboxsite->name))
                 {
-                    $sitecodes[] = $loc['name'];
+                    $sitecodes[] = $loc->name;
                 }
             }
         }

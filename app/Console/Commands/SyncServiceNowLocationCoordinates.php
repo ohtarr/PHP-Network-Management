@@ -3,7 +3,7 @@
 namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
-use App\Models\ServiceNow\Location;
+use App\Models\ServiceNowV2\Location;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 
@@ -127,7 +127,7 @@ class SyncServiceNowLocationCoordinates extends Command
     /**
      * Build a geocodable address string from a ServiceNow location record.
      *
-     * @param  \App\Models\ServiceNow\Location  $location
+     * @param  \App\Models\ServiceNowV2\Location  $location
      * @return string|null
      */
     protected function buildAddress(Location $location): ?string

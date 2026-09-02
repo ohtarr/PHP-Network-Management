@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Validation;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\ServiceNow\Location;
+use App\Models\ServiceNowV2\Location;
 use App\Models\Netbox\DCIM\Sites;
 use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\IPAM\Prefixes;
@@ -76,7 +76,7 @@ class ValidationController extends Controller
     {
         //Validate that the snow location exists
         $totalstatus = 1;
-        $snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
+        $snowloc = Location::where('name', $sitecode)->first();
         if(!isset($snowloc->sys_id))
         {
             $this->addLog(0, "Unable to find valid SNOW location.");

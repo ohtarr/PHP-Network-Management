@@ -16,7 +16,7 @@ class ControllerTemplate extends Controller
 
     public function index(Request $request)
     {
-        $params = $request->except(['limit', 'offset', 'sysparm_query']);
+        $params = $request->except(['limit', 'offset', 'sysparm_query', 'sysparm_fields', 'fields']);
 
         $query = null;
         if ($request->has('sysparm_query')) {
@@ -34,6 +34,11 @@ class ControllerTemplate extends Controller
         }
         if ($request->has('offset')) {
             $query->offset((int) $request->query('offset'));
+        }
+        if ($request->has('sysparm_fields')) {
+            $query->fields($request->query('sysparm_fields'));
+        } elseif ($request->has('fields')) {
+            $query->fields($request->query('fields'));
         }
 
         return response()->json($query->get());

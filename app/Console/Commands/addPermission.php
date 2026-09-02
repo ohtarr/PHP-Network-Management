@@ -82,8 +82,11 @@ class addPermission extends Command
             \App\Models\Location\Building\Building::class,
             \App\Models\Location\Room\Room::class,
             \App\Models\ServiceNow\Incident::class,
+            \App\Models\ServiceNowV2\Incident::class,
             \App\Models\Mist\Device::class,
             \App\Models\Mist\Site::class,
+            \App\Models\Dhcp\SubnetV4::class,
+            \App\Models\Dhcp\ReservationV4::class,
             //END-OF-PERMISSION-TYPES
         ];
 

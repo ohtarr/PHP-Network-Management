@@ -9,7 +9,7 @@ use App\Models\Netbox\IPAM\Roles;
 use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\DCIM\Locations;
 use App\Models\Netbox\DCIM\DeviceTypes;
-use App\Models\ServiceNow\Location;
+use App\Models\ServiceNowV2\Location;
 use App\Models\Gizmo\Dhcp;
 use App\Models\Mist\Site;
 use App\Models\Mist\RfTemplate;
@@ -508,7 +508,7 @@ class Sites extends BaseModel
 
     public function getServiceNowLocationByName()
     {
-        $snowloc = Location::where('companyISNOTEMPTY')->where('name', $this->name)->first();
+        $snowloc = Location::where('name', $this->name)->first();
         if($snowloc)
         {
             return $snowloc;

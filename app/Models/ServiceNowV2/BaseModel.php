@@ -60,6 +60,11 @@ class BaseModel
         return static::getQuery()->offset($offset);
     }
 
+    public static function fields($fields)
+    {
+        return static::getQuery()->fields($fields);
+    }
+
     public static function create($params)
     {
         $model = new static;
