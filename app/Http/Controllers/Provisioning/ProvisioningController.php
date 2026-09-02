@@ -186,7 +186,7 @@ class ProvisioningController extends Controller
         }
 
         //Attempt to get existing netbox site.
-        $netboxsite = Sites::where('name__ie', $sitecode)->where('brief',1)->first();
+        $netboxsite = Sites::where('name__ie', $sitecode)->first();
         if(isset($netboxsite->id))
         {
             $this->addLog(1, "Netbox SITE ID {$netboxsite->id} already exists.");
