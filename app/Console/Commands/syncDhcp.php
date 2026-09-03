@@ -230,6 +230,26 @@ class syncDhcp extends Command
                 $delete[] = $nmres;
             }
         }
+
+        $deletedIps = array_map(fn($res) => $res->ipAddress, $delete);
+        foreach($this->generateReservations() as $gres)
+        {
+            $existing = ReservationV4::findByMac($gres['hwaddress']);
+            if(!$existing)
+            {
+                continue;
+            }
+            $description = $existing->usercontext->description ?? '';
+            if($existing->ipAddress != $gres['ipaddress'] || $description != $gres['description'])
+            {
+                if(!in_array($existing->ipAddress, $deletedIps))
+                {
+                    $delete[] = $existing;
+                    $deletedIps[] = $existing->ipAddress;
+                }
+            }
+        }
+
         return collect($delete);
     }
 

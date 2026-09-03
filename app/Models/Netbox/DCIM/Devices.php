@@ -304,7 +304,7 @@ class Devices extends BaseModel
         //If dhcp_id is defined on netbox device, return it
         if(isset($this->custom_fields->dhcp_id))
         {
-            return $this->custom_fields->dhcp_id;
+            return strtolower(preg_replace('/[^a-fA-F0-9]/', '', $this->custom_fields->dhcp_id));
         }
         $nmdevice = $this->getNetmanDevice();
         if(isset($nmdevice->id))

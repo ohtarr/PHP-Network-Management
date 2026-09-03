@@ -65,6 +65,7 @@ Route::get('provisioning/snowlocations', [App\Http\Controllers\Provisioning\Prov
 Route::get('provisioning/snowlocation/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocation']);
 
 Route::get('provisioning/netbox/devicetypes', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getNetboxDeviceTypesSummarized']);
+Route::get('provisioning/netbox/mobtypes', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getMobTypeDropdown']);
 Route::get('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getNetboxSite']);
 Route::post('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxSite']);
 Route::post('provisioning/netboxsite/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxDevices']);

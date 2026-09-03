@@ -15,6 +15,7 @@ use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Netbox\DCIM\DeviceTypes;
 use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\Netbox\DCIM\Manufacturers;
+use App\Models\Netbox\EXTRAS\CustomFieldChoiceSets;
 use App\Models\ServiceNowV2\Location;
 use App\Models\Mist\Site;
 use App\Models\Mist\Device;
@@ -156,6 +157,7 @@ class ProvisioningController extends Controller
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(required={"mob_type"}, @OA\Property(property="mob_type", type="string", description="Must match one of the MOB_TYPE_DROPDOWN custom field choice values"))),
      *     @OA\Response(response=200, description="Provisioning result",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
      *     ),
@@ -169,6 +171,37 @@ class ProvisioningController extends Controller
 			abort(401, 'You are not authorized');
         }
         $totalstatus = 1;
+
+        $mobtype = $request->input('mob_type');
+        if(!isset($mobtype) || $mobtype === '')
+        {
+            $this->addLog(0, "Required parameter mob_type is missing.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            return response()->json($return);
+        }
+
+        $mobtypechoiceset = CustomFieldChoiceSets::where('name', 'MOB_TYPE_DROPDOWN')->first();
+        $mobtypevalue = null;
+        if(isset($mobtypechoiceset->extra_choices))
+        {
+            foreach($mobtypechoiceset->extra_choices as $choice)
+            {
+                if($choice[0] == $mobtype)
+                {
+                    $mobtypevalue = $choice[0];
+                    break;
+                }
+            }
+        }
+        if(!isset($mobtypevalue))
+        {
+            $this->addLog(0, "mob_type {$mobtype} is not a valid MOB_TYPE_DROPDOWN choice.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            return response()->json($return);
+        }
+
         //Attempt to get existing snow location.
         $start = microtime(true);
         //$snowloc = Location::where('companyISNOTEMPTY')->where('name', $sitecode)->first();
@@ -208,6 +241,7 @@ class ProvisioningController extends Controller
                 $return['log'] = $this->logs;
                 return response()->json($return);
             }
+            $params['custom_fields']['MOB_TYPE'] = $mobtypevalue;
             $netboxsite = Sites::create($params);
             if(isset($netboxsite->id))
             {
@@ -1202,6 +1236,31 @@ class ProvisioningController extends Controller
             $return[] = $type->model;
         }
         sort($return);
+        return response()->json($return);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/provisioning/netbox/mobtypes",
+     *     summary="Get the list of mobile type choices from the MOB_TYPE_DROPDOWN custom field choice set",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(response=200, description="List of mobile type choice names", @OA\JsonContent(type="array", @OA\Items(type="string"))),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function getMobTypeDropdown()
+    {
+        $return = [];
+        $choiceset = CustomFieldChoiceSets::where('name', 'MOB_TYPE_DROPDOWN')->first();
+        if(!isset($choiceset->extra_choices))
+        {
+            return response()->json($return);
+        }
+        foreach($choiceset->extra_choices as $choice)
+        {
+            $return[] = $choice[0];
+        }
         return response()->json($return);
     }
 
