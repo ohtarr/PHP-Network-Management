@@ -161,21 +161,36 @@ class syncSnipeit extends Command
             if($asset)
             {
                 // 4a. If device is NOT online, skip it
+                $params = [];
                 print "SnipeIT Asset {$asset->id} found..." . PHP_EOL;
+                if($mistdevice->mac)
+                {
+                    if($asset->custom_fields->mac->value != $mistdevice->mac)
+                    {
+                        print "Asset MAC doesn't match {$asset->custom_fields->mac->value} != {$mistdevice->mac}, updating." . PHP_EOL;
+                        $params['_snipeit_mac_4'] = $this->formatMacAddress($mistdevice->mac);
+                    }
+                }
+                // 4b. Device IS online — update last_online
+                if($mistdevice->connected == true)
+                {
+                    print "Device is online. Updating last_online for asset {$asset->serial}." . PHP_EOL;
+                    $params['_snipeit_last_online_2'] = Carbon::now()->toDateString();
+                }
+                if(!empty($params))
+                {
+                    print "updating asset {$asset->serial}" . PHP_EOL;
+                    try {
+                        $asset->update($params);
+                    } catch (\Exception $e) {
+                        print "ERROR updating asset {$asset->serial}: " . $e->getMessage() . PHP_EOL;
+                    }
+                }
                 if($mistdevice->connected == false)
                 {
                     print "Mist Device is NOT online, skipping!" . PHP_EOL;
                     continue;
                 }
-
-                // 4b. Device IS online — update last_online
-                print "Device is online. Updating last_online for asset {$asset->serial}." . PHP_EOL;
-                try {
-                    $asset->update(['_snipeit_last_online_2' => Carbon::now()->toDateString()]);
-                } catch (\Exception $e) {
-                    print "ERROR updating last_online for asset {$asset->serial}: " . $e->getMessage() . PHP_EOL;
-                }
-
                 // Ensure we have a correct location to work with
                 if(!isset($correctloc->id))
                 {
@@ -261,10 +276,11 @@ class syncSnipeit extends Command
                     // Has a known site — create and check out to correct location
                     print "SnipeIT Model {$model->id} : {$model->name} found. Creating new asset and checking out to {$mistsite->name}..." . PHP_EOL;
                     $params = [
-                        'asset_tag'  => $mistdevice->serial,
-                        'serial'     => $mistdevice->serial,
-                        'model_id'   => $model->id,
-                        'status_id'  => $deployedlabel->id,
+                        'asset_tag'         => $mistdevice->serial,
+                        'serial'            => $mistdevice->serial,
+                        'model_id'          => $model->id,
+                        'status_id'         => $deployedlabel->id,
+                        '_snipeit_mac_4'    => $this->formatMacAddress($mistdevice->mac), 
                     ];
                     try {
                         $asset = Assets::create($params);
@@ -281,10 +297,11 @@ class syncSnipeit extends Command
                     // No known site — create with Unknown status, no checkout
                     print "Mist Device is NOT assigned to a Mist Site. Creating asset with Unknown status..." . PHP_EOL;
                     $params = [
-                        'asset_tag'  => $mistdevice->serial,
-                        'serial'     => $mistdevice->serial,
-                        'model_id'   => $model->id,
-                        'status_id'  => $unknownlabel->id,
+                        'asset_tag'         => $mistdevice->serial,
+                        'serial'            => $mistdevice->serial,
+                        'model_id'          => $model->id,
+                        'status_id'         => $unknownlabel->id,
+                        '_snipeit_mac_4'    => $this->formatMacAddress($mistdevice->mac),
                     ];
                     try {
                         Assets::create($params);
@@ -301,6 +318,12 @@ class syncSnipeit extends Command
         $end = microtime(true);
         $duration = $end - $start;
         print "Completed in {$duration} seconds." . PHP_EOL;
+    }
+
+    public function formatMacAddress($mac)
+    {
+        $hex = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $mac));
+        return implode(':', str_split($hex, 2));
     }
 }
 

@@ -845,6 +845,7 @@ class Sites extends BaseModel
     public function getAllScopes()
     {
         $active = $this->getActivePrefixes();
+        $list = [];
         foreach($active as $prefix)
         {
             $list[$prefix->prefix]['netbox_prefix'] = $prefix;

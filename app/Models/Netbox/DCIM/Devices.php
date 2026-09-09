@@ -15,6 +15,7 @@ use App\Models\Mist\Device as MistDevice;
 use App\Models\Dhcp\SubnetV4;
 use App\Models\Dhcp\ReservationV4;
 use App\Models\Device\Device;
+use App\Models\SnipeIT\Assets;
 
 #[\AllowDynamicProperties]
 class Devices extends BaseModel
@@ -306,10 +307,15 @@ class Devices extends BaseModel
         {
             return strtolower(preg_replace('/[^a-fA-F0-9]/', '', $this->custom_fields->dhcp_id));
         }
+        $asset = $this->getSnipeitAsset();
+        if(isset($asset->custom_fields->mac->value))
+        {
+            return strtolower(preg_replace('/[^a-fA-F0-9]/', '', $asset->custom_fields->mac->value));
+        }
         $nmdevice = $this->getNetmanDevice();
         if(isset($nmdevice->id))
         {
-            $mac = $nmdevice->getMac();
+            $mac = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $nmdevice->getMac()));
             if($mac)
             {
                 return $mac;
@@ -373,5 +379,13 @@ class Devices extends BaseModel
         }
         return ReservationV4::create($params['ipaddress'], $params['hwaddress'], $params['description']);
     }
-    
+
+    public function getSnipeitAsset()
+    {
+        $serial = $this->serial ?? null;
+        if($serial)
+        {
+            return Assets::findByTag($serial);
+        }
+    }
 }

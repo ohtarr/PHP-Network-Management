@@ -733,4 +733,14 @@ class Device extends BaseModel
         return implode("-", str_split($mac, 2));
     }
 
+    public function assignDeviceProfile($deviceprofileid)
+    {
+        $path = "orgs/" . static::getOrgId() . "/deviceprofiles/" . $deviceprofileid . "/assign";
+        $params = [
+            'macs'      =>  [$this->mac]
+        ];
+        $response = static::getQuery()->request('POST', $path, $params);
+        return $this->getSiteDevice();
+    }
+
 }
