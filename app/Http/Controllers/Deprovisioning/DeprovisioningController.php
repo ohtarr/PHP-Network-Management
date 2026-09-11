@@ -69,7 +69,7 @@ class DeprovisioningController extends Controller
      */
     public function getSnowLocations($days = 90)
     {
-        $netboxsites = Sites::all();
+        $netboxsites = Sites::where('brief', 1)->get();
         $totalstatus = 1;
         $locs = Location::where('u_network_mob_dateISNOTEMPTY')->where('u_network_demob_date', '>=', Carbon::now()->subDays($days)->toDateString())->fields('name')->get();
         if(!$locs)

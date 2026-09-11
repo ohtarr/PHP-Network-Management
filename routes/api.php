@@ -56,16 +56,20 @@ Route::apiResource('/netbox/prefixes', App\Http\Controllers\Netbox\DCIM\Prefixes
 Route::get('/mist/site', [App\Models\Mist\MistController::class, 'Sites']);
 Route::get('/mist/site/summary', [App\Models\Mist\MistController::class, 'SitesSummary']);
 Route::get('/mist/site/{siteid}/devicesummary', [App\Models\Mist\MistController::class, 'SiteDeviceSummary']);
+Route::get('/mist/site/{siteid}/devices', [App\Models\Mist\MistController::class, 'SiteDevices']);
 Route::get('/mist/site/{siteid}/device/{deviceid}/details', [App\Models\Mist\MistController::class, 'SiteDeviceSummaryDetails']);
 Route::post('/mist/claim/{sitecode?}', [App\Models\Mist\MistController::class, 'claimDevices']);
 Route::get('/mist/site/{siteid}/wirelessclientstats', [App\Models\Mist\MistController::class, 'getWirelessClientStats']);
 Route::get('/mist/site/{siteid}/wiredclientstats', [App\Models\Mist\MistController::class, 'getWiredClientStats']);
+Route::get('/mist/device/serial/{serial}', [App\Models\Mist\MistController::class, 'DeviceBySerial']);
+Route::get('/mist/device/mac/{mac}', [App\Models\Mist\MistController::class, 'DeviceByMac']);
+Route::get('/mist/device/{id}', [App\Models\Mist\MistController::class, 'DeviceById']);
 
 Route::get('provisioning/snowlocations', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocations']);
 Route::get('provisioning/snowlocation/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getSnowLocation']);
 
 Route::get('provisioning/netbox/devicetypes', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getNetboxDeviceTypesSummarized']);
-Route::get('provisioning/netbox/mobtypes', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getMobTypeDropdown']);
+Route::get('provisioning/netbox/mobetypes', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getMobeTypeDropdown']);
 Route::get('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getNetboxSite']);
 Route::post('provisioning/netboxsite/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxSite']);
 Route::post('provisioning/netboxsite/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployNetboxDevices']);
@@ -80,8 +84,10 @@ Route::post('provisioning/dhcp/{sitecode}', [App\Http\Controllers\Provisioning\P
 
 Route::get('provisioning/dhcp/{sitecode}/gizmo', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getGizmoDhcpScopes']);
 
+Route::get('provisioning/mist/deviceprofiles', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'getMistDeviceProfiles']);
 Route::post('provisioning/mist/site/{sitecode}', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistSite']);
 Route::post('provisioning/mist/site/{sitecode}/devices', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevices']);
+Route::post('provisioning/mist/site/{sitecode}/device', [App\Http\Controllers\Provisioning\ProvisioningController::class, 'deployMistDevice']);
 
 Route::get('deprovisioning/snowlocations/{days?}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'getSnowLocations']);
 Route::delete('deprovisioning/mist/site/{sitecode}', [App\Http\Controllers\Deprovisioning\DeprovisioningController::class, 'deleteMistSite']);

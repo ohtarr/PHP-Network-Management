@@ -107,12 +107,21 @@ class Device extends BaseModel
 
     public static function findBySerial($serial)
     {
-        return static::where("serial",$serial)->where('vc', 'true')->first();
+        return static::where("serial", $serial)->where('vc', 'true')->where('limit', 1)->first();
     }
 
     public static function findByMac($mac)
     {
-        return static::where("mac",$mac)->first();
+        $mac = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $mac));
+        if(strlen($mac) != 12)
+        {
+            return null;
+        }
+        $device = static::where("mac", $mac)->where('limit', 1)->first();
+        if($mac == strtolower(preg_replace('/[^a-fA-F0-9]/', '', $device->mac)))
+        {
+            return $device;
+        }
     }
 
 /*     public static function where($key, $value)
@@ -251,30 +260,18 @@ class Device extends BaseModel
         {
             throw new \Exception('Object is missing {site_id}');
         }
-        if(isset($this->name))
+        $site = new Site;
+        $site->id = $this->site_id;
+        $devices = $site->getDevices();
+        foreach($devices as $device)
         {
-            $path = "sites/" . $this->site_id . "/devices?type={$type}&name=" . $this->name;
-            $device = Device::get($path)->first();
-            foreach($device as $key=>$value)
+            if($device->serial == $this->serial)
             {
-                $this->$key = $value;
-            }
-            return $this;
-        }
-
-        if(isset($this->id))
-        {
-            $devices = $this->getSite()->getDevices();
-            foreach($devices as $device)
-            {
-                if($device->id == $this->id)
+                foreach($device as $key=>$value)
                 {
-                    foreach($device as $key=>$value)
-                    {
-                        $this->$key = $value;
-                    }
-                    return $this;
+                    $this->$key = $value;
                 }
+                return $this;
             }
         }
     }
@@ -735,12 +732,26 @@ class Device extends BaseModel
 
     public function assignDeviceProfile($deviceprofileid)
     {
+        if($this->deviceprofile_id == $deviceprofileid)
+        {
+            return true;
+        }
         $path = "orgs/" . static::getOrgId() . "/deviceprofiles/" . $deviceprofileid . "/assign";
         $params = [
             'macs'      =>  [$this->mac]
         ];
         $response = static::getQuery()->request('POST', $path, $params);
-        return $this->getSiteDevice();
+        if(isset($response->success))
+        {
+            foreach($response->success as $mac)
+            {
+                if($mac == $this->mac)
+                {
+                    $this->deviceprofile_id = $deviceprofileid;
+                    return true;
+                }
+            }
+            return false;
+        }
     }
-
 }

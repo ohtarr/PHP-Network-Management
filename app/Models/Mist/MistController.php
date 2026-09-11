@@ -62,6 +62,48 @@ class MistController extends Controller
         return $site->getDeviceSummary($type);
     }
 
+    /**
+     * @OA\Get(
+     *     path="/mist/site/{siteid}/devices",
+     *     summary="Get all Mist devices for a site",
+     *     tags={"Mist"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="siteid",
+     *         in="path",
+     *         required=true,
+     *         description="The Mist site ID",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Parameter(
+     *         name="type",
+     *         in="query",
+     *         required=false,
+     *         description="Device type to filter by (e.g. ap, switch, gateway); defaults to all",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="List of devices for the site",
+     *         @OA\JsonContent(type="array", @OA\Items(type="object"))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function SiteDevices(Request $request, string $siteid, string $type = "all")
+    {
+        $user = auth()->user();
+		if ($user->cant('read', Device::class) || $user->cant('read', Site::class)) {
+			abort(401, 'You are not authorized');
+        }
+        if($request->get('type'))
+        {
+            $type = $request->get('type');
+        }
+        $site = Site::find($siteid);
+        return $site->getDevices($type);
+    }
+
     public function SiteDevice($siteid, $deviceid)
     {
         $user = auth()->user();
@@ -116,6 +158,96 @@ class MistController extends Controller
         {
             return $site->getWiredClientStats();
         }
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/mist/device/serial/{serial}",
+     *     summary="Get a Mist device by serial number",
+     *     tags={"Mist"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="serial",
+     *         in="path",
+     *         required=true,
+     *         description="The device serial number to look up",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Device matching the serial number",
+     *         @OA\JsonContent(type="object")
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function DeviceBySerial($serial)
+    {
+        $user = auth()->user();
+		if ($user->cant('read', Device::class)) {
+			abort(401, 'You are not authorized');
+        }
+        return Device::findBySerial($serial);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/mist/device/mac/{mac}",
+     *     summary="Get a Mist device by MAC address",
+     *     tags={"Mist"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="mac",
+     *         in="path",
+     *         required=true,
+     *         description="The device MAC address to look up",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Device matching the MAC address",
+     *         @OA\JsonContent(type="object")
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function DeviceByMac($mac)
+    {
+        $user = auth()->user();
+		if ($user->cant('read', Device::class)) {
+			abort(401, 'You are not authorized');
+        }
+        return Device::findByMac($mac);
+    }
+
+    /**
+     * @OA\Get(
+     *     path="/mist/device/{id}",
+     *     summary="Get a Mist device by ID",
+     *     tags={"Mist"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(
+     *         name="id",
+     *         in="path",
+     *         required=true,
+     *         description="The Mist device ID to look up",
+     *         @OA\Schema(type="string")
+     *     ),
+     *     @OA\Response(
+     *         response=200,
+     *         description="Device matching the ID",
+     *         @OA\JsonContent(type="object")
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function DeviceById($id)
+    {
+        $user = auth()->user();
+		if ($user->cant('read', Device::class)) {
+			abort(401, 'You are not authorized');
+        }
+        return Device::findById($id);
     }
 
 }

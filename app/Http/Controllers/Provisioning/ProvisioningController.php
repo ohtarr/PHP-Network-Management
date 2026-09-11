@@ -7,14 +7,15 @@ use Illuminate\Http\Request;
 use App\Models\Netbox\DCIM\Devices;
 use App\Models\Netbox\DCIM\Sites;
 use App\Models\Netbox\DCIM\Locations;
+use App\Models\Netbox\DCIM\DeviceTypes;
+use App\Models\Netbox\DCIM\VirtualChassis;
+use App\Models\Netbox\DCIM\Manufacturers;
+use App\Models\Netbox\DCIM\SiteGroups;
 use App\Models\Netbox\IPAM\AsnRanges;
 use App\Models\Netbox\IPAM\Asns;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\Roles;
 use App\Models\Netbox\IPAM\IpAddresses;
-use App\Models\Netbox\DCIM\DeviceTypes;
-use App\Models\Netbox\DCIM\VirtualChassis;
-use App\Models\Netbox\DCIM\Manufacturers;
 use App\Models\Netbox\EXTRAS\CustomFieldChoiceSets;
 use App\Models\ServiceNowV2\Location;
 use App\Models\Mist\Site;
@@ -23,6 +24,7 @@ use App\Models\Mist\SiteGroup;
 use App\Models\Mist\GatewayTemplate;
 use App\Models\Mist\NetworkTemplate;
 use App\Models\Mist\RfTemplate;
+use App\Models\Mist\DeviceProfile;
 use App\Models\Gizmo\Dhcp;
 use App\Models\Dhcp\SubnetV4;
 use App\Models\Log\Log as DbLog;
@@ -153,11 +155,11 @@ class ProvisioningController extends Controller
      * @OA\Post(
      *     path="/provisioning/netboxsite/{sitecode}",
      *     summary="Deploy (provision) a Netbox site for the given site code",
-     *     description="Creates the Netbox site, assigns an ASN, allocates a provisioning supernet, deploys active prefixes per VLAN, and creates a default location.",
+     *     description="Creates the Netbox site if it doesn't exist, then dispatches provisioning to a mobe_type-specific handler (JUNIPER_FW: assigns an ASN, allocates a provisioning supernet, deploys active prefixes per VLAN, and creates a default location; MIST_RAP_US1, MIST_RAP_CA1, and MIKROTIK_MSU: not yet implemented).",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
-     *     @OA\RequestBody(required=true, @OA\JsonContent(required={"mob_type"}, @OA\Property(property="mob_type", type="string", description="Must match one of the MOB_TYPE_DROPDOWN custom field choice values"))),
+     *     @OA\RequestBody(required=true, @OA\JsonContent(required={"mobe_type"}, @OA\Property(property="mobe_type", type="string", description="Must match one of the MOBE_TYPE_DROPDOWN custom field choice values"))),
      *     @OA\Response(response=200, description="Provisioning result",
      *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", type="object"))
      *     ),
@@ -172,35 +174,40 @@ class ProvisioningController extends Controller
         }
         $totalstatus = 1;
 
-        $mobtype = $request->input('mob_type');
-        if(!isset($mobtype) || $mobtype === '')
+        $mobetype = $request->input('mobe_type');
+        if(!isset($mobetype) || $mobetype === '')
         {
-            $this->addLog(0, "Required parameter mob_type is missing.");
+            $this->addLog(0, "Required parameter mobe_type is missing.");
             $return['status'] = 0;
             $return['log'] = $this->logs;
             return response()->json($return);
         }
 
-        $mobtypechoiceset = CustomFieldChoiceSets::where('name', 'MOB_TYPE_DROPDOWN')->first();
-        $mobtypevalue = null;
-        if(isset($mobtypechoiceset->extra_choices))
+        $mobetypechoiceset = CustomFieldChoiceSets::where('name', 'MOBE_TYPE_DROPDOWN')->first();
+        $mobetypevalue = null;
+        if(isset($mobetypechoiceset->extra_choices))
         {
-            foreach($mobtypechoiceset->extra_choices as $choice)
+            foreach($mobetypechoiceset->extra_choices as $choice)
             {
-                if($choice[0] == $mobtype)
+                if($choice[0] == $mobetype)
                 {
-                    $mobtypevalue = $choice[0];
+                    $mobetypevalue = $choice[0];
                     break;
                 }
             }
         }
-        if(!isset($mobtypevalue))
+        if(!isset($mobetypevalue))
         {
-            $this->addLog(0, "mob_type {$mobtype} is not a valid MOB_TYPE_DROPDOWN choice.");
+            $this->addLog(0, "mobe_type {$mobetype} is not a valid MOBE_TYPE_DROPDOWN choice.");
             $return['status'] = 0;
             $return['log'] = $this->logs;
             return response()->json($return);
         }
+
+        //MSU CODE
+        if($mobetypevalue == 'MIKROTIK_MSU') {
+            return $this->deployMikrotikMsu();
+        } 
 
         //Attempt to get existing snow location.
         $start = microtime(true);
@@ -241,7 +248,7 @@ class ProvisioningController extends Controller
                 $return['log'] = $this->logs;
                 return response()->json($return);
             }
-            $params['custom_fields']['MOB_TYPE'] = $mobtypevalue;
+            $params['custom_fields']['MOBE_TYPE'] = $mobetypevalue;
             $netboxsite = Sites::create($params);
             if(isset($netboxsite->id))
             {
@@ -255,6 +262,56 @@ class ProvisioningController extends Controller
             }
         }
 
+        $location = $netboxsite->getDefaultLocation();
+        if(isset($location->id))
+        {
+            $this->addLog(1, "Default Location ID {$location->id} already exists.");
+        } else {
+            $params = [
+                'name'  =>  'MAIN_MDF',
+                'slug'  =>  'main_mdf',
+                'site'  =>  $netboxsite->id,
+            ];
+            $location = Locations::create($params);
+
+            if(isset($location->id))
+            {
+                $this->addLog(1, "Created Location ID {$location->id} and added to site.");
+            } else {
+                $totalstatus = 0;
+                $this->addLog(0, "Failed to create Location.");
+                $return['status'] = $totalstatus;
+                $return['log'] = $this->logs;
+                return response()->json($return);
+            }
+        }
+
+        if($mobetypevalue == 'JUNIPER_FW')
+        {
+            return $this->deployJuniperFw($netboxsite);
+        } elseif($mobetypevalue == 'MIST_RAP_US1') {
+            return $this->deployMistRapUs1($netboxsite);
+        } elseif($mobetypevalue == 'MIST_RAP_CA1') {
+            return $this->deployMistRapCa1($netboxsite);
+        } else {
+            $this->addLog(0, "No provisioning handler exists for mobe_type {$mobetypevalue}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            return response()->json($return);
+        }
+    }
+
+    protected function deployJuniperFw($netboxsite)
+    {
+        $totalstatus = 1;
+        if($netboxsite->custom_fields->MOBE_TYPE != "JUNIPER_FW")
+        {
+            $totalstatus = 0;
+            $this->addLog(0, "Netbox Site MOBE_TYPE does not match JUNIPER_FW.");
+            $return['status'] = $totalstatus;
+            $return['log'] = $this->logs;
+            return response()->json($return);
+        }
         //Attempt to get existing ASN, if none create new.
         $asns = $netboxsite->getAsns();
         if(isset($asns->first()->asn))
@@ -347,17 +404,17 @@ class ProvisioningController extends Controller
         //Subnets
         foreach($netboxsite->vlanToRoleMapping() as $vlan => $roleid)
         {
-            $network = $netboxsite->generateSiteNetworks($vlan); 
+            $network = $netboxsite->generateSiteNetworks($vlan);
             $prefix = Prefixes::where('prefix', $network['network'] . "/" . $network['bitmask'])->first();
             if(isset($prefix->prefix))
             {
-                $this->addLog(0, "PREFIX {$prefix->prefix} for vlan {$vlan} already exists."); 
-                  
+                $this->addLog(0, "PREFIX {$prefix->prefix} for vlan {$vlan} already exists.");
+
                 if(isset($prefix->scope->id))
                 {
                     if($prefix->scope->id != $netboxsite->id)
                     {
-                        $this->addLog(0, "PREFIX {$prefix->prefix} for vlan {$vlan} is not assigned to netbox site ID {$netboxsite->id}.");   
+                        $this->addLog(0, "PREFIX {$prefix->prefix} for vlan {$vlan} is not assigned to netbox site ID {$netboxsite->id}.");
                     }
                 }
             } else {
@@ -371,34 +428,114 @@ class ProvisioningController extends Controller
             }
         }
 
-        $location = $netboxsite->getDefaultLocation();
-        if(isset($location->id))
-        {
-            $this->addLog(1, "Default Location ID {$location->id} already exists.");
-        } else {
-            $params = [
-                'name'  =>  'MAIN_MDF',
-                'slug'  =>  'main_mdf',
-                'site'  =>  $netboxsite->id,
-            ];
-            $location = Locations::create($params);
-    
-            if(isset($location->id))
-            {
-                $this->addLog(1, "Created Location ID {$location->id} and added to site.");
-            } else {
-                $totalstatus = 0;
-                $this->addLog(0, "Failed to create Location.");
-                $return['status'] = $totalstatus;
-                $return['log'] = $this->logs;
-                return response()->json($return);
-            }
-        }
-
         //return fresh copy of Netbox Site
         $return['status'] = $totalstatus;
         $return['log'] = $this->logs;
         $return['data'] = Sites::find($netboxsite->id);
+        return response()->json($return);
+    }
+
+    protected function deployMistRapUs1($netboxsite)
+    {
+        $return['status'] = 1;
+        if($netboxsite->custom_fields->MOBE_TYPE != "MIST_RAP_US1")
+        {
+            $this->addLog(0, "Netbox Site MOBE_TYPE does not match MIST_RAP_US1.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            return response()->json($return);
+        }
+        $group = $netboxsite->group->name ?? null;
+        if($group == "MIST_RAP_US1")
+        {
+            $this->addLog(1, "Netbox Site already assigned to SiteGroup MIST_RAP_US1.");            
+        } else {
+            if($group = SiteGroups::where('name','MIST_RAP_US1')->first() ?? null)
+            {
+                $this->addLog(1, "Site group {$group->name} found.");
+                $params = ['group' => $group->id];
+            } else {
+                $this->addLog(0, "Failed to find site group.");
+                $return['status'] = 0;
+                $return['log'] = $this->logs;
+                $return['data'] = $netboxsite;
+                return response()->json($return);
+            }
+            try{
+                $netboxsite->update($params);
+            } catch (\Exception $e) {
+                $this->addLog(0, "Error: " . $e->getMessage());
+                $return['status'] = 0;
+            }
+            $confirm = Sites::find($netboxsite->id);
+            if($confirm->group->id ?? null)
+            {
+                $this->addLog(1, "Added site {$netboxsite->name} to MIST_RAP_US1 sitegroup.");
+            } else {
+                $this->addLog(0, "Failed to Add site {$netboxsite->name} to MIST_RAP_US1 sitegroup.");
+                $return['status'] = 0;
+            }
+        }
+        $return['log'] = $this->logs;
+        $return['data'] = $netboxsite;
+        return response()->json($return);
+    }
+
+    protected function deployMistRapCa1($netboxsite)
+    {
+        $return['status'] = 1;
+        if($netboxsite->custom_fields->MOBE_TYPE != "MIST_RAP_CA1")
+        {
+            $this->addLog(0, "Netbox Site MOBE_TYPE does not match MIST_RAP_CA1.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            return response()->json($return);
+        }
+        $group = $netboxsite->group->name ?? null;
+        if($group == "MIST_RAP_CA1")
+        {
+            $this->addLog(1, "Netbox Site already assigned to SiteGroup MIST_RAP_CA1.");            
+        } else {
+            if($group = SiteGroups::where('name','MIST_RAP_CA1')->first() ?? null)
+            {
+                $this->addLog(1, "Site group {$group->name} found.");
+                $params = ['group' => $group->id];
+            } else {
+                $this->addLog(0, "Failed to find site group.");
+                $return['status'] = 0;
+                $return['log'] = $this->logs;
+                $return['data'] = $netboxsite;
+                return response()->json($return);
+            }
+            try{
+                $netboxsite->update($params);
+            } catch (\Exception $e) {
+                $this->addLog(0, "Error: " . $e->getMessage());
+                $return['status'] = 0;
+            }
+            $confirm = Sites::find($netboxsite->id);
+            if($confirm->group->id ?? null)
+            {
+                $this->addLog(1, "Added site {$netboxsite->name} to MIST_RAP_CA1 sitegroup.");
+            } else {
+                $this->addLog(0, "Failed to Add site {$netboxsite->name} to MIST_RAP_CA1 sitegroup.");
+                $return['status'] = 0;
+            }
+        }
+        $return['log'] = $this->logs;
+        $return['data'] = $netboxsite;
+        return response()->json($return);
+    }
+
+    protected function deployMikrotikMsu()
+    {
+        //CREATE MSU LOCATION
+        //FIND AVAILABLE MSU PREFIX
+
+        $this->addLog(0, "MIKROTIK_MSU provisioning is not yet implemented.");
+        $return['status'] = 0;
+        $return['log'] = $this->logs;
+        $return['data'] = $netboxsite;
         return response()->json($return);
     }
 
@@ -674,7 +811,7 @@ class ProvisioningController extends Controller
         $sitecode = strtoupper($sitecode);
         $submitted = $request->collect();
 
-        $netboxsite = Sites::where('name__ie', $sitecode)->where('brief',1)->first();
+        $netboxsite = Sites::where('name__ie', $sitecode)->where('fields','id,name,custom_fields')->first();
         if(isset($netboxsite->id))
         {
             $this->addLog(1, "Netbox SITE ID {$netboxsite->id} found.");
@@ -683,6 +820,13 @@ class ProvisioningController extends Controller
             $return['status'] = 0;
             $return['log'] = $this->logs;
             $return['data'] = null;
+            return response()->json($return);
+        }
+        if($netboxsite->custom_fields->MOBE_TYPE != "JUNIPER_FW")
+        {
+            $this->addLog(0, "Netbox site MOBE_TYPE does NOT require a Mist Site deployment.");            
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
             return response()->json($return);
         }
         $mistsite = Site::findByName($sitecode);
@@ -697,7 +841,6 @@ class ProvisioningController extends Controller
             return response()->json($return);
         }
         //Stupid code to check for duplicate SITES with same name in SNOW, cuz that exists for some reason.
-        //$snowlocs = Location::where('companyISNOTEMPTY')->where('name',$sitecode)->get();
         $snowlocs = Location::where('name',$sitecode)->fields('sys_id,name')->get();
         if($snowlocs->count() > 1)
         {
@@ -839,11 +982,9 @@ class ProvisioningController extends Controller
             $return['log'] = $this->logs;
             $return['data'] = null;
             return response()->json($return);
-        } else {
-            $this->addLog(1, "SITE ID {$site->id} found.");
         }
-
-        $location = $site->getDefaultLocation();
+        //Find default (first) Location.
+        $location = Locations::where('site_id',$site->id)->where('ordering', 'id')->where('brief',1)->first();
         if(!isset($location->id))
         {
             $this->addLog(0, "Default LOCATION not found for site {$site->name}, skipping.");
@@ -852,9 +993,6 @@ class ProvisioningController extends Controller
             $return['data'] = null;
             return response()->json($return);
         }
-
-        $models = DeviceTypes::all();
-
         $devices = $request->collect();
         foreach($devices as $device)
         {
@@ -891,7 +1029,7 @@ class ProvisioningController extends Controller
                 continue;
             }
 
-            $nameexists = Devices::where('name__ie',trim($device['name']))->first();
+            $nameexists = Devices::where('name__ie',trim($device['name']))->where('brief',1)->first();
             if(isset($nameexists->id))
             {
                 $this->addLog(0, "Device with name {$nameexists->name} already exists, skipping.");
@@ -900,15 +1038,15 @@ class ProvisioningController extends Controller
             }
             if(isset($device['serial']))
             {
-                $serialexists = Devices::where('serial__ie',$device['serial'])->first();
+                $serialexists = Devices::where('serial__ie',$device['serial'])->where('brief',1)->first();
                 if(isset($serialexists->id))
                 {
-                    $this->addLog(0, "Device with serial {$serialexists->serial} already exists, skipping.");
+                    $this->addLog(0, "Device with serial ID:{$serialexists->id} already exists, skipping.");
                     $totalstatus = 0;
                     continue;
                 }
             }
-            $modelexists = $models->where('model', $device['model'])->first();
+            $modelexists = DeviceTypes::where('model',$device['model'])->where('fields','id,model,custom_fields')->first();
             if(!isset($modelexists->id))
             {
                 $this->addLog(0, "DEVICE-TYPE {$device['model']} does not exist, skipping.");
@@ -1073,6 +1211,23 @@ class ProvisioningController extends Controller
     }
 
     /**
+     * @OA\Get(
+     *     path="/provisioning/mist/deviceprofiles",
+     *     summary="Get all Mist device profiles",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Response(response=200, description="List of Mist device profiles", @OA\JsonContent(type="array", @OA\Items(type="object"))),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function getMistDeviceProfiles()
+    {
+        //return response()->json(DeviceProfile::all());
+        $profiles = DeviceProfile::all();
+        return response()->json($profiles->sortBy('name')->values());
+    }
+
+    /**
      * @OA\Post(
      *     path="/provisioning/mist/site/{sitecode}/devices",
      *     summary="Assign Mist devices to a site based on Netbox device records",
@@ -1125,7 +1280,7 @@ class ProvisioningController extends Controller
             $return['data'] = null;
             return response()->json($return);
         }
-        $devices = Devices::where('site_id', $netboxsite->id)->where('manufacturer_id',$manufacturer->id)->get();
+        $devices = Devices::where('site_id', $netboxsite->id)->where('manufacturer_id',$manufacturer->id)->where('fields','id,name,device_type,serial')->get();
         if($devices->count() == 0)
         {
             $this->addLog(0, "NETBOX SITE ID {$netboxsite->id}: No devices found for site.");
@@ -1218,6 +1373,135 @@ class ProvisioningController extends Controller
         return response()->json($return);
     }
 
+
+    /**
+     * @OA\Post(
+     *     path="/provisioning/mist/site/{sitecode}/device",
+     *     summary="Assign Mist device to a site based on Netbox device records",
+     *     tags={"Provisioning"},
+     *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
+     *     @OA\Parameter(name="sitecode", in="path", required=true, @OA\Schema(type="string")),
+     *     @OA\Response(response=200, description="Mist device deployment result",
+     *         @OA\JsonContent(@OA\Property(property="status", type="integer"), @OA\Property(property="log", type="array", @OA\Items(type="object")), @OA\Property(property="data", nullable=true))
+     *     ),
+     *     @OA\Response(response=401, description="Unauthorized")
+     * )
+     */
+    public function deployMistDevice(Request $request, $sitecode)
+    {
+        $user = auth()->user();
+		if ($user->cant('provision-mist-devices')) {
+			abort(401, 'You are not authorized');
+        }
+        $submitted = $request->collect();
+        $totalstatus = 1;
+        $netboxsite = Sites::where('name__ic',$sitecode)->where('fields','id,name,custom_fields')->first();
+        if(!isset($netboxsite->id))
+        {
+            $this->addLog(0, "SITE {$sitecode} not found.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return response()->json($return);
+        } else {
+            $this->addLog(1, "SITE ID {$netboxsite->id} found.");
+        }
+        if($netboxsite->custom_fields->MOBE_TYPE == "MIST_RAP_US1")
+        {
+            $mistsite = Site::where('name','KHOUSRAP')->first();
+        } elseif($netboxsite->custom_fields->MOBE_TYPE == "MIST_RAP_CA1"){
+            $mistsite = Site::where('name','KHOCARAP')->first();
+        } else {
+            $mistsite = $netboxsite->getMistSite();
+        }
+        if(!isset($mistsite->id))
+        {
+            $this->addLog(0, "Unable to find MIST SITE {$sitecode}.");
+            $return['status'] = 0;
+            $return['log'] = $this->logs;
+            $return['data'] = null;
+            return response()->json($return);
+        } else {
+            $this->addLog(1, "Found MIST SITE ID: {$mistsite->id}.");
+        }
+
+        foreach($submitted as $device)
+        {
+            //Find existing Mist Device
+            $mistdevice = Device::findBySerial($device['serial']);
+            if(!isset($mistdevice->serial))
+            {
+                $this->addLog(0, "Unable to find matching MIST DEVICE with serial {$device['serial']}.");
+                $totalstatus = 0;
+                continue;
+            }
+            $this->addLog(1, "Found matching MIST DEVICE with serial {$device['serial']}.");
+            if($mistdevice->site_id)
+            {
+                $this->addLog(0, "Device {$device['serial']} is already assigned to a site in Mist.");
+                $totalstatus = 0;
+                continue;
+            }
+            //Assign Mist Device to site.
+            try{
+                $assignresults = $mistdevice->assignToSite($mistsite->id);
+            } catch (\Exception $e) {
+                $this->addLog(0, "FAILED to assign device SERIAL:{$mistdevice->serial} to site ID:{$mistsite->id}");
+                continue;
+            }
+            //fetch fresh copy of mistdevice
+            $assignmatch = 0;
+            foreach($assignresults->success as $assignmac)
+            {
+                if($assignmac == $mistdevice->mac)
+                {
+                    $assignmatch = 1;
+                    break;
+                }
+            }
+            if($assignmatch == 1)
+            {
+                $this->addLog(1, "Assigned device to MISTSITE {$mistsite->name} successfully.");
+                $mistdevice->site_id = $mistsite->id;
+            } else {
+                $totalstatus = 0;
+                $this->addLog(0, "FAILED to assign device {$mistdevice->serial} to MISTSITE {$mistsite->name}.");
+                continue;
+            }
+            //$mistdevice = Device::findBySerial($device->serial); // not do this, confirm via return
+            //RENAME Mist Device
+            $params = ['name'   =>  $device['name']];
+            try{
+                $updated = $mistdevice->update($params);
+            } catch (\Exception $e) {
+                $this->addLog(1, "FAILED to rename device with serial {$mistdevice->serial}");
+            }
+            if(isset($updated->name) && $updated->name)
+            {
+                $this->addLog(1, "Renamed MIST DEVICE to {$mistdevice->name} successfully.");
+                $mistdevice->name = $device['name'];
+            } else {
+                $this->addLog(0, "Failed to rename MIST DEVICE with serial {$mistdevice->serial}.");
+            }
+            if(isset($device['deviceprofile_id']))
+            {
+                $this->addLog(1, "Mist DEVICEPROFILE_ID detected, attempting to assign to device {$mistdevice->name}...");
+                if($mistdevice->assignDeviceProfile($device['deviceprofile_id']))
+                {
+                    $this->addLog(1, "Assigned DEVICEPROFILE to MIST device {$mistdevice->name} successfully.");
+                } else {
+                    $totalstatus = 0;
+                    $this->addLog(0, "FAILED to assign DEVICEPROFILE to MIST DEVICE {$mistdevice->name}.");
+                    continue;
+                }
+            }
+        }
+        $return['status'] = $totalstatus;
+        $return['log'] = $this->logs;
+        $return['data'] = null;
+        return response()->json($return);
+    }
+
     /**
      * @OA\Get(
      *     path="/provisioning/netbox/devicetypes",
@@ -1230,7 +1514,7 @@ class ProvisioningController extends Controller
      */
     public function getNetboxDeviceTypesSummarized()
     {
-        $types = DeviceTypes::all();
+        $types = DeviceTypes::where('fields','model')->get();
         foreach($types as $type)
         {
             $return[] = $type->model;
@@ -1241,18 +1525,18 @@ class ProvisioningController extends Controller
 
     /**
      * @OA\Get(
-     *     path="/provisioning/netbox/mobtypes",
-     *     summary="Get the list of mobile type choices from the MOB_TYPE_DROPDOWN custom field choice set",
+     *     path="/provisioning/netbox/mobetypes",
+     *     summary="Get the list of mobile type choices from the MOBE_TYPE_DROPDOWN custom field choice set",
      *     tags={"Provisioning"},
      *     security={{"oauth2":{"openid","profile","email","api://915c46fe-ee91-41c7-98ab-b257b04ea7ec/access_as_user"}}},
      *     @OA\Response(response=200, description="List of mobile type choice names", @OA\JsonContent(type="array", @OA\Items(type="string"))),
      *     @OA\Response(response=401, description="Unauthorized")
      * )
      */
-    public function getMobTypeDropdown()
+    public function getMobeTypeDropdown()
     {
         $return = [];
-        $choiceset = CustomFieldChoiceSets::where('name', 'MOB_TYPE_DROPDOWN')->first();
+        $choiceset = CustomFieldChoiceSets::where('name', 'MOBE_TYPE_DROPDOWN')->first();
         if(!isset($choiceset->extra_choices))
         {
             return response()->json($return);
