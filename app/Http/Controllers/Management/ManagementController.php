@@ -11,6 +11,7 @@ use App\Models\Mist\Site;
 use App\Models\Mist\Device as MistDevice;
 use App\Models\Device\Output;
 use App\Jobs\SyncDeviceDnsJob;
+use App\Jobs\SyncDeviceDhcpJob;
 use App\Jobs\SyncDeviceLibreNMSJob;
 use App\Jobs\SyncVirtualMachineDnsJob;
 use App\Jobs\SyncVirtualMachineLibreNMSJob;
@@ -167,7 +168,7 @@ class ManagementController extends Controller
      * @OA\Post(
      *     path="/management/netbox/webhook/device",
      *     summary="Receive a Netbox webhook for device changes and dispatch sync jobs",
-     *     description="Accepts a Netbox webhook payload for device create/update/delete events. Dispatches SyncDeviceDnsJob and SyncDeviceLibreNMSJob. This endpoint does not require authentication.",
+     *     description="Accepts a Netbox webhook payload for device create/update/delete events. Dispatches SyncDeviceDnsJob, SyncDeviceDhcpJob, and SyncDeviceLibreNMSJob. This endpoint does not require authentication.",
      *     tags={"Management"},
      *     @OA\RequestBody(
      *         required=true,
@@ -185,7 +186,7 @@ class ManagementController extends Controller
      *         description="Jobs dispatched successfully",
      *         @OA\JsonContent(
      *             @OA\Property(property="status", type="integer", example=1),
-     *             @OA\Property(property="message", type="string", example="SyncDeviceDnsJob and SyncDeviceLibreNMSJob dispatched for Netbox device ID 42 (event: updated)."),
+     *             @OA\Property(property="message", type="string", example="SyncDeviceDnsJob, SyncDeviceDhcpJob, and SyncDeviceLibreNMSJob dispatched for Netbox device ID 42 (event: updated)."),
      *             @OA\Property(property="netbox_device_id", type="integer", example=42),
      *             @OA\Property(property="event", type="string", example="updated"),
      *             @OA\Property(property="name", type="string", example="SITE01-SW-1")
@@ -235,12 +236,13 @@ class ManagementController extends Controller
         }
 
         SyncDeviceDnsJob::dispatch($netboxDeviceId, $event, $deviceName)->onQueue('high');
+        SyncDeviceDhcpJob::dispatch($netboxDeviceId, $event, $deviceName)->onQueue('high');
         SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName)->onQueue('high');
         SyncDeviceLibreNMSJob::dispatch($netboxDeviceId, $event, $deviceName)->onQueue('high')->delay(1800);
 
         return response()->json([
             'status'           => 1,
-            'message'          => "SyncDeviceDnsJob and SyncDeviceLibreNMSJob dispatched for Netbox device ID {$netboxDeviceId} (event: {$event}).",
+            'message'          => "SyncDeviceDnsJob, SyncDeviceDhcpJob, and SyncDeviceLibreNMSJob dispatched for Netbox device ID {$netboxDeviceId} (event: {$event}).",
             'netbox_device_id' => $netboxDeviceId,
             'event'            => $event,
             'name'             => $deviceName ?? null,
