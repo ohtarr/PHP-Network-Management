@@ -407,7 +407,7 @@ class Devices extends BaseModel
             $params['clientId'] = null;
         }
         $params['ipAddress'] = $ip;
-        $params['usercontext']['description'] = $description;
+        $params['usercontext'] = (object) ['description' => $description];
         $params['useOption61ClientId'] = $option61;
         return (object)$params;
     }
