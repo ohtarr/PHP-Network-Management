@@ -8,6 +8,7 @@ use App\Models\Netbox\DCIM\VirtualChassis;
 use App\Models\Netbox\VIRTUALIZATION\VirtualMachines;
 use App\Models\Dhcp\SubnetV4;
 use App\Models\Dhcp\ReservationV4;
+use App\Models\Dhcp\ReservationV4Collection;
 
 class syncDhcp extends Command
 {
@@ -44,8 +45,12 @@ class syncDhcp extends Command
         //print count($this->getAllNetmanReservations()) . PHP_EOL;
         //print count($this->reservationsToDelete()) . PHP_EOL;
         //print count($this->reservationsToAdd()) . PHP_EOL;
+        //print "Generated Reservations:" . PHP_EOL;
+        //print_r($this->generateReservations());
+        //print "Reservations to Delete:" . PHP_EOL;
         //print_r($this->reservationsToDelete());
         $this->deleteReservations();
+        //print "Reservations to Add:" . PHP_EOL;
         //print_r($this->reservationsToAdd());
         $this->addReservations();
         $end = microtime(true);
@@ -58,7 +63,7 @@ class syncDhcp extends Command
         if(!$this->netboxdevices)
         {
             print "Fetching Netbox Devices..." . PHP_EOL;
-            $devices = Devices::where('exclude','config_context')->where('fields','id,name,primary_ip,virtual_chassis,vc_position,vc_priority,custom_fields')->where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
+            $devices = Devices::where('exclude','config_context')->where('fields','id,name,serial,device_type,primary_ip,virtual_chassis,vc_position,vc_priority,custom_fields')->where('virtual_chassis_member', 'false')->where('name__empty','false')->where('limit','9999')->get();
             $vcs = VirtualChassis::where('fields','id,name,master,member_count,members')->where('limit','9999')->get();
             $merged = $devices->merge($vcs);
             print "Netbox Devices: " . count($merged) . PHP_EOL;
@@ -67,14 +72,6 @@ class syncDhcp extends Command
         return $this->netboxdevices;
     }
 
-/*                 [1651] => Array
-                (
-                    [scopeId] => 10.140.64.0
-                    [clientId] => 36-34-63-33-64-36-61-32-37-64-38-30-2d-30
-                    [ipAddress] => 10.140.64.65
-                    [description] => NETMAN-TUSGAAAOSWA0101
-                )
- */
     public function generateReservations()
     {
         if(!$this->generated)
@@ -86,7 +83,7 @@ class syncDhcp extends Command
             {
                 print "Generating DHCP Reservations for device {$nbdevice->name} ..." . PHP_EOL;
                 unset($res);
-                $res = $nbdevice->generateDhcpReservation();
+                $res = $nbdevice->generateKeaReservation();
                 if($res)
                 {
                     print "Success!" . PHP_EOL;
@@ -94,7 +91,7 @@ class syncDhcp extends Command
                 }
             }
             print "Generated Reservations : " . count($reservations) . PHP_EOL;
-            $this->generated = collect($reservations);
+            $this->generated = new ReservationV4Collection($reservations);
         }
         return $this->generated;
     }
@@ -123,13 +120,18 @@ class syncDhcp extends Command
             foreach($scopes as $scope)
             {
                 print "PROCESSING SCOPE {$scope->subnet}" . PHP_EOL;
-                $reservations = $scope->getReservations();
+                try {
+                    $reservations = $scope->getReservations();
+                } catch (\Exception $e) {
+                    print "FAILED to fetch reservations for scope {$scope->subnet}: {$e->getMessage()}" . PHP_EOL;
+                    continue;
+                }
                 foreach($reservations as $res)
                 {
                     $allres[] = $res;
                 }
             }
-            $this->reservations = collect($allres);
+            $this->reservations = new ReservationV4Collection($allres);
         }
         return $this->reservations;
     }
@@ -156,7 +158,7 @@ class syncDhcp extends Command
                     $nmres[] = $res;
                 }
             }
-            $this->nmreservations = collect($nmres);
+            $this->nmreservations = new ReservationV4Collection($nmres);
         }
         return $this->nmreservations;
     }
@@ -172,24 +174,27 @@ class syncDhcp extends Command
         $add = [];
         foreach($this->generateReservations() as $gres)
         {
-            $match = null;
-            foreach($this->getAllNetmanReservations() as $nmres)
+            $ipres = null;
+            $clientidres = null;
+            $hwres = null;
+            if($gres->ipAddress)
             {
-                if($nmres->hwAddress == $this->formatMacAddress($gres['hwaddress']))
-                {
-                    $match = $nmres;
-                    break;
-                }
+                $ipres = $this->getAllNetmanReservations()->findByIpAddress($gres->ipAddress)->first();
             }
-            if(!$match)
+            if($gres->clientId)
             {
-                if($this->getDhcpScopes()->findByIp($gres['ipaddress']))
-                {
-                    $add[] = $gres;
-                }
+                $clientidres = $this->getAllNetmanReservations()->findByClientId($gres->clientId)->first();
+            }
+            if($gres->hwAddress)
+            {
+                $hwres = $this->getAllNetmanReservations()->findByHwAddress($gres->hwAddress)->first();
+            }
+            if(!$ipres && !$clientidres && !$hwres)
+            {
+                $add[] = $gres;
             }
         }
-        return collect($add);
+        return new ReservationV4Collection($add);
     }
 
     public function addReservations()
@@ -197,9 +202,9 @@ class syncDhcp extends Command
         print "ADDING reservations..." . PHP_EOL;
         foreach($this->reservationsToAdd() as $res)
         {
-            print "Processing ADD Reservation {$res['hwaddress']} - {$res['ipaddress']} - {$res['description']}" . PHP_EOL;
+            print "Processing ADD Reservation {$res->hwAddress}{$res->clientId} - {$res->ipAddress} - {$res->usercontext->description}" . PHP_EOL;
             try{
-                $result = ReservationV4::create($res['ipaddress'], $res['hwaddress'], $res['description']);
+                $result = ReservationV4::createRaw($res);
             } catch (\Exception $e) {
                 print $e->getMessage() . PHP_EOL;
                 continue;
@@ -211,46 +216,59 @@ class syncDhcp extends Command
     public function reservationsToDelete()
     {
         $delete = [];
-        foreach($this->getAllNetmanReservations() as $nmres)
+        foreach($this->getAllNetmanReservations() as $nmkey => $nmres)
         {
             $match = null;
-            foreach($this->generateReservations() as $gres)
+            if($nmres->ipAddress)
             {
-                if($nmres->hwAddress == $this->formatMacAddress($gres['hwaddress']))
+                $ipres = $this->generateReservations()->findByIpAddress($nmres->ipAddress)->first();
+                if($ipres)
                 {
-                    if($nmres->ipAddress == $gres['ipaddress'] && $nmres->usercontext->description == $gres['description'])
+                    if(!(
+                        ($nmres->hwAddress !== null && $ipres->hwAddress !== null && strcasecmp($nmres->hwAddress, $ipres->hwAddress) === 0)
+                        && ($nmres->clientId !== null && $ipres->clientId !== null && strcasecmp($nmres->clientId, $ipres->clientId) === 0)
+                        && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
+                    ))
                     {
-                        $match = $gres;
+                        $delete[] = $nmres;
+                        continue;
                     }
-                    break;
                 }
             }
-            if(!$match)
+            if($nmres->clientId)
             {
-                $delete[] = $nmres;
-            }
-        }
-
-        $deletedIps = array_map(fn($res) => $res->ipAddress, $delete);
-        foreach($this->generateReservations() as $gres)
-        {
-            $existing = ReservationV4::findByMac($gres['hwaddress']);
-            if(!$existing)
-            {
-                continue;
-            }
-            $description = $existing->usercontext->description ?? '';
-            if($existing->ipAddress != $gres['ipaddress'] || $description != $gres['description'])
-            {
-                if(!in_array($existing->ipAddress, $deletedIps))
+                $clientidres = $this->generateReservations()->findByClientId($nmres->clientId)->first();
+                if($clientidres)
                 {
-                    $delete[] = $existing;
-                    $deletedIps[] = $existing->ipAddress;
+                    if(!(
+                        ($nmres->hwAddress !== null && $ipres->hwAddress !== null && strcasecmp($nmres->hwAddress, $ipres->hwAddress) === 0)
+                        && ($nmres->ipAddress !== null && $ipres->ipAddress !== null && strcasecmp($nmres->ipAddress, $ipres->ipAddress) === 0)
+                        && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
+                    ))
+                    {
+                        $delete[] = $nmres;
+                        continue;
+                    }
+                }
+            }
+            if($nmres->hwAddress)
+            {
+                $hwres = $this->generateReservations()->findByHwAddress($nmres->hwAddress)->first();
+                if($hwres)
+                {
+                    if(!(
+                        ($nmres->clientId !== null && $ipres->clientId !== null && strcasecmp($nmres->clientId, $ipres->clientId) === 0)
+                        && ($nmres->ipAddress !== null && $ipres->ipAddress !== null && strcasecmp($nmres->ipAddress, $ipres->ipAddress) === 0)
+                        && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
+                    ))
+                    {
+                        $delete[] = $nmres;
+                        continue;
+                    }
                 }
             }
         }
-
-        return collect($delete);
+        return new ReservationV4Collection($delete);
     }
 
     public function deleteReservations()

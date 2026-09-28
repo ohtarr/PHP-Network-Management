@@ -54,29 +54,6 @@ class VirtualMachines extends BaseModel
         return $dnsrecords;
     }
 
-    public function generateDhcpId()
-    {
-        //If dhcp_id is defined on netbox device, return it
-        if(isset($this->custom_fields->dhcp_id))
-        {
-            return $this->custom_fields->dhcp_id;
-        }
-
-        if(isset($this->device_type->manufacturer->name) && $this->device_type->manufacturer->name == "Juniper")
-        {
-            $mistdevice = $this->getMistDeviceBySerial();
-            if(isset($mistdevice->mac) && $mistdevice->mac)
-            {
-                return $mistdevice->generateDhcpId();
-            }
-        }
-
-        //convert device name to hex and return it.
-        $hex = bin2hex($this->name);
-        $formattedHex = chunk_split($hex, 2, '-');
-        return rtrim($formattedHex, '-');
-    }
-
     public function getDhcpReservationByIp()
     {
         $ip = $this->getIpAddress();
@@ -84,40 +61,5 @@ class VirtualMachines extends BaseModel
         {
             return Dhcp::getReservationByIp($ip);
         }
-    }
-
-    public function getDhcpReservationByDhcpId()
-    {
-        $dhcpid = $this->generateDhcpId();
-        if(isset($dhcpid) && $dhcpid)
-        {
-            return Dhcp::getReservationsByMac($dhcpid);
-        }
-    }
-
-    public function createDhcpReservation()
-    {
-
-        $dhcpid = $this->generateDhcpId();
-        if(!(isset($dhcpid) && $dhcpid))
-        {
-            return null;
-        }
-        $ip = $this->getIpAddress();
-        if(!(isset($ip) && $ip))
-        {
-            return null;
-        }
-        $prefix = Prefixes::getActivePrefixContainingIp($ip);
-        if(!(isset($prefix) && $prefix))
-        {
-            return null;
-        }
-        $scope = $prefix->getDhcpScope();
-        if(!(isset($scope) && $scope))
-        {
-            return null;
-        }
-        return $scope->addReservation($dhcpid, $ip, 'NETMAN-' . $this->name);
     }
 }

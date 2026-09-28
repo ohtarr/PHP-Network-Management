@@ -3,11 +3,21 @@
 namespace App\Models\Dhcp;
 
 use App\Models\Dhcp\BaseModel;
+use App\Models\Dhcp\ReservationV4Collection as Collection;
 
 #[\AllowDynamicProperties]
 class ReservationV4 extends BaseModel
 {
     protected static $model = "reservationv4";
+
+    /**
+     * Override hydrateMany to return a ReservationV4Collection instead of a plain Collection.
+     * The Collection alias in this file resolves to ReservationV4Collection.
+     */
+    public static function hydrateMany($response): Collection
+    {
+        return new Collection(parent::hydrateMany($response)->all());
+    }
 
     /**
      * Find a single DHCPv4 reservation by IP address.
@@ -112,6 +122,18 @@ class ReservationV4 extends BaseModel
                 'description' => $description,
             ],
         ];
+        return static::getQuery()->post(static::getPath(), $body);
+    }
+
+    /**
+     * Create a new DHCPv4 reservation from a raw Kea reservation object.
+     * POST /api/dhcp/reservationv4
+     *
+     * @param  object  $reservation  Raw Kea reservation object, e.g. from Devices::generateKeaReservation().
+     */
+    public static function createRaw(object $reservation)
+    {
+        $body = json_decode(json_encode($reservation), true);
         return static::getQuery()->post(static::getPath(), $body);
     }
 

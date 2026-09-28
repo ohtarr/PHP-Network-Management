@@ -300,27 +300,116 @@ class Devices extends BaseModel
         return $dnsrecords;
     }
 
-    public function generateDhcpId($irb = 0)
+/*     public function generateDhcpId()
     {
+        //default irb interface to 0
+        $irb = 0;
+        //Code here to determine which IRB interface the device is using for mgmt. future...
+
         //If dhcp_id is defined on netbox device, return it
         if(isset($this->custom_fields->dhcp_id))
         {
             return strtolower(preg_replace('/[^a-fA-F0-9]/', '', $this->custom_fields->dhcp_id));
         }
+        //If device is Juniper, rely on mist to determine dhcpid
+        if(isset($this->device_type->manufacturer->name) && $this->device_type->manufacturer->name == "Juniper")
+        {
+            $mistdevice = $this->getMistDeviceBySerial();
+            return $mistdevice->generateDhcpIdHex($irb);
+        }
+        //Attempt to determine device MAC ADDRESS from the inventory tool.
         $asset = $this->getSnipeitAsset();
         if(isset($asset->custom_fields->mac->value))
         {
             return strtolower(preg_replace('/[^a-fA-F0-9]/', '', $asset->custom_fields->mac->value));
         }
-        $nmdevice = $this->getNetmanDevice();
-        if(isset($nmdevice->id))
+        //If all else fails, try to determine MAC ADDRESS from Device outputs.
+        if(!$mac)
         {
-            $mac = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $nmdevice->getMac()));
-            if($mac)
+            $nmdevice = $this->getNetmanDevice();
+            if(isset($nmdevice->id))
             {
-                return $mac;
+                return strtolower(preg_replace('/[^a-fA-F0-9]/', '', $nmdevice->getMac()));
             }
         }
+    } */
+
+    public function generateKeaReservation()
+    {
+        if(isset($this->virtual_chassis->id))
+        {
+            return $this->getVirtualChassis()->generateKeaReservation();
+        }
+        $ip = $this->getIpAddress();
+        if(!$ip)
+        {
+            return null;
+        }
+        //default irb interface to 0
+        $irb = 0;
+        //Code here to determine which IRB interface the device is using for mgmt. future...
+        $option61 = false;
+        $dhcpid = null;
+        //If dhcp_id is defined on netbox device, return it
+        if(isset($this->custom_fields->dhcp_id))
+        {
+            $dhcpid = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $this->custom_fields->dhcp_id));
+        }
+        //If device is Juniper, rely on mist to determine dhcpid
+        if(!$dhcpid && isset($this->device_type->manufacturer->name) && $this->device_type->manufacturer->name == "Juniper")
+        {
+            $mistdevice = $this->getMistDeviceBySerial();
+            if(isset($mistdevice->id))
+            {
+                $dhcpid = $mistdevice->generateDhcpIdHex($irb);
+                if($dhcpid)
+                {
+                    $option61 = true;
+                }
+            }
+        }
+        //Attempt to determine device MAC ADDRESS from the inventory tool.
+        if(!$dhcpid)
+        {
+            $asset = $this->getSnipeitAsset();
+            if(isset($asset->custom_fields->mac->value))
+            {
+                $dhcpid = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $asset->custom_fields->mac->value));
+            }
+        }
+        //If all else fails, try to determine MAC ADDRESS from Device outputs.
+        if(!$dhcpid)
+        {
+            $nmdevice = $this->getNetmanDevice();
+            if(isset($nmdevice->id))
+            {
+                $dhcpid = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $nmdevice->getMac()));
+            }
+        }
+        if(!$dhcpid)
+        {
+            return null;
+        }
+        $description = "NETMAN-" . $this->name;
+        $scope = SubnetV4::findByIp($ip);
+        if(!isset($scope->id))
+        {
+            return null;
+        }
+        $params = [];
+        $params['subnetId'] = $scope->id;
+        if($option61)
+        {
+            $params['hwAddress'] = null;
+            $params['clientId'] = $dhcpid;
+        } else {
+            $params['hwAddress'] = $dhcpid;
+            $params['clientId'] = null;
+        }
+        $params['ipAddress'] = $ip;
+        $params['usercontext']['description'] = $description;
+        $params['useOption61ClientId'] = $option61;
+        return (object)$params;
     }
 
     public function getDhcpReservationByIp()
@@ -332,40 +421,72 @@ class Devices extends BaseModel
         }
     }
 
-    public function getDhcpReservationByDhcpId()
+/*     public function getDhcpReservationByDhcpId()
     {
         $dhcpid = $this->generateDhcpId();
         if(isset($dhcpid) && $dhcpid)
         {
             return ReservationV4::findByMac($dhcpid);
         }
-    }
+    } */
 
     public function generateDhcpReservation()
     {
-        $vc = $this->getVirtualChassis();
-        if($vc)
+        $option61 = false;
+        //If dhcp_id is defined on netbox device, return it
+        if(isset($this->custom_fields->dhcp_id))
         {
-            return $vc->generateDhcpReservation();
+            $dhcpid = strtolower(preg_replace('/[^a-zA-z0-9]/', '', $this->custom_fields->dhcp_id));
+            $option61 = true;
         }
-        $dhcpid = $this->generateDhcpId();
-        if(!(isset($dhcpid) && $dhcpid))
+        if(!isset($dhcpid))
         {
-            return null;
+            if(isset($this->device_type->manufacturer->name) && $this->device_type->manufacturer->name == "Juniper")
+            {
+                $mistdevice = $this->getMistDeviceBySerial();
+                $dhcpipd =  $mistdevice->generateDhcpIdHex();
+                $option61 = true;
+            }
+        }
+        if(!isset($dhcpid))
+        {
+            $asset = $this->getSnipeitAsset();
+            if(isset($asset->custom_fields->mac->value))
+            {
+                $dhcpid = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $asset->custom_fields->mac->value));
+            }
+        }
+
+        if(!$dhcpid)
+        {
+            $nmdevice = $this->getNetmanDevice();
+            if(isset($nmdevice->id))
+            {
+                $dhcpid = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $nmdevice->getMac()));
+            }
         }
         $ip = $this->getIpAddress();
-        if(!(isset($ip) && $ip))
+        $scope = SubnetV4::findByIp($ip);
+
+        $params = [];
+        $params['subnetId'] = $scope->id;
+        if($option61)
         {
-            return null;
+            $params['clientId'] = $dhcpid;
+        } else {
+            $params['hwAddress'] = $dhcpid;
         }
-        return [
+        $params['ipAddress'] = $this->getIpAddress();
+        $params['usercontext']['description'] = $this->
+        $params['useOption61ClientId'] = $option61;
+        $params = [
             'ipaddress'   =>  $ip,
             'hwaddress'   =>  $dhcpid,
             'description' =>  "NETMAN-" . $this->name,
         ];
     }
 
-    public function createDhcpReservation()
+/*     public function createDhcpReservation()
     {
         $params = $this->generateDhcpReservation();
         if(!(isset($params) && $params))
@@ -378,7 +499,7 @@ class Devices extends BaseModel
             return null;
         }
         return ReservationV4::create($params['ipaddress'], $params['hwaddress'], $params['description']);
-    }
+    } */
 
     public function getSnipeitAsset()
     {

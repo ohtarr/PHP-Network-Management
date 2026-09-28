@@ -198,6 +198,16 @@ class Device extends BaseModel
         return $switch;
     }
 
+    public function isVirtualDeviceId()
+    {
+        if(substr($this->mac, 0, 6) == "020003")
+        {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     public static function claim($magic)
     {
         $params = [$magic];
@@ -715,21 +725,6 @@ class Device extends BaseModel
         return $device;
     } */
 
-    public function generateDhcpId($irb = 0)
-    {
-        if(isset($this->vc_mac))
-        {
-            $mac = $this->vc_mac;
-        } elseif(isset($this->mac)) {
-            $mac = $this->mac;
-        }
-        if(!isset($mac))
-        {
-            return null;
-        }
-        return implode("-", str_split($mac, 2));
-    }
-
     public function assignDeviceProfile($deviceprofileid)
     {
         if($this->deviceprofile_id == $deviceprofileid)
@@ -752,6 +747,41 @@ class Device extends BaseModel
                 }
             }
             return false;
+        }
+    }
+
+    public function getMac()
+    {
+        if(isset($this->vc_mac))
+        {
+            $mac = $this->vc_mac;
+        } elseif(isset($this->mac)) {
+            $mac = $this->mac;
+        }
+        if(!isset($mac))
+        {
+            return null;
+        }
+        //return implode("-", str_split($mac, 2));
+        return $mac;
+    }
+
+    public function generateDhcpIdString($irb = 0)
+    {
+        $mac = $this->getMac();
+        if(isset($mac))
+        {
+            return $mac . "-" . $irb;
+        }
+    }
+
+    public function generateDhcpIdHex($irb = 0)
+    {
+        $id = $this->generateDhcpIdString($irb);
+        if(isset($id))
+        {
+            $hex = bin2hex($id);
+            return "00" . $hex;
         }
     }
 }
