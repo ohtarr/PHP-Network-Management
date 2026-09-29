@@ -67,7 +67,7 @@ class SyncDeviceDhcpJob implements ShouldQueue
 
     /**
      * A device that's been deleted from Netbox can no longer be resolved to
-     * a MAC/IP via Devices::generateDhcpReservation() (dhcp_id, Snipe-IT
+     * a MAC/IP via Devices::generateKeaReservation() (dhcp_id, Snipe-IT
      * asset, and assigned IP all come from the live Netbox record), so
      * there's no reliable key to look up or remove the reservation by.
      * Log it so it can be cleaned up manually if needed.
@@ -83,10 +83,12 @@ class SyncDeviceDhcpJob implements ShouldQueue
     /**
      * Create or update the DHCP reservation for this device (created / updated events).
      *
-     * Uses Devices::generateDhcpReservation() to compute the desired
-     * ipaddress / hwaddress / description, then reconciles against Kea:
-     *   1. Look up an existing reservation by MAC. If found and it doesn't
-     *      fully match (ip + mac + description), delete it.
+     * Uses Devices::generateKeaReservation() to compute the desired Kea
+     * reservation (subnetId / ipAddress / hwAddress or clientId /
+     * usercontext->description), then reconciles against Kea:
+     *   1. Look up an existing reservation by identifier (hwAddress, or
+     *      clientId for option 61 reservations). If found and it doesn't
+     *      fully match (ip + hwAddress + clientId + description), delete it.
      *   2. Look up an existing reservation by IP (skipping one already
      *      handled above). If found and it doesn't fully match, delete it.
      *   3. If nothing already matched, create the desired reservation.
@@ -116,61 +118,71 @@ class SyncDeviceDhcpJob implements ShouldQueue
         ]);
 
         // ── 2. Build the desired reservation for this device ──────────────────
-        $desired = $device->generateDhcpReservation();
+        // generateKeaReservation() already returns null when there is no IP or
+        // no matching Kea subnet. VirtualChassis::generateKeaReservation() can
+        // still return one with neither hwAddress nor clientId set.
+        $desired = $device->generateKeaReservation();
 
-        if (!$desired) {
-            Log::info('SyncDeviceDhcpJob: no DHCP reservation to sync for device (missing MAC/dhcp_id or IP)', [
+        if (!$desired || (empty($desired->hwAddress) && empty($desired->clientId))) {
+            Log::info('SyncDeviceDhcpJob: no DHCP reservation to sync for device (missing MAC/client ID, IP, or DHCP scope)', [
                 'name' => $device->name,
             ]);
             return;
         }
+
+        $desiredDescription = $desired->usercontext->description ?? '';
 
         Log::info('SyncDeviceDhcpJob: desired reservation', ['reservation' => $desired]);
 
         $needsCreate = true;
         $handledIp   = null;
 
-        // ── 3. Reconcile any existing reservation found by MAC ─────────────────
-        $byMac = ReservationV4::findByMac($desired['hwaddress']);
+        // ── 3. Reconcile any existing reservation found by hwAddress/clientId ──
+        $byIdentifier = $this->findExistingByIdentifier($desired);
 
-        if ($byMac) {
-            if ($this->reservationMatches($byMac, $desired)) {
-                Log::info('SyncDeviceDhcpJob: reservation already correct (matched by MAC), leaving it alone', [
-                    'hwaddress' => $byMac->hwAddress,
-                    'ipaddress' => $byMac->ipAddress,
+        if ($byIdentifier) {
+            if ($this->reservationMatches($byIdentifier, $desired)) {
+                Log::info('SyncDeviceDhcpJob: reservation already correct (matched by identifier), leaving it alone', [
+                    'hwaddress' => $byIdentifier->hwAddress ?? null,
+                    'clientid'  => $byIdentifier->clientId ?? null,
+                    'ipaddress' => $byIdentifier->ipAddress,
                 ]);
                 $needsCreate = false;
             } else {
-                Log::info('SyncDeviceDhcpJob: deleting stale reservation matched by MAC', [
-                    'hwaddress'    => $byMac->hwAddress,
-                    'old_ip'       => $byMac->ipAddress,
-                    'old_desc'     => $byMac->usercontext->description ?? null,
-                    'desired_ip'   => $desired['ipaddress'],
-                    'desired_desc' => $desired['description'],
+                Log::info('SyncDeviceDhcpJob: deleting stale reservation matched by identifier', [
+                    'hwaddress'    => $byIdentifier->hwAddress ?? null,
+                    'clientid'     => $byIdentifier->clientId ?? null,
+                    'old_ip'       => $byIdentifier->ipAddress,
+                    'old_desc'     => $byIdentifier->usercontext->description ?? null,
+                    'desired_ip'   => $desired->ipAddress,
+                    'desired_desc' => $desiredDescription,
                 ]);
-                $this->deleteReservation($byMac);
-                $handledIp = $byMac->ipAddress;
+                $this->deleteReservation($byIdentifier);
+                $handledIp = $byIdentifier->ipAddress;
             }
         }
 
         // ── 4. Reconcile any existing reservation found by IP ───────────────────
         if ($needsCreate) {
-            $byIp = ReservationV4::findByIp($desired['ipaddress']);
+            $byIp = ReservationV4::findByIp($desired->ipAddress);
 
             if ($byIp && $byIp->ipAddress !== $handledIp) {
                 if ($this->reservationMatches($byIp, $desired)) {
                     Log::info('SyncDeviceDhcpJob: reservation already correct (matched by IP), leaving it alone', [
-                        'hwaddress' => $byIp->hwAddress,
+                        'hwaddress' => $byIp->hwAddress ?? null,
+                        'clientid'  => $byIp->clientId ?? null,
                         'ipaddress' => $byIp->ipAddress,
                     ]);
                     $needsCreate = false;
                 } else {
                     Log::info('SyncDeviceDhcpJob: deleting stale reservation matched by IP', [
-                        'hwaddress'    => $byIp->hwAddress,
-                        'ipaddress'    => $byIp->ipAddress,
-                        'old_desc'     => $byIp->usercontext->description ?? null,
-                        'desired_mac'  => $desired['hwaddress'],
-                        'desired_desc' => $desired['description'],
+                        'hwaddress'        => $byIp->hwAddress ?? null,
+                        'clientid'         => $byIp->clientId ?? null,
+                        'ipaddress'        => $byIp->ipAddress,
+                        'old_desc'         => $byIp->usercontext->description ?? null,
+                        'desired_hwaddr'   => $desired->hwAddress,
+                        'desired_clientid' => $desired->clientId,
+                        'desired_desc'     => $desiredDescription,
                     ]);
                     $this->deleteReservation($byIp);
                 }
@@ -179,17 +191,9 @@ class SyncDeviceDhcpJob implements ShouldQueue
 
         // ── 5. Create the reservation if nothing already matched ───────────────
         if ($needsCreate) {
-            $scope = SubnetV4::findByIp($desired['ipaddress']);
-            if (!$scope) {
-                Log::warning('SyncDeviceDhcpJob: no DHCP scope found for IP, skipping reservation creation', [
-                    'reservation' => $desired,
-                ]);
-                return;
-            }
-
             Log::info('SyncDeviceDhcpJob: creating DHCP reservation', ['reservation' => $desired]);
             try {
-                ReservationV4::create($desired['ipaddress'], $desired['hwaddress'], $desired['description']);
+                ReservationV4::createRaw($desired);
             } catch (\Exception $e) {
                 Log::error('SyncDeviceDhcpJob: failed to create reservation', [
                     'reservation' => $desired,
@@ -200,30 +204,67 @@ class SyncDeviceDhcpJob implements ShouldQueue
     }
 
     /**
-     * Whether an existing Kea reservation fully matches the desired
-     * ip/mac/description. MAC addresses are normalized before comparing
-     * since Kea returns colon-separated hwAddress values while
-     * Devices::generateDhcpReservation() returns bare hex.
+     * Find an existing Kea reservation with the same identifier as the desired one.
+     *
+     * hwAddress reservations use the reservationv4/mac endpoint. The Kea API
+     * has no clientId lookup, so option 61 reservations are found by searching
+     * the reservations in the desired subnet. This means a stale reservation
+     * with the same clientId in a different subnet is not found.
      */
-    protected function reservationMatches($existing, array $desired): bool
+    protected function findExistingByIdentifier(object $desired): ?ReservationV4
     {
-        $existingMac = $this->normalizeMacAddress($existing->hwAddress ?? '');
-        $desiredMac  = $this->normalizeMacAddress($desired['hwaddress']);
-        $existingDescription = $existing->usercontext->description ?? '';
+        if (!empty($desired->hwAddress)) {
+            return ReservationV4::findByMac($desired->hwAddress);
+        }
 
-        return $existingMac === $desiredMac
-            && ($existing->ipAddress ?? null) === $desired['ipaddress']
-            && $existingDescription === $desired['description'];
+        $subnet = SubnetV4::find((int) $desired->subnetId);
+        if (!$subnet) {
+            return null;
+        }
+
+        try {
+            $reservations = $subnet->getReservations();
+        } catch (\Exception $e) {
+            Log::error('SyncDeviceDhcpJob: failed to fetch subnet reservations for client ID lookup', [
+                'subnet_id' => $desired->subnetId,
+                'error'     => $e->getMessage(),
+            ]);
+            return null;
+        }
+
+        $desiredClientId = $this->normalizeHex($desired->clientId);
+
+        return $reservations->first(function ($reservation) use ($desiredClientId) {
+            return $this->normalizeHex($reservation->clientId ?? '') === $desiredClientId;
+        });
     }
 
     /**
-     * Normalize a MAC address to lowercase colon-separated hex so that
-     * Kea's "aa:bb:cc:dd:ee:ff" and Netbox's bare "aabbccddeeff" compare equal.
+     * Whether an existing Kea reservation fully matches the desired
+     * ip/hwAddress/clientId/description. hwAddress and clientId are normalized
+     * before comparing because Kea returns colon-separated values while
+     * Devices::generateKeaReservation() returns bare hex. A missing value
+     * counts as empty, so a hwAddress reservation never matches a clientId
+     * reservation.
      */
-    protected function normalizeMacAddress(string $mac): string
+    protected function reservationMatches($existing, object $desired): bool
     {
-        $hex = strtolower(preg_replace('/[^0-9a-fA-F]/', '', $mac));
-        return implode(':', str_split($hex, 2));
+        $existingDescription = $existing->usercontext->description ?? '';
+        $desiredDescription  = $desired->usercontext->description ?? '';
+
+        return $this->normalizeHex($existing->hwAddress ?? '') === $this->normalizeHex($desired->hwAddress ?? '')
+            && $this->normalizeHex($existing->clientId ?? '') === $this->normalizeHex($desired->clientId ?? '')
+            && ($existing->ipAddress ?? null) === $desired->ipAddress
+            && $existingDescription === $desiredDescription;
+    }
+
+    /**
+     * Normalize a hwAddress or clientId to bare lowercase hex so that
+     * Kea's "aa:bb:cc:dd:ee:ff" and Netbox's "aabbccddeeff" compare equal.
+     */
+    protected function normalizeHex(?string $value): string
+    {
+        return strtolower(preg_replace('/[^0-9a-fA-F]/', '', $value ?? ''));
     }
 
     /**
@@ -235,7 +276,8 @@ class SyncDeviceDhcpJob implements ShouldQueue
             $reservation->delete();
         } catch (\Exception $e) {
             Log::error('SyncDeviceDhcpJob: failed to delete reservation', [
-                'hwaddress' => $reservation->hwAddress,
+                'hwaddress' => $reservation->hwAddress ?? null,
+                'clientid'  => $reservation->clientId ?? null,
                 'ipaddress' => $reservation->ipAddress,
                 'error'     => $e->getMessage(),
             ]);
