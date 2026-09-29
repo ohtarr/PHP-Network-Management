@@ -191,6 +191,7 @@ class syncDhcp extends Command
             }
             if(!$ipres && !$clientidres && !$hwres)
             {
+                print "No ipres, clientidres, and hwres for {$gres->ipAddress}... need to add res" . PHP_EOL;
                 $add[] = $gres;
             }
         }
@@ -224,46 +225,25 @@ class syncDhcp extends Command
                 $ipres = $this->generateReservations()->findByIpAddress($nmres->ipAddress)->first();
                 if($ipres)
                 {
-                    if(!(
-                        ($nmres->hwAddress !== null && $ipres->hwAddress !== null && strcasecmp($nmres->hwAddress, $ipres->hwAddress) === 0)
-                        && ($nmres->clientId !== null && $ipres->clientId !== null && strcasecmp($nmres->clientId, $ipres->clientId) === 0)
-                        && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
-                    ))
+                    if($ipres->hwAddress)
                     {
-                        $delete[] = $nmres;
-                        continue;
-                    }
-                }
-            }
-            if($nmres->clientId)
-            {
-                $clientidres = $this->generateReservations()->findByClientId($nmres->clientId)->first();
-                if($clientidres)
-                {
-                    if(!(
-                        ($nmres->hwAddress !== null && $ipres->hwAddress !== null && strcasecmp($nmres->hwAddress, $ipres->hwAddress) === 0)
-                        && ($nmres->ipAddress !== null && $ipres->ipAddress !== null && strcasecmp($nmres->ipAddress, $ipres->ipAddress) === 0)
-                        && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
-                    ))
-                    {
-                        $delete[] = $nmres;
-                        continue;
-                    }
-                }
-            }
-            if($nmres->hwAddress)
-            {
-                $hwres = $this->generateReservations()->findByHwAddress($nmres->hwAddress)->first();
-                if($hwres)
-                {
-                    if(!(
-                        ($nmres->clientId !== null && $ipres->clientId !== null && strcasecmp($nmres->clientId, $ipres->clientId) === 0)
-                        && ($nmres->ipAddress !== null && $ipres->ipAddress !== null && strcasecmp($nmres->ipAddress, $ipres->ipAddress) === 0)
-                        && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
-                    ))
-                    {
-                        $delete[] = $nmres;
-                        continue;
+                        if(!(
+                            ($nmres->hwAddress !== null && $ipres->hwAddress !== null && strcasecmp($nmres->hwAddress, $ipres->hwAddress) === 0)
+                            && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
+                        ))
+                        {
+                            $delete[] = $nmres;
+                            continue;
+                        }
+                    } elseif($ipres->clientId) {
+                        if(!(
+                            ($nmres->clientId !== null && $ipres->clientId !== null && strcasecmp($nmres->clientId, $ipres->clientId) === 0)
+                            && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
+                        ))
+                        {
+                            $delete[] = $nmres;
+                            continue;
+                        }
                     }
                 }
             }
