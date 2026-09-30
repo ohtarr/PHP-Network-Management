@@ -227,20 +227,25 @@ class syncDhcp extends Command
                 {
                     if($ipres->hwAddress)
                     {
+                        
                         if(!(
-                            ($nmres->hwAddress !== null && $ipres->hwAddress !== null && strcasecmp($nmres->hwAddress, $ipres->hwAddress) === 0)
+                            ($nmres->hwAddress !== null && $ipres->hwAddress !== null && strcasecmp(preg_replace('/[^a-zA-Z0-9]/', '', $nmres->hwAddress), preg_replace('/[^a-zA-Z0-9]/', '', $ipres->hwAddress)) === 0)
                             && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
                         ))
                         {
+                            print_r($nmres);
+                            print_r($ipres);
                             $delete[] = $nmres;
                             continue;
                         }
                     } elseif($ipres->clientId) {
                         if(!(
-                            ($nmres->clientId !== null && $ipres->clientId !== null && strcasecmp($nmres->clientId, $ipres->clientId) === 0)
+                            ($nmres->clientId !== null && $ipres->clientId !== null && strcasecmp(preg_replace('/[^a-zA-Z0-9]/', '', $nmres->clientId), preg_replace('/[^a-zA-Z0-9]/', '', $ipres->clientId)) === 0)
                             && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
                         ))
                         {
+                            print_r($nmres);
+                            print_r($ipres);
                             $delete[] = $nmres;
                             continue;
                         }
