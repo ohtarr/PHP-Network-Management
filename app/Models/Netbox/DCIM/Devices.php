@@ -354,6 +354,10 @@ class Devices extends BaseModel
         if(isset($this->custom_fields->dhcp_id))
         {
             $dhcpid = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $this->custom_fields->dhcp_id));
+            if($dhcpid)
+            {
+                $option61 = true;
+            }
         }
         //If device is Juniper, rely on mist to determine dhcpid
         if(!$dhcpid && isset($this->device_type->manufacturer->name) && $this->device_type->manufacturer->name == "Juniper")

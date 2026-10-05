@@ -117,6 +117,10 @@ class VirtualChassis extends BaseModel
         if(!$dhcpid && isset($master->custom_fields->dhcp_id))
         {
             $dhcpid = strtolower(preg_replace('/[^a-fA-F0-9]/', '', $master->custom_fields->dhcp_id));
+            if($dhcpid)
+            {
+                $option61 = true;
+            }
         }
         //If device is Juniper, rely on mist to determine dhcpid
         if(!$dhcpid && isset($master->device_type->manufacturer->name) && $master->device_type->manufacturer->name == "Juniper")
