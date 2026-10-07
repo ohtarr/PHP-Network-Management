@@ -158,14 +158,10 @@ class AuditSiteDhcpHelpers extends Command
             {
                 print "Site is setup for KEA scopes" . PHP_EOL;
                 $keasites[] = $nbsite->name;
-            }
-            if(count($gscopes) > 0 && $gizmovars)
-            {
+            } elseif(count($gscopes) > 0 && $gizmovars){
                 print "Site is setup for GIZMO scopes" . PHP_EOL;
                 $gizmosites[] = $nbsite->name;
-            }
-            if($neithervars)
-            {
+            } else {
                 print "Site is NOT setup for Kea or Gizmo, adding to problems" . PHP_EOL;
                 $nodhcp[] = $nbsite->name;
             }
