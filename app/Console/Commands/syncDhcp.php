@@ -179,15 +179,15 @@ class syncDhcp extends Command
             $hwres = null;
             if($gres->ipAddress)
             {
-                $ipres = $this->getAllNetmanReservations()->findByIpAddress($gres->ipAddress)->first();
+                $ipres = $this->getAllReservations()->findByIpAddress($gres->ipAddress)->first();
             }
             if($gres->clientId)
             {
-                $clientidres = $this->getAllNetmanReservations()->findByClientId($gres->clientId)->first();
+                $clientidres = $this->getAllReservations()->findByClientId($gres->clientId)->first();
             }
             if($gres->hwAddress)
             {
-                $hwres = $this->getAllNetmanReservations()->findByHwAddress($gres->hwAddress)->first();
+                $hwres = $this->getAllReservations()->findByHwAddress($gres->hwAddress)->first();
             }
             if(!$ipres && !$clientidres && !$hwres)
             {
@@ -233,7 +233,9 @@ class syncDhcp extends Command
                             && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
                         ))
                         {
+                            print "NETMAN_RESERVATION needs to be deleted:" . PHP_EOL;
                             print_r($nmres);
+                            print "GENERATED_RESERVATION:" . PHP_EOL;
                             print_r($ipres);
                             $delete[] = $nmres;
                             continue;
@@ -244,11 +246,93 @@ class syncDhcp extends Command
                             && ($nmres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($nmres->usercontext->description, $ipres->usercontext->description) === 0)
                         ))
                         {
+                            print "NETMAN_RESERVATION needs to be deleted:" . PHP_EOL;
                             print_r($nmres);
+                            print "GENERATED:" . PHP_EOL;
                             print_r($ipres);
                             $delete[] = $nmres;
                             continue;
                         }
+                    }
+                }
+            }
+        }
+        foreach($this->generateReservations() as $gres)
+        {
+            $ipres = null;
+            $clientidres = null;
+            $hwres = null;
+            if($gres->ipAddress)
+            {
+                $ipres = $this->getAllReservations()->findByIpAddress($gres->ipAddress)->first();
+                if($ipres)
+                {
+                    //Check if reservation matches generated
+                    if($ipres->hwAddress)
+                    {
+                        if(!(
+                            ($gres->hwAddress !== null && $ipres->hwAddress !== null && strcasecmp(preg_replace('/[^a-zA-Z0-9]/', '', $gres->hwAddress), preg_replace('/[^a-zA-Z0-9]/', '', $ipres->hwAddress)) === 0)
+                            && ($gres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($gres->usercontext->description, $ipres->usercontext->description) === 0)
+                        ))
+                        {
+                            print "RESERVATION needs to be deleted:" . PHP_EOL;
+                            print_r($ipres);
+                            print "GENERATED:" . PHP_EOL;
+                            print_r($gres);
+                            $delete[] = $ipres;
+                            continue;
+                        }
+                    } elseif($ipres->clientId) {
+                        if(!(
+                            ($gres->clientId !== null && $ipres->clientId !== null && strcasecmp(preg_replace('/[^a-zA-Z0-9]/', '', $gres->clientId), preg_replace('/[^a-zA-Z0-9]/', '', $ipres->clientId)) === 0)
+                            && ($gres->usercontext->description !== null && $ipres->usercontext->description !== null && strcasecmp($gres->usercontext->description, $ipres->usercontext->description) === 0)
+                        ))
+                        {
+                            print "RESERVATION needs to be deleted:" . PHP_EOL;
+                            print_r($ipres);
+                            print "GENERATED:" . PHP_EOL;
+                            print_r($gres);
+                            $delete[] = $ipres;
+                            continue;
+                        }
+                    }
+                }
+            }
+            if($gres->clientId)
+            {
+                $clientidres = $this->getAllReservations()->findByClientId($gres->clientId)->first();
+                if($clientidres)
+                {
+                    if(!(
+                        ($gres->ipAddress !== null && $clientidres->ipAddress !== null && strcasecmp($gres->ipAddress, $clientidres->ipAddress) === 0)
+                        && ($gres->usercontext->description !== null && $clientidres->usercontext->description !== null && strcasecmp($gres->usercontext->description, $clientidres->usercontext->description) === 0)
+                    ))
+                    {
+                        print "RESERVATION needs to be deleted:" . PHP_EOL;
+                        print_r($clientidres);
+                        print "GENERATED:" . PHP_EOL;
+                        print_r($gres);
+                        $delete[] = $clientidres;
+                        continue;
+                    }
+                }
+            }
+            if($gres->hwAddress)
+            {
+                $hwres = $this->getAllReservations()->findByHwAddress($gres->hwAddress)->first();
+                if($hwres)
+                {
+                    if(!(
+                        ($gres->ipAddress !== null && $hwres->ipAddress !== null && strcasecmp($gres->ipAddress, $hwres->ipAddress) === 0)
+                        && ($gres->usercontext->description !== null && $hwres->usercontext->description !== null && strcasecmp($gres->usercontext->description, $hwres->usercontext->description) === 0)
+                    ))
+                    {
+                        print "RESERVATION needs to be deleted:" . PHP_EOL;
+                        print_r($hwres);
+                        print "GENERATED:" . PHP_EOL;
+                        print_r($gres);
+                        $delete[] = $hwres;
+                        continue;
                     }
                 }
             }
