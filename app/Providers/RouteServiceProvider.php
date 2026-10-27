@@ -28,6 +28,11 @@ class RouteServiceProvider extends ServiceProvider
     {
         $this->configureRateLimiting();
 
+        // The address validation endpoint must see raw values so leading/trailing whitespace can be rejected
+        \Illuminate\Foundation\Http\Middleware\TrimStrings::skipWhen(
+            fn ($request) => $request->getHost() === 'addressvalidation.kiewitplaza.com'
+        );
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api')
@@ -35,6 +40,11 @@ class RouteServiceProvider extends ServiceProvider
 
             Route::middleware('web')
                 ->group(base_path('routes/web.php'));
+
+            // Stateless (no session/CSRF) routes served only on the address validation hostname
+            Route::middleware('api')
+                ->domain('addressvalidation.kiewitplaza.com')
+                ->group(base_path('routes/addressvalidation.php'));
         });
     }
 
