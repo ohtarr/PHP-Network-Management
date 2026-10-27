@@ -14,10 +14,12 @@ class AddressValidationController extends Controller
         $POSTED = $request->collect();
         $RESPONSE = ['success' => false, 'error' => ''];
 
-        // Address fields only (no contact name); never log credentials or the full request body
+        // Log expected fields by value; any other field is logged by name only so stray secrets never reach the log
+        $expected = ['street', 'city', 'state', 'zip', 'country', 'name'];
         $context = [
             'ip' => $request->ip(),
-            'input' => $request->only(['street', 'city', 'state', 'zip', 'country']),
+            'body' => $request->only($expected),
+            'unexpected_fields' => array_values(array_diff(array_keys($request->all()), $expected)),
         ];
         $log = Log::channel('addressvalidation');
 
