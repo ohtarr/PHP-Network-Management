@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AddressValidation;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class AddressValidationController extends Controller
 {
@@ -13,9 +14,28 @@ class AddressValidationController extends Controller
         $POSTED = $request->collect();
         $RESPONSE = ['success' => false, 'error' => ''];
 
+        // Address fields only (no contact name); never log credentials or the full request body
+        $context = [
+            'ip' => $request->ip(),
+            'input' => $request->only(['street', 'city', 'state', 'zip', 'country']),
+        ];
+        $log = Log::channel('addressvalidation');
+
         // Stamp the total execution time and return the response as JSON
-        $respond = function (int $status = 200) use (&$RESPONSE, $start) {
+        $respond = function (int $status = 200) use (&$RESPONSE, $start, $context, $log) {
             $RESPONSE['time'] = round(microtime(true) - $start, 2);
+            $logContext = $context + ['status' => $status, 'time' => $RESPONSE['time']];
+            if ($RESPONSE['success']) {
+                $log->info('Address validation succeeded', $logContext + [
+                    'e911_response' => $RESPONSE['debug']['e911_response'] ?? null,
+                ]);
+            } elseif ($status === 200) {
+                $log->warning('Address validation rejected by E911 gateway', $logContext + [
+                    'e911_response' => $RESPONSE['debug']['e911_response'] ?? null,
+                ]);
+            } else {
+                $log->warning('Address validation failed', $logContext + ['error' => $RESPONSE['error']]);
+            }
             return response()->json($RESPONSE, $status);
         };
 
@@ -66,6 +86,11 @@ class AddressValidationController extends Controller
             $RESPONSE['debug']['e911_response'] = (array) $EGW->validateAddress($addressobj);
         }catch (\Exception $e) {
             // catch exceptions as BAD data
+            $log->error('Address validation exception', $context + [
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile() . ':' . $e->getLine(),
+            ]);
             $RESPONSE['error'] = "Caught exception {$e->getMessage()}";
             return $respond(502);
         }

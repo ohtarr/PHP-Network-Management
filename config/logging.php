@@ -120,6 +120,14 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        'addressvalidation' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/addressvalidation.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => 14,
+            'permission' => 0664,
+        ],
+
         'provisioning' => [
             'driver' => 'daily',
             'path' => storage_path('logs/provisioning.log'),
