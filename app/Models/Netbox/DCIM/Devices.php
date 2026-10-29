@@ -9,6 +9,7 @@ use App\Models\Netbox\DCIM\FrontPorts;
 use App\Models\Netbox\DCIM\RearPorts;
 use App\Models\Netbox\DCIM\Racks;
 use App\Models\Netbox\DCIM\ModuleBays;
+use App\Models\Netbox\DCIM\PowerPorts;
 use App\Models\Netbox\IPAM\Prefixes;
 use App\Models\Netbox\IPAM\IpAddresses;
 use App\Models\Mist\Device as MistDevice;
@@ -85,6 +86,11 @@ class Devices extends BaseModel
     public function moduleBays()
     {
         return ModuleBays::where('device_id', $this->id)->limit(99999999)->get();
+    }
+
+    public function powerPorts()
+    {
+        return PowerPorts::where('device_id', $this->id)->limit(99999999)->get();
     }
 
     public function addModuleBay($name, $label, $position)
