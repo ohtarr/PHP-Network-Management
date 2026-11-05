@@ -141,7 +141,7 @@ class Prefixes extends BaseModel
     {
         $scope = null;
         $params = $this->generateKeaDhcpScopeParams();
-        if(!isset($params['id']))
+        if(!isset($params['subnet']))
         {
             return null;
         }
@@ -342,7 +342,6 @@ class Prefixes extends BaseModel
         }
 
         $keaparams = [
-            'id'            =>  intval(str_replace(".", "", $scopeparams['network'])),
             'subnet'        =>  $scopeparams['network'] . "/" . $scopeparams['bitmask'],
             'pools'         =>  [
                 ['pool' =>  $scopeparams['first_host'] . "-" . $scopeparams['last_host']],
