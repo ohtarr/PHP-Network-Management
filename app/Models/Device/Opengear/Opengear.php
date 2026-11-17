@@ -20,12 +20,6 @@ class Opengear extends \App\Models\Device\Device
 
     //List of outputs to collect during a scan of this device.
     public $scan_outputs = [
-        'srscript'	    =>	[
-            'method'	=>	'ssh',
-            'input'		=>	'sudo /etc/scripts/support_report.sh',
-            'timeout'	=>	180,
-            'include'	=>	false,
-        ],
         'run'		    =>	[
             'method'	=>	'ssh',
             'input'		=>	'config -g config',
@@ -40,10 +34,6 @@ class Opengear extends \App\Models\Device\Device
             'method'	=>	'ssh',
             'input'		=>	'showserial',
             'timeout'	=>	5,
-        ],
-        'support_report'=>	[
-            'method'	=>	'sftp',
-            'input'		=>	'/etc/config/support_report',
         ],
         'apidescription'=>	[
             'method'	=>	'callback',

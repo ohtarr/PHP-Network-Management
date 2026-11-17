@@ -62,39 +62,6 @@ class VirtualChassis extends BaseModel
         return $dnsrecords;
     }
 
-/*     public function generateDhcpId($irb = 0)
-    {
-        $master = $this->getMaster();
-        if(isset($master) && $master)
-        {
-            return $master->generateDhcpId($irb);
-        }
-    } */
-
-/*     public function generateDhcpReservation()
-    {
-        $master = $this->getMaster();
-        if(!isset($master->id))
-        {
-            return null;
-        }
-        $dhcpid = $master->generateDhcpId();
-        if(!(isset($dhcpid) && $dhcpid))
-        {
-            return null;
-        }
-        $ip = $master->getIpAddress();
-        if(!(isset($ip) && $ip))
-        {
-            return null;
-        }
-        return [
-            'ipaddress'   =>  $ip,
-            'hwaddress'   =>  $dhcpid,
-            'description' =>  "NETMAN-" . $this->name,
-        ];
-    } */
-
     public function getMistVirtualChassis()
     {
         return Device::findByName($this->name);

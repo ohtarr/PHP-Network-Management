@@ -496,21 +496,6 @@ class Devices extends BaseModel
         ];
     }
 
-/*     public function createDhcpReservation()
-    {
-        $params = $this->generateDhcpReservation();
-        if(!(isset($params) && $params))
-        {
-            return null;
-        }
-        $scope = SubnetV4::findByIp($params['ipaddress']);
-        if(!(isset($scope) && $scope))
-        {
-            return null;
-        }
-        return ReservationV4::create($params['ipaddress'], $params['hwaddress'], $params['description']);
-    } */
-
     public function getSnipeitAsset()
     {
         $serial = $this->serial ?? null;

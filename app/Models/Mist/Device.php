@@ -784,4 +784,16 @@ class Device extends BaseModel
             return "00" . $hex;
         }
     }
+
+    public function restart()
+    {
+        if(!$this->id || !$this->site_id)
+        {
+            return null;
+        }
+        $params = [];
+        $path = "sites/" . $this->site_id . "/devices/" . $this->id . "/restart";
+        $response = static::getQuery()->request('POST', $path, $params);
+        return $response;
+    }
 }
